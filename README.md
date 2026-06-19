@@ -51,6 +51,7 @@
 | **Backend Framework** | Hono | Lightweight backend framework |
 | **ORM** | Prisma (+ adapter-neon) | จัดการฐานข้อมูล |
 | **Database** | PostgreSQL (Neon DB) | Serverless Postgres |
+| **Storage Images** | Cloudflare R2 | ตัวเก็บรูป |
 | **Auth** | Kinde SDK | ระบบ Authentication |
 | **Validation** | Zod | Validate ข้อมูล |
 | **Payment** | Omise SDK | ระบบชำระเงิน |
