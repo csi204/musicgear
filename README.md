@@ -9,12 +9,15 @@
 1. [Brand Identity & Color Palette](#-brand-identity--color-palette)
 2. [Logo Generation Prompt](#-logo-generation-prompt)
 3. [Tech Stack](#-tech-stack)
-4. [User Personas](#-user-personas)
-5. [Use Case Diagram](#-use-case-diagram)
-6. [Class Diagram](#-class-diagram)
-7. [Sequence Diagrams](#-sequence-diagrams)
-8. [System Architecture](#-system-architecture)
-9. [Wireframe / Prototype — Stitch AI Prompts](#-wireframe--prototype--stitch-ai-prompts)
+4. [Requirement](#-requirment)
+5. [User Personas](#-user-personas)
+6. [Use Case Diagram](#-use-case-diagram)
+7. [Class Diagram](#-class-diagram)
+8. [Sequence Diagrams](#-sequence-diagrams)
+9. [Wireframe](#-wire-frame)
+10. [System Architecture](#-system-architecture)
+11. [Data schema](#-data-schema)
+12. [User Accept Testing: UAT (Manual Testing)](#-user-accept-testing-UAT-(manual-testing))
 
 ---
 
@@ -57,6 +60,25 @@
 | **DevOps** | Wrangler CLI, Git, GitHub | Deploy & version control |
 | **API Testing** | Postman | ทดสอบ API |
 | **Design** | Figma | ออกแบบ UI/UX |
+
+---
+
+## 📃 Requirment
+
+Requirement หลักของระบบ (ตามเกณฑ์ - ครบทุกข้อ):  
+    1. การจัดการสมาชิก (Register/Login)  
+    2. การจัดการข้อมูลสินค้า  
+    3. การค้นหาและแสดงรายละเอียดสินค้า  
+    4. ระบบตะกร้าสินค้า (Shopping Cart)  
+    5. ระบบสั่งซื้อสินค้า (Order Management)  
+    6. ระบบชำระเงิน (Simulation/Mockup - Stripe/Omise sandbox)  
+    7. ระบบติดตามสถานะคำสั่งซื้อ  
+    8. ระบบจัดการสินค้าและคำสั่งซื้อสำหรับ Staff/Admin  
+    9. รายงาน/Dashboard  
+    10. ระบบแนะนำอุปกรณ์ที่เหมาะสำหรับมือใหม่ (Beginner)  
+    11. ระบบแนะนำสินค้าที่ใช้ร่วมกันได้ + Bundle Set  
+    12. ระบบเปรียบเทียบสินค้า (Compare Product)  
+    13. ระบบแจ้งเตือนทางอีเมลเมื่อสินค้าเข้าสต็อก (Back-in-stock notification)
 
 ---
 
@@ -811,120 +833,8 @@ flowchart TB
 
 ---
 
-## 🎯 Wireframe / Prototype — Stitch AI Prompts
-
-นำ prompt ด้านล่างไปวางใน **Google Stitch** เพื่อเจน prototype หน้าจอตามแต่ละบทบาท (สามารถรันทีละ prompt แยกต่อหน้าจอ)
-
-### 1️⃣ Customer Web App — Homepage & Product Listing
-
-```
-Design a modern e-commerce homepage for "MusicGear", an online
-music instrument store. Light theme with warm off-white background
-(#F5F3EE), electric blue (#2F5DFF) as the primary accent color for
-buttons and links, and amber (#FF8A3D) for sale badges.
-
-Layout:
-- Top navbar: logo left, search bar center, cart icon + login/profile
-  icon right
-- Hero banner: large image of guitars/amps with headline "Find your
-  perfect first instrument" and a CTA button "Shop Now"
-- Category quick-filter chips: Guitars, Amps, Keyboards, Drums,
-  Accessories, Bundles
-- Product grid (3-4 columns): product card with image, name, price,
-  star rating, "Add to Cart" button, sale badge in amber if discounted
-- Section: "Recommended Starter Bundles" — horizontal scroll cards
-  combining multiple products as a set
-- Footer: links, payment icons, newsletter signup
-
-Style: clean, friendly for beginners, rounded corners, soft shadows,
-modern sans-serif typography, mobile-responsive web layout.
-```
-
-### 2️⃣ Customer Web App — Product Detail & Cart
-
-```
-Design a product detail page and shopping cart drawer for
-"MusicGear" e-commerce site. Light theme (#F5F3EE background),
-electric blue (#2F5DFF) primary buttons, amber (#FF8A3D) accents
-for discounts.
-
-Product Detail Page:
-- Left: image gallery with thumbnail selector
-- Right: product name, brand, price, star rating + review count,
-  short description, quantity selector, "Add to Cart" and
-  "Buy Now" buttons, stock availability badge
-- Below: tabs for Description / Specifications / Reviews
-- "Compare with similar products" section
-- "Frequently bought together" bundle suggestion
-
-Cart Drawer (slide-in from right):
-- List of cart items with thumbnail, name, quantity stepper, price,
-  remove icon
-- Order summary: subtotal, shipping fee, discount, grand total
-- "Proceed to Checkout" button in electric blue
-
-Style: clean e-commerce UI, rounded cards, soft shadows, modern
-sans-serif font, beginner-friendly tone.
-```
-
-### 3️⃣ Staff Portal — Order & Stock Dashboard
-
-```
-Design a dark-themed internal dashboard for warehouse staff at
-"MusicGear". Background jet black (#0B0B0E), amber (#FF8A3D) as
-the primary accent for alerts/highlights, electric blue (#2F5DFF)
-for secondary actions, white/off-white text.
-
-Layout:
-- Left sidebar navigation: Dashboard, Orders, Stock/Inventory,
-  Bundle Sets, Reports, Logout
-- Top bar: staff name/avatar, notification bell
-- Main dashboard: 
-  - Cards showing "Orders to Pack Today", "Low Stock Items",
-    "Pending Confirmation"
-  - Order list table: Order ID, Customer, Items, Status
-    (badges: Pending / Confirmed / Packed / Shipped), action button
-  - When opening an order: show related/compatible product
-    warnings highlighted in amber if items in the order are part
-    of a bundle that needs matching stock
-- Stock page: table of products with current quantity, reserved
-  quantity, "Receive Stock" button, low-stock rows highlighted in
-  amber/red
-
-Style: data-dense but organized, dark mode, clear status badges,
-modern sans-serif, optimized for fast scanning during warehouse work.
-```
-
-### 4️⃣ Admin Portal — Dashboard, Category & Product Management
-
-```
-Design a dark-themed admin dashboard for "MusicGear" e-commerce
-platform. Background jet black (#0B0B0E), electric blue (#2F5DFF)
-as primary accent for charts/buttons, amber (#FF8A3D) for
-highlighted KPIs, off-white text.
-
-Layout:
-- Left sidebar: Dashboard, Manage Category, Manage Product,
-  Manage User, Inventory Report, Sales Report, Financial Report,
-  Logout
-- Top bar: admin avatar, date range filter
-- Dashboard main: KPI cards (Total Sales, New Users, Orders Today,
-  Top Category) with electric blue accent numbers; line chart for
-  sales trend; bar chart for top-selling products; pie chart for
-  category distribution
-- Manage Category page: table of categories with tag/label
-  management (e.g. "Beginner Friendly", "Budget"), ability to link
-  related categories, add/edit/delete actions
-- Manage Product page: product table with image thumbnail, name,
-  category tags, brand, price, stock, status toggle, edit/delete
-  icons; "Add Product" button opens a form with image upload,
-  category/brand dropdown, and a "frequently bought together"
-  product linker
-
-Style: professional SaaS dashboard, dark mode, clean data
-visualization, modern sans-serif, electric-blue charts on black
-cards with subtle borders.
-```
+## 🎯 Wireframe / Prototype - Clik to inspect
+[![Design System](https://raw.githubusercontent.com/csi204/musicgear/main/images/Prototype.png)](https://www.figma.com/design/RSQ1FfYVF5qJZzgem9ntBt/Untitled?node-id=0-1&t=H5nnEYQtm8Cw6YVe-1)
 
 # Data Schema (JSON)
 ```json
