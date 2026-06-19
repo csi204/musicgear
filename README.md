@@ -1,9 +1,119 @@
-# Musicgear
+# 🎸 MusicGear — Project Design Document
 
-# Persona Design
+> ระบบ E-Commerce สำหรับร้านขายเครื่องดนตรีและอุปกรณ์ดนตรีออนไลน์ รองรับ 4 บทบาทผู้ใช้งาน: **Guest, Customer, Staff, Admin**
 
+---
 
-# Use Case Diagram
+## 📚 สารบัญ
+
+1. [Brand Identity & Color Palette](#-brand-identity--color-palette)
+2. [Logo Generation Prompt](#-logo-generation-prompt)
+3. [Tech Stack](#-tech-stack)
+4. [User Personas](#-user-personas)
+5. [Use Case Diagram](#-use-case-diagram)
+6. [Class Diagram](#-class-diagram)
+7. [Sequence Diagrams](#-sequence-diagrams)
+8. [System Architecture](#-system-architecture)
+9. [Wireframe / Prototype — Stitch AI Prompts](#-wireframe--prototype--stitch-ai-prompts)
+
+---
+
+## 🎨 Brand Identity & Color Palette
+
+แนวคิด: **"Electric Stage"** — ผสานความดิบเท่ของเวทีดนตรี (สีดำ/เทาเข้ม) เข้ากับความทันสมัยของแบรนด์เทค (สีฟ้าไฟฟ้า) แล้วแต่งแต้มพลังด้วยสีอำพันแบบไฟสปอตไลต์บนเวที เพื่อสื่อถึงทั้งความพรีเมียมของเครื่องดนตรีและความเป็นแพลตฟอร์มอีคอมเมิร์ซยุคใหม่
+
+| สี | Hex | บทบาท | การใช้งาน |
+|---|---|---|---|
+| 🖤 **Jet Black** | `#0B0B0E` | Primary / Base | พื้นหลังหลัก, Header, Footer, โหมดมืดของเว็บ |
+| 💙 **Electric Blue** | `#2F5DFF` | Primary Accent | ปุ่ม CTA, ลิงก์, โลโก้, สถานะ active, ไอคอนหลัก |
+| 🧡 **Amber Spotlight** | `#FF8A3D` | Secondary Accent | ป้ายลดราคา/โปรโมชัน, แจ้งเตือน Staff/Admin, ไฮไลต์สำคัญ |
+| 🤍 **Warm Off-White** | `#F5F3EE` | Surface / Background | พื้นหลังการ์ดสินค้า, พื้นที่เนื้อหาในโหมดสว่าง |
+| ⚪ **Slate Gray** | `#6B6B74` | Neutral / Text | ข้อความรอง, เส้นแบ่ง, placeholder |
+| 🟢 **Success Green** | `#2BBF7A` | Feedback | สถานะสำเร็จ, ของพร้อมส่ง, Payment success |
+| 🔴 **Alert Red** | `#E54848` | Feedback | สต็อกหมด, ยกเลิกออเดอร์, Error |
+
+**โทนการใช้งานแยกตามบทบาท**
+- **Customer (Web App):** พื้นหลังขาวอุ่น (`#F5F3EE`) + ฟ้าไฟฟ้าเป็นจุดเด่น ให้ความรู้สึกสะอาด เลือกซื้อง่าย
+- **Staff Portal:** โทนมืด (`#0B0B0E`) + อำพันเป็นตัวเน้นงาน เพื่อเน้นการอ่านสถานะ/แจ้งเตือนได้ไว
+- **Admin Portal:** โทนมืด + ฟ้าไฟฟ้า เน้นกราฟ/ดาต้า ให้ดูเป็นระบบ Dashboard ระดับโปร
+
+---
+
+## 🧰 Tech Stack
+
+| หมวด | เทคโนโลยี | รายละเอียด |
+|---|---|---|
+| **Frontend** | Next.js + TypeScript | Framework: Vinext |
+| **Backend** | Node.js (JavaScript) | Runtime |
+| **Backend Framework** | Hono | Lightweight backend framework |
+| **ORM** | Prisma (+ adapter-neon) | จัดการฐานข้อมูล |
+| **Database** | PostgreSQL (Neon DB) | Serverless Postgres |
+| **Auth** | Kinde SDK | ระบบ Authentication |
+| **Validation** | Zod | Validate ข้อมูล |
+| **Payment** | Omise SDK | ระบบชำระเงิน |
+| **Styling** | Tailwind CSS + shadcn/ui | ออกแบบ UI และ component |
+| **Deployment (Frontend)** | Cloudflare Pages | โฮสต์ฝั่ง frontend |
+| **Deployment (Backend)** | Cloudflare Workers | โฮสต์ฝั่ง backend |
+| **DevOps** | Wrangler CLI, Git, GitHub | Deploy & version control |
+| **API Testing** | Postman | ทดสอบ API |
+| **Design** | Figma | ออกแบบ UI/UX |
+
+---
+
+## 👥 User Personas
+
+### 🧑‍🎤 Persona 1 — Customer: "นัท"
+**อายุ:** 19 ปี | นักศึกษาปีที่ 1 | **เป้าหมาย:** เล่นกีตาร์ให้เก่ง — มือใหม่ในวงการดนตรี
+
+> *"ผมอยากหัดเล่นดนตรีจริงจัง แต่พอหาของในเน็ตทีไรก็ตัวเลือกมันแถมสเปกอะไรก็ไม่รู้ ดูเป็นไม่ค่อยรู้ว่าแค่ไหนถึงคุ้ม"*
+
+**🩹 Pain Points**
+- เลือกของไม่ถูก ตัวเลือกจัดจ้องไปหมด ไม่มีไกด์ให้มือใหม่เริ่มต้นถูกจุด
+- แพ็กเกจเริ่มต้นของไม่เข้ากัน ซื้อมาแล้วต่อกันไม่ได้ อุปกรณ์ขึ้นไม่ได้กับมือใหม่
+- ไม่ชัวร์เรื่องความคุ้ม ไม่รู้ว่าราคานี้มันได้ของดีจริงไหม
+- ข้อมูลเทคนิคยุ่งยากเกินไป อ่านรายละเอียดสินค้าแล้วยังไม่เข้าใจ
+
+**🎯 Needs & Motivations**
+- ระบบช่วยแนะนำสินค้าเบื้องต้นที่เหมาะกับมือใหม่
+- ดูค่าอธิบายแบบภาษาคนทั่วไป ไม่ต้องอิงศัพท์เทคนิคเยอะ
+- จัดเซ็ตเริ่มต้นมาให้ครบ ซื้อของกล่องเดียวพร้อมเล่น
+- มีให้เทียบเปรียบเทียบสินค้า เพื่อตัดสินใจซื้อง่ายขึ้น
+- แพ็กเกจชัดเจนบอกว่าตัวไหนเหมาะกับระดับเริ่มต้น
+
+---
+
+### 🔧 Persona 2 — Staff: "นอท"
+**อายุ:** 23 ปี | พนักงานดูแลคลังและจัดเตรียมสินค้า | **เป้าหมาย:** จัดเตรียมและแพ็กสินค้าให้ถูกต้อง รวดเร็ว
+
+> *"ลูกค้าขอถามและสั่งซื้อสินค้าหลายชิ้นพร้อมกันเพราะกลัวต้องใช้ด้วยกันไม่ได้ แต่ในระบบคลังเราแยกเช็กทีละชิ้น ถ้าสินค้าชิ้นใดชิ้นหนึ่งหรือใครเข้าไปไม่ชัดเจน ระบบเวลาหยิบของมาจะวุ่นวายมาก"*
+
+**🩹 Pain Points**
+- จัดการความเข้าใจของสินค้าในสต็อกได้ไม่ตรงกัน เมื่อลูกค้าสั่งซื้อชุดสินค้าหรือจับคู่สินค้ามา Staff ต้องเสียเวลาตรวจสอบหน้างานตอนแพ็ก อุปกรณ์ขึ้นนี้สายเคิก แอมป์ มันตรงรุ่นและเข้ากันได้จริงตามที่ลูกค้าต้องการหรือไม่ เมื่อจากข้อมูลในคลังไม่ได้พูกความเข้าใจไว้ชัดเจน
+- ปัญหาการตัดสต็อกสินค้าที่สัมพันธ์กัน: หากสินค้าชิ้นใดชิ้นหนึ่งในเซ็ตหมด แต่ระบบไม่แจ้งเตือนความสัมพันธ์ล่วงหน้า เสียเวลาต้องประสานงานหรือเปลี่ยนสินค้า
+
+**🎯 Needs & Motivations**
+- ระบบแจ้งข้อมูลความสัมพันธ์ของสินค้าหรือเซ็ตสต็อกสินค้าให้เข้ากันได้ ในหน้าที่สั่งซื้อชัดเจน เพื่อให้หยิบและแพ็กของได้ถูกต้อง ไม่ต้องเดาเอง
+- หน้า Dashboard แสดงสถานะสต็อกของและกลุ่มสินค้าแนะนำสำหรับมือใหม่ เพื่อเตรียมแพ็กได้ล่วงหน้า
+
+---
+
+### 📊 Persona 3 — Admin: "แนท"
+**อายุ:** 29 ปี | ผู้ดูแลระบบและจัดการคอนเทนต์สินค้า | **เป้าหมาย:** เพิ่ม ลบ แก้ไขข้อมูลสินค้า และจัดหมวดหมู่สินค้าให้เข้าใจง่าย เพื่อช่วยให้ลูกค้าตัดสินใจซื้อได้เร็วที่สุดโดยไม่ต้องลองถามเพิ่ม
+
+> *"การจัดหมวดหมู่และละเอียดสินค้าดนตรีให้มือใหม่เข้าใจง่ายเป็นเรื่องท้าทายมาก ถ้าเราเชื่อมโยงสินค้าที่เข้ากันได้ดี ข้อมูลจะดูรกและช่วยลูกค้า"*
+
+**🩹 Pain Points**
+- ความยุ่งยากในการซื้อโยงหมวดหมู่สินค้า: การลงข้อมูลสินค้าเพื่อตอบโจทย์ความเข้ากันได้ ทำได้ยาก เพราะระบบเดิมต้องใส่รายละเอียดแยกกัน ทำให้ Admin ต้องพิมพ์ข้อความเทคนิคซ้ำๆ ในทุกหน้าสินค้า แทนที่จะสามารถผูกแท็ก ระดับสินค้ามือใหม่หรือจัดกลุ่มหมวดหมู่ที่เกี่ยวข้องกันได้ในที่เดียว
+- การสกัดข้อมูลรายงานเพื่อจัดเตรียมสินค้า: เมื่อต้องการดูว่าสินค้าไหนขายดีพื้นที่นำมาจับเซ็ตโปรโมชัน ระบบรายงานไม่แยกแยะตามระดับผู้ใช้งาน ทำให้จัดเตรียมสินค้าเข้าใจยาก
+
+**🎯 Needs & Motivations**
+- ฟังก์ชันการจัดการหมวดหมู่ (Category Management) ที่รองรับใส่ป้ายกำกับ (เช่น "ระดับเริ่มต้น ราคาเป็นมิตร") หรือผูกสินค้าที่เกี่ยวข้องกันเข้าไว้ได้ในที่เดียว
+- รายงานสินค้าคงคลัง (Inventory Report) ที่สรุปได้ว่าสินค้าคู่ไหนมักจะถูกซื้อร่วมกัน เพื่อนำมาปรับปรุงข้อมูลหน้าให้ตรงกับผู้ใช้งาน
+
+---
+
+## 🧩 Use Case Diagram
+
 ```mermaid
 %% Mermaid ไม่มี usecase diagram แบบ native จริงๆ
 %% เลยจำลองด้วย flowchart: actor = สี่เหลี่ยมมน, usecase = วงรี (stadium shape)
@@ -123,7 +233,9 @@ flowchart LR
     Admin --- UC_SalesReport
 ```
 
-# Class Diagram
+---
+
+## 🏗️ Class Diagram
 
 ```mermaid
 classDiagram
@@ -144,7 +256,7 @@ classDiagram
         +updateProfile() void
         +changePassword() void
     }
-    
+
     class Guest {
         +string sessionId
         +browsProduct() void
@@ -152,7 +264,6 @@ classDiagram
     }
 
     class Customer {
-        +UUID customerID
         +date dateOfBirth
         +string gender
         +datetime createAt
@@ -164,7 +275,6 @@ classDiagram
     }
 
     class Staff {
-        +int staffID
         +string position
         +datetime createAt
         +datetime updateAt
@@ -174,7 +284,6 @@ classDiagram
     }
 
     class Admin {
-        +UUID adminId
         +datetime createAt
         +datetime updateAt
         +manageUser() void
@@ -200,6 +309,7 @@ classDiagram
     class Cart {
         +UUID cartId
         +UUID customerId
+        +string sessionId
         +datetime createAt
         +datetime updateAt
     }
@@ -215,7 +325,8 @@ classDiagram
     class Order {
         +UUID orderId
         +UUID customerId
-        +datetime addressDate
+        +datetime orderDate
+        +string shippingAddressSnapshot
         +decimal totalAmount
         +OrderStatus status
         +decimal shippingFee
@@ -337,7 +448,6 @@ classDiagram
     Customer --|> User
     Staff --|> User
     Admin --|> User
-    Guest ..> User : extends-like
 
     %% Customer relations
     Customer "1" --> "0..*" Address
@@ -345,6 +455,9 @@ classDiagram
     Customer "1" --> "0..*" Order
     Customer "1" --> "0..*" Review
     Customer "1" --> "0..*" Notification
+
+    %% Guest relations
+    Guest "1" --> "0..1" Cart
 
     %% Cart relations
     Cart "1" --> "0..*" CartItem
@@ -370,10 +483,14 @@ classDiagram
     BundleItem "0..*" --> "1" Product
 ```
 
-#Sequence Diagram
-   1. Customer
+---
+
+## 🔁 Sequence Diagrams
+
+### 1. Customer
+
 ```mermaid
-          sequenceDiagram
+sequenceDiagram
     autonumber
     actor C as Customer
     participant GW as API Gateway
@@ -447,7 +564,9 @@ classDiagram
     PS-->>GW: Review Saved
     GW-->>C: รีวิวถูกบันทึกแล้ว
 ```
-  2. Staff
+
+### 2. Staff
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -519,7 +638,9 @@ sequenceDiagram
     Rep-->>GW: Report Data
     GW-->>S: แสดง Dashboard
 ```
-  3. Admin
+
+### 3. Admin
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -601,10 +722,10 @@ sequenceDiagram
     GW-->>A: แสดงรายงานผลลัพธ์ทางการเงิน
 ```
 
-#Wirefram or Prototype
+---
 
+## 🖥️ System Architecture
 
-# System Architecture
 ```mermaid
 flowchart TB
 
@@ -688,6 +809,123 @@ flowchart TB
     ProductSvc --> InventoryDB
 ```
 
+---
+
+## 🎯 Wireframe / Prototype — Stitch AI Prompts
+
+นำ prompt ด้านล่างไปวางใน **Google Stitch** เพื่อเจน prototype หน้าจอตามแต่ละบทบาท (สามารถรันทีละ prompt แยกต่อหน้าจอ)
+
+### 1️⃣ Customer Web App — Homepage & Product Listing
+
+```
+Design a modern e-commerce homepage for "MusicGear", an online
+music instrument store. Light theme with warm off-white background
+(#F5F3EE), electric blue (#2F5DFF) as the primary accent color for
+buttons and links, and amber (#FF8A3D) for sale badges.
+
+Layout:
+- Top navbar: logo left, search bar center, cart icon + login/profile
+  icon right
+- Hero banner: large image of guitars/amps with headline "Find your
+  perfect first instrument" and a CTA button "Shop Now"
+- Category quick-filter chips: Guitars, Amps, Keyboards, Drums,
+  Accessories, Bundles
+- Product grid (3-4 columns): product card with image, name, price,
+  star rating, "Add to Cart" button, sale badge in amber if discounted
+- Section: "Recommended Starter Bundles" — horizontal scroll cards
+  combining multiple products as a set
+- Footer: links, payment icons, newsletter signup
+
+Style: clean, friendly for beginners, rounded corners, soft shadows,
+modern sans-serif typography, mobile-responsive web layout.
+```
+
+### 2️⃣ Customer Web App — Product Detail & Cart
+
+```
+Design a product detail page and shopping cart drawer for
+"MusicGear" e-commerce site. Light theme (#F5F3EE background),
+electric blue (#2F5DFF) primary buttons, amber (#FF8A3D) accents
+for discounts.
+
+Product Detail Page:
+- Left: image gallery with thumbnail selector
+- Right: product name, brand, price, star rating + review count,
+  short description, quantity selector, "Add to Cart" and
+  "Buy Now" buttons, stock availability badge
+- Below: tabs for Description / Specifications / Reviews
+- "Compare with similar products" section
+- "Frequently bought together" bundle suggestion
+
+Cart Drawer (slide-in from right):
+- List of cart items with thumbnail, name, quantity stepper, price,
+  remove icon
+- Order summary: subtotal, shipping fee, discount, grand total
+- "Proceed to Checkout" button in electric blue
+
+Style: clean e-commerce UI, rounded cards, soft shadows, modern
+sans-serif font, beginner-friendly tone.
+```
+
+### 3️⃣ Staff Portal — Order & Stock Dashboard
+
+```
+Design a dark-themed internal dashboard for warehouse staff at
+"MusicGear". Background jet black (#0B0B0E), amber (#FF8A3D) as
+the primary accent for alerts/highlights, electric blue (#2F5DFF)
+for secondary actions, white/off-white text.
+
+Layout:
+- Left sidebar navigation: Dashboard, Orders, Stock/Inventory,
+  Bundle Sets, Reports, Logout
+- Top bar: staff name/avatar, notification bell
+- Main dashboard: 
+  - Cards showing "Orders to Pack Today", "Low Stock Items",
+    "Pending Confirmation"
+  - Order list table: Order ID, Customer, Items, Status
+    (badges: Pending / Confirmed / Packed / Shipped), action button
+  - When opening an order: show related/compatible product
+    warnings highlighted in amber if items in the order are part
+    of a bundle that needs matching stock
+- Stock page: table of products with current quantity, reserved
+  quantity, "Receive Stock" button, low-stock rows highlighted in
+  amber/red
+
+Style: data-dense but organized, dark mode, clear status badges,
+modern sans-serif, optimized for fast scanning during warehouse work.
+```
+
+### 4️⃣ Admin Portal — Dashboard, Category & Product Management
+
+```
+Design a dark-themed admin dashboard for "MusicGear" e-commerce
+platform. Background jet black (#0B0B0E), electric blue (#2F5DFF)
+as primary accent for charts/buttons, amber (#FF8A3D) for
+highlighted KPIs, off-white text.
+
+Layout:
+- Left sidebar: Dashboard, Manage Category, Manage Product,
+  Manage User, Inventory Report, Sales Report, Financial Report,
+  Logout
+- Top bar: admin avatar, date range filter
+- Dashboard main: KPI cards (Total Sales, New Users, Orders Today,
+  Top Category) with electric blue accent numbers; line chart for
+  sales trend; bar chart for top-selling products; pie chart for
+  category distribution
+- Manage Category page: table of categories with tag/label
+  management (e.g. "Beginner Friendly", "Budget"), ability to link
+  related categories, add/edit/delete actions
+- Manage Product page: product table with image thumbnail, name,
+  category tags, brand, price, stock, status toggle, edit/delete
+  icons; "Add Product" button opens a form with image upload,
+  category/brand dropdown, and a "frequently bought together"
+  product linker
+
+Style: professional SaaS dashboard, dark mode, clean data
+visualization, modern sans-serif, electric-blue charts on black
+cards with subtle borders.
+```
+
 # Data Schema (JSON)
 ```json
 {
@@ -698,3 +936,8 @@ flowchart TB
 ```
 
 # User Acceptance Testing: UAT (Manual Testing)
+
+
+---
+
+> 💡 **Tip:** เมื่อได้ผลลัพธ์จาก Stitch แล้ว สามารถ copy โทนสี (`#0B0B0E`, `#2F5DFF`, `#FF8A3D`, `#F5F3EE`) ไปตั้งเป็น CSS variables ใน Tailwind config เพื่อให้ดีไซน์ทุกหน้าจอสอดคล้องกันทั้งระบบ
