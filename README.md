@@ -1,2 +1,2 @@
-# <center>musicgear</center>
+<center>musicgear</center>
 ![usecase diagram](diagram/usecasediagram.png)
