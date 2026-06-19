@@ -1,2 +1,2 @@
 # musicgear
-![usecase diagram](diagram/usecase diagram.png)
+![usecase diagram](diagram/usecasediagram.png)
