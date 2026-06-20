@@ -943,14 +943,311 @@ flowchart TB
 # Data Schema (JSON)
 ```json
 {
-  "name": "string",
-  "age": "integer",
-  "isActive": "boolean"
+  "users": {
+    "description": "ตารางหลักของผู้ใช้ทุก role (Customer / Staff / Admin) — ใช้ single base table + extension table แบบ table-per-subtype ตาม inheritance ใน class diagram",
+    "fields": {
+      "userId":       { "type": "UUID", "primaryKey": true },
+      "email":        { "type": "string", "unique": true, "required": true },
+      "passwordHash": { "type": "string", "required": true },
+      "firstName":    { "type": "string", "required": true },
+      "lastName":     { "type": "string", "required": true },
+      "phone":        { "type": "string", "required": false },
+      "role":         { "type": "enum", "values": ["customer", "staff", "admin"], "required": true },
+      "status":       { "type": "enum", "values": ["active", "inactive", "banned"], "default": "active" },
+      "createdAt":    { "type": "datetime", "default": "now()" },
+      "updatedAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "customers": {
+    "description": "Extension table ของ users เฉพาะ role customer",
+    "fields": {
+      "customerId":   { "type": "UUID", "primaryKey": true, "references": "users.userId" },
+      "dateOfBirth":  { "type": "date", "required": false },
+      "gender":       { "type": "enum", "values": ["male", "female", "other", "prefer_not_to_say"], "required": false },
+      "createdAt":    { "type": "datetime", "default": "now()" },
+      "updatedAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "staff": {
+    "description": "Extension table ของ users เฉพาะ role staff",
+    "fields": {
+      "staffId":      { "type": "UUID", "primaryKey": true, "references": "users.userId" },
+      "position":     { "type": "string", "required": true, "example": "Warehouse / Packing" },
+      "createdAt":    { "type": "datetime", "default": "now()" },
+      "updatedAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "admins": {
+    "description": "Extension table ของ users เฉพาะ role admin",
+    "fields": {
+      "adminId":      { "type": "UUID", "primaryKey": true, "references": "users.userId" },
+      "createdAt":    { "type": "datetime", "default": "now()" },
+      "updatedAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "addresses": {
+    "fields": {
+      "addressId":    { "type": "UUID", "primaryKey": true },
+      "customerId":   { "type": "UUID", "references": "customers.customerId", "required": true },
+      "receiverName": { "type": "string", "required": true },
+      "phone":        { "type": "string", "required": true },
+      "addressLine1": { "type": "string", "required": true },
+      "addressLine2": { "type": "string", "required": false },
+      "province":     { "type": "string", "required": true },
+      "city":         { "type": "string", "required": true },
+      "postalCode":   { "type": "string", "required": true },
+      "isDefault":    { "type": "boolean", "default": false },
+      "createdAt":    { "type": "datetime", "default": "now()" },
+      "updatedAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "brands": {
+    "fields": {
+      "brandId":      { "type": "UUID", "primaryKey": true },
+      "name":         { "type": "string", "unique": true, "required": true },
+      "description":  { "type": "text", "required": false }
+    }
+  },
+ 
+  "categories": {
+    "fields": {
+      "categoryId":   { "type": "UUID", "primaryKey": true },
+      "name":         { "type": "string", "unique": true, "required": true },
+      "description":  { "type": "text", "required": false }
+    }
+  },
+ 
+  "products": {
+    "fields": {
+      "productId":    { "type": "UUID", "primaryKey": true },
+      "name":         { "type": "string", "required": true },
+      "description":  { "type": "text", "required": false },
+      "price":        { "type": "decimal(10,2)", "required": true, "min": 0 },
+      "sku":          { "type": "string", "unique": true, "required": true },
+      "status":       { "type": "enum", "values": ["active", "inactive", "discontinued", "out_of_stock"], "default": "active" },
+      "skillLevel":   { "type": "enum", "values": ["beginner", "intermediate", "advanced"], "required": false, "note": "ใช้สำหรับ Beginner Recommendation feature" },
+      "brandId":      { "type": "UUID", "references": "brands.brandId", "required": true },
+      "categoryId":   { "type": "UUID", "references": "categories.categoryId", "required": true },
+      "createdAt":    { "type": "datetime", "default": "now()" },
+      "updatedAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "product_images": {
+    "fields": {
+      "imageId":      { "type": "UUID", "primaryKey": true },
+      "productId":    { "type": "UUID", "references": "products.productId", "required": true },
+      "imageUrl":     { "type": "string", "required": true, "note": "URL ไปยัง Cloudflare R2" },
+      "isPrimary":    { "type": "boolean", "default": false },
+      "createdAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "inventory": {
+    "fields": {
+      "inventoryId":      { "type": "UUID", "primaryKey": true },
+      "productId":        { "type": "UUID", "references": "products.productId", "unique": true, "required": true },
+      "quantity":         { "type": "integer", "default": 0, "min": 0 },
+      "reservedQuantity": { "type": "integer", "default": 0, "min": 0, "note": "ตัดจองตอนลูกค้า checkout ก่อน payment confirm" },
+      "updatedAt":        { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "bundles": {
+    "fields": {
+      "bundleId":     { "type": "UUID", "primaryKey": true },
+      "name":         { "type": "string", "required": true },
+      "description":  { "type": "text", "required": false },
+      "discountType": { "type": "enum", "values": ["percentage", "fixed_amount"], "required": true },
+      "discountValue":{ "type": "decimal(10,2)", "required": true, "min": 0 },
+      "createdAt":    { "type": "datetime", "default": "now()" },
+      "updatedAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "bundle_items": {
+    "fields": {
+      "bundleItemId": { "type": "UUID", "primaryKey": true },
+      "bundleId":     { "type": "UUID", "references": "bundles.bundleId", "required": true },
+      "productId":    { "type": "UUID", "references": "products.productId", "required": true },
+      "quantity":     { "type": "integer", "required": true, "min": 1 }
+    }
+  },
+ 
+  "carts": {
+    "fields": {
+      "cartId":       { "type": "UUID", "primaryKey": true },
+      "customerId":   { "type": "UUID", "references": "customers.customerId", "required": false, "note": "null = guest cart" },
+      "sessionId":    { "type": "string", "required": false, "note": "ใช้กรณี Guest ที่ยังไม่ login" },
+      "createdAt":    { "type": "datetime", "default": "now()" },
+      "updatedAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "cart_items": {
+    "fields": {
+      "cartItemId":   { "type": "UUID", "primaryKey": true },
+      "cartId":       { "type": "UUID", "references": "carts.cartId", "required": true },
+      "productId":    { "type": "UUID", "references": "products.productId", "required": true },
+      "quantity":     { "type": "integer", "required": true, "min": 1 },
+      "price":        { "type": "decimal(10,2)", "required": true, "note": "snapshot ราคา ณ ตอนเพิ่มลงตะกร้า" }
+    }
+  },
+ 
+  "orders": {
+    "fields": {
+      "orderId":                  { "type": "UUID", "primaryKey": true },
+      "customerId":               { "type": "UUID", "references": "customers.customerId", "required": true },
+      "orderDate":                { "type": "datetime", "default": "now()" },
+      "shippingAddressSnapshot":  { "type": "json", "required": true, "note": "snapshot ที่อยู่ ณ ตอนสั่งซื้อ กันที่อยู่ลูกค้าถูกแก้ทีหลัง" },
+      "totalAmount":              { "type": "decimal(10,2)", "required": true },
+      "shippingFee":              { "type": "decimal(10,2)", "default": 0 },
+      "discountAmount":           { "type": "decimal(10,2)", "default": 0 },
+      "grandTotal":               { "type": "decimal(10,2)", "required": true },
+      "status":                   { "type": "enum", "values": ["pending", "confirmed", "packed", "shipped", "delivered", "cancelled", "refunded"], "default": "pending" },
+      "remark":                   { "type": "text", "required": false }
+    }
+  },
+ 
+  "order_items": {
+    "fields": {
+      "orderItemId":  { "type": "UUID", "primaryKey": true },
+      "orderId":      { "type": "UUID", "references": "orders.orderId", "required": true },
+      "productId":    { "type": "UUID", "references": "products.productId", "required": true },
+      "quantity":     { "type": "integer", "required": true, "min": 1 },
+      "unitPrice":    { "type": "decimal(10,2)", "required": true, "note": "snapshot ราคา ณ ตอนสั่งซื้อ" },
+      "totalPrice":   { "type": "decimal(10,2)", "required": true }
+    }
+  },
+ 
+  "payments": {
+    "fields": {
+      "paymentId":      { "type": "UUID", "primaryKey": true },
+      "orderId":        { "type": "UUID", "references": "orders.orderId", "required": true },
+      "paymentMethod":  { "type": "enum", "values": ["credit_card", "promptpay", "bank_transfer"], "required": true },
+      "provider":       { "type": "string", "default": "omise" },
+      "amount":         { "type": "decimal(10,2)", "required": true },
+      "status":         { "type": "enum", "values": ["pending", "paid", "failed", "refunded"], "default": "pending" },
+      "transactionRef": { "type": "string", "required": false },
+      "paidAt":         { "type": "datetime", "required": false },
+      "createdAt":      { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "shipments": {
+    "fields": {
+      "shipmentId":     { "type": "UUID", "primaryKey": true },
+      "orderId":        { "type": "UUID", "references": "orders.orderId", "required": true },
+      "trackingNumber": { "type": "string", "required": false },
+      "carrier":        { "type": "string", "required": false },
+      "shippingStatus": { "type": "enum", "values": ["preparing", "shipped", "in_transit", "delivered", "returned"], "default": "preparing" },
+      "shippingDate":   { "type": "datetime", "required": false },
+      "deliveredDate":  { "type": "datetime", "required": false }
+    }
+  },
+ 
+  "reviews": {
+    "fields": {
+      "reviewId":     { "type": "UUID", "primaryKey": true },
+      "customerId":   { "type": "UUID", "references": "customers.customerId", "required": true },
+      "productId":    { "type": "UUID", "references": "products.productId", "required": true },
+      "rating":       { "type": "integer", "min": 1, "max": 5, "required": true },
+      "comment":      { "type": "text", "required": false },
+      "createdAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "notifications": {
+    "fields": {
+      "notificationId": { "type": "UUID", "primaryKey": true },
+      "customerId":     { "type": "UUID", "references": "customers.customerId", "required": true },
+      "title":          { "type": "string", "required": true },
+      "message":        { "type": "text", "required": true },
+      "type":           { "type": "enum", "values": ["order_update", "back_in_stock", "promotion", "system"], "required": true },
+      "status":         { "type": "enum", "values": ["sent", "pending", "failed"], "default": "pending" },
+      "isRead":         { "type": "boolean", "default": false },
+      "createdAt":      { "type": "datetime", "default": "now()" }
+    }
+  }
 }
 ```
 
 # User Acceptance Testing: UAT (Manual Testing)
-
+แบ่งผู้ทดสอบตาม role ที่รับผิดชอบ:
+ 
+| ผู้ทดสอบ | Role ที่ทดสอบ |
+|---|---|
+| เขต (67118456) | Admin |
+| บุญ (ใส่รหัสนักศึกษา) | Customer |
+| เดียร์ (ใส่รหัสนักศึกษา) | Staff |
+ 
+> หมายเหตุ: คอลัมน์ **Actual Result** และ **Status** เว้นว่างไว้ให้กรอกตอนทดสอบจริงกับระบบที่ build เสร็จแล้ว
+ 
+## 🧑‍🎤 UAT — Customer (ผู้ทดสอบ: บุญ)
+ 
+| TC ID | Feature | ขั้นตอนการทดสอบ | Test Data | ผลลัพธ์ที่คาดหวัง | ผลลัพธ์จริง | Status |
+|---|---|---|---|---|---|---|
+| CUS-01 | Register | กรอกอีเมล/รหัสผ่าน/ชื่อ-นามสกุล แล้วกด Register | email: boon@test.com | สมัครสำเร็จ, redirect ไปหน้า login หรือ login อัตโนมัติ | | |
+| CUS-02 | Login | กรอก email/password ที่ถูกต้อง แล้วกด Login | account ที่สมัครไว้ | login สำเร็จ, ได้รับ JWT token, เข้าหน้า homepage | | |
+| CUS-03 | Login (negative) | กรอก password ผิด | wrong password | ระบบแจ้ง error "อีเมลหรือรหัสผ่านไม่ถูกต้อง" ไม่ login ผ่าน | | |
+| CUS-04 | Search Product | พิมพ์คำค้นหาในช่อง search เช่น "guitar" | keyword: guitar | แสดงรายการสินค้าที่ตรงกับคำค้นหา | | |
+| CUS-05 | Filter Product | เลือก filter brand/type/price range | brand: Yamaha | แสดงเฉพาะสินค้าที่ตรง filter | | |
+| CUS-06 | Browse / View Product Detail | คลิกเข้าไปดูสินค้า 1 ชิ้น | product: Acoustic Guitar | แสดงรายละเอียดสินค้าครบ (ราคา, สเปก, รูป, รีวิว) | | |
+| CUS-07 | Compare Product | เลือกสินค้า 2 ชิ้นขึ้นไปเพื่อเปรียบเทียบ | 2 guitar models | แสดงตารางเปรียบเทียบ spec/ราคา ข้างกัน | | |
+| CUS-08 | Add to Cart | กด "Add to cart" จากหน้ารายละเอียดสินค้า | qty: 1 | สินค้าถูกเพิ่มในตะกร้า, จำนวนในไอคอนตะกร้าอัปเดต | | |
+| CUS-09 | Manage Cart | เพิ่ม/ลด/ลบสินค้าในตะกร้า | - | ยอดรวมในตะกร้าคำนวณใหม่ถูกต้องทุกครั้งที่แก้ไข | | |
+| CUS-10 | Manage Address | เพิ่มที่อยู่จัดส่งใหม่ และตั้งเป็น default | ที่อยู่ใหม่ 1 รายการ | บันทึกที่อยู่สำเร็จ และแสดงเป็นค่า default ตอน checkout | | |
+| CUS-11 | Checkout | กด checkout จากตะกร้า เลือกที่อยู่จัดส่ง | cart ที่มีของ ≥1 ชิ้น | สร้าง order สถานะ "pending payment" พร้อมสรุปยอด (subtotal/shipping/total) ถูกต้อง | | |
+| CUS-12 | Payment (Omise sandbox) | เลือกวิธีชำระเงิน กรอกข้อมูลบัตร sandbox | Omise test card | ชำระเงินสำเร็จ, order status เปลี่ยนเป็น "confirmed/paid" | | |
+| CUS-13 | Payment (negative) | ใช้บัตรที่ถูก decline โดย sandbox | Omise decline test card | แสดง error การชำระเงินไม่สำเร็จ, order ไม่ถูกตัดสถานะ paid, สต็อกที่ reserve ไว้ถูกคืน | | |
+| CUS-14 | Order Tracking | เข้าหน้า "My Orders" ดูสถานะ order ที่สั่งไว้ | order ที่ confirm แล้ว | แสดงสถานะปัจจุบันถูกต้อง (pending/packed/shipped/delivered) | | |
+| CUS-15 | Order History | เข้าดูประวัติคำสั่งซื้อทั้งหมด | account ที่มี order เก่า | แสดงรายการ order ย้อนหลังครบถ้วน เรียงตามวันที่ | | |
+| CUS-16 | Review Product | ให้คะแนนดาว + เขียนคอมเมนต์สินค้าที่ซื้อแล้ว | rating: 5, comment: "เสียงดีมาก" | รีวิวถูกบันทึกและแสดงในหน้าสินค้า | | |
+| CUS-17 | Back-in-stock Notification | กดขอรับแจ้งเตือนสินค้าที่ "หมด" แล้วรอ staff เติมสต็อก | สินค้าที่ status = out_of_stock | ได้รับอีเมล/notification เมื่อสต็อกถูกเติมกลับเข้ามา | | |
+| CUS-18 | Beginner Bundle Recommendation | เข้าหน้าสินค้าที่มี skillLevel = beginner | - | ระบบแนะนำ bundle set อุปกรณ์เริ่มต้นที่เข้ากันได้ | | |
+ 
+## 🔧 UAT — Staff (ผู้ทดสอบ: เดียร์)
+ 
+| TC ID | Feature | ขั้นตอนการทดสอบ | Test Data | ผลลัพธ์ที่คาดหวัง | ผลลัพธ์จริง | Status |
+|---|---|---|---|---|---|---|
+| STF-01 | Login | login ด้วย account role staff | staff account | login สำเร็จ, เข้าสู่ Staff Portal (โทนมืด) | | |
+| STF-02 | Access Control | ลอง login ด้วย staff account แล้วพยายามเข้า URL ของ Admin Portal ตรงๆ | staff token | ระบบ block / redirect, ไม่สามารถเข้าถึงหน้า Admin ได้ | | |
+| STF-03 | View All Orders | เข้าหน้า order list | - | แสดงรายการคำสั่งซื้อทั้งหมด พร้อมสถานะปัจจุบัน | | |
+| STF-04 | Confirm Order | เลือก order สถานะ pending แล้วกด confirm | order ที่ status = pending | order status เปลี่ยนเป็น confirmed | | |
+| STF-05 | Prepare / Pack Product | เปิด order ที่ confirm แล้ว กด "Prepare" | order ที่ confirmed | ระบบจองสต็อก (reservedQuantity เพิ่ม), status เปลี่ยนเป็น packed | | |
+| STF-06 | Bundle Stock Awareness | เปิด order ที่มีสินค้าเป็นชุด bundle | order ที่มี bundle item | หน้าจัดเตรียมแสดงรายการสินค้าย่อยใน bundle ครบ ไม่ต้องเดาเอง | | |
+| STF-07 | Update Order Status → Shipped | กรอก tracking number แล้วเปลี่ยนสถานะเป็น shipped | tracking no. ตัวอย่าง | status order/shipment เปลี่ยนเป็น shipped, ลูกค้าได้รับ notification | | |
+| STF-08 | Check Stock | ค้นหาสินค้าแล้วดูจำนวนคงเหลือ | productId ใดก็ได้ | แสดง quantity และ reservedQuantity ปัจจุบันถูกต้อง | | |
+| STF-09 | Receiving Product (รับของเข้าสต็อก) | กรอกจำนวนสินค้าที่รับเข้าใหม่ | productId, qty: +20 | quantity ในสต็อกเพิ่มขึ้นตามจำนวนที่กรอก | | |
+| STF-10 | Stock Out → Back-in-stock Trigger | เติมสต็อกสินค้าที่เคย out_of_stock จนมี qty > 0 | สินค้าที่เคย out_of_stock | ระบบยิง notification back-in-stock ไปหาลูกค้าที่กดติดตามไว้ | | |
+| STF-11 | Manage Bundle Set | สร้าง bundle set ใหม่ เลือกสินค้าที่เข้ากันได้ + ตั้ง discount | 3 สินค้า + discount 10% | บันทึก bundle สำเร็จ และแสดงในหน้า customer | | |
+| STF-12 | Bundle Stock Validation (negative) | พยายามสร้าง bundle จากสินค้าที่ quantity = 0 | สินค้าหมดสต็อก | ระบบแจ้งเตือนว่าสินค้าในชุดหมดสต็อก ก่อนให้บันทึก bundle | | |
+| STF-13 | Dashboard Report | เข้าหน้า Dashboard ของ staff | - | แสดงสรุปสถานะสต็อก, order ที่รอจัดเตรียมวันนี้ | | |
+ 
+## 📊 UAT — Admin (ผู้ทดสอบ: เขต)
+ 
+| TC ID | Feature | ขั้นตอนการทดสอบ | Test Data | ผลลัพธ์ที่คาดหวัง | ผลลัพธ์จริง | Status |
+|---|---|---|---|---|---|---|
+| ADM-01 | Login | login ด้วย account role admin | admin account | login สำเร็จ, เข้าสู่ Admin Portal | | |
+| ADM-02 | Access Control | ลอง login ด้วย customer/staff account แล้วเข้า URL ของ Admin ตรงๆ | non-admin token | ระบบ block ไม่ให้เข้าถึง route admin ใดๆ | | |
+| ADM-03 | View Dashboard | เข้าหน้า dashboard หลัก | - | แสดงสรุป sales, users, orders ภาพรวม ถูกต้องตรงกับข้อมูลจริงในระบบ | | |
+| ADM-04 | Manage Category — Create | สร้างหมวดหมู่ใหม่ | name: "Guitar Accessories" | บันทึกหมวดหมู่สำเร็จ และเลือกใช้ตอนสร้างสินค้าได้ | | |
+| ADM-05 | Manage Category — Edit/Delete | แก้ไขชื่อ category / ลบ category ที่ไม่มีสินค้าผูกอยู่ | category ทดสอบ | แก้ไข/ลบสำเร็จ | | |
+| ADM-06 | Manage Category — Delete (negative) | ลบ category ที่ยังมีสินค้าผูกอยู่ | category ที่มี product | ระบบ block การลบ พร้อมแจ้งเตือนว่ามีสินค้าผูกอยู่ | | |
+| ADM-07 | Manage Product — Create | เพิ่มสินค้าใหม่ พร้อมอัปโหลดรูปภาพ | product data + รูป 1 ไฟล์ | สินค้าถูกสร้าง, รูปอัปโหลดขึ้น Cloudflare R2 สำเร็จ, แสดงในหน้า customer | | |
+| ADM-08 | Manage Product — Edit | แก้ไขราคา/รายละเอียดสินค้าเดิม | product เดิม | ข้อมูลอัปเดต, ราคาที่แสดงหน้า customer เปลี่ยนตาม แต่ order เก่าไม่เปลี่ยน (snapshot) | | |
+| ADM-09 | Manage Product — Tag/SkillLevel | ตั้งค่า skillLevel = beginner ให้สินค้า | product 1 ชิ้น | สินค้าปรากฏในระบบแนะนำมือใหม่ฝั่ง customer | | |
+| ADM-10 | Manage User — View List | เข้าหน้ารายชื่อผู้ใช้ทั้งหมด | - | แสดงรายชื่อ user ทุก role พร้อมสถานะ | | |
+| ADM-11 | Manage User — Suspend | เปลี่ยนสถานะ user เป็น banned | customer account ทดสอบ | user ไม่สามารถ login ได้อีก จนกว่าจะถูกปลด ban | | |
+| ADM-12 | Inventory Report | เข้าหน้ารายงานสต็อกสินค้า | - | แสดงรายงานสต็อกคงเหลือ และคู่สินค้าที่มักถูกซื้อร่วมกัน | | |
+| ADM-13 | Sales Report | เข้าหน้ารายงานยอดขาย เลือกช่วงวันที่ | date range 1 เดือน | แสดงยอดขายรวม, สินค้าขายดี ตรงกับข้อมูล order จริงในระบบ | | |
+| ADM-14 | Financial Report | เข้าหน้ารายงานผลลัพธ์ทางการเงิน | - | แสดงรายงานรายรับ-ค่าธรรมเนียม payment ถูกต้อง, ตัวเลขสอดคล้องกับ Sales Report | | |
+| ADM-15 | Manager-level Restriction (ถ้ามี role manager แยก) | login ด้วย manager account ดู revenue summary | manager account | เห็น top-line sales summary แต่ไม่เห็น margin/cost จริงของ admin | | |
 
 ---
 
