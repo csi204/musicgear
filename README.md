@@ -1,23 +1,39 @@
 # 🎸 MusicGear — Project Design Document
+> ## Project of CSI 204 Summer Semester 3/2568
 
-> ระบบ E-Commerce สำหรับร้านขายเครื่องดนตรีและอุปกรณ์ดนตรีออนไลน์ รองรับ 4 บทบาทผู้ใช้งาน: **Guest, Customer, Staff, Admin**
+> ระบบ E-Commerce สำหรับร้านขายเครื่องดนตรีและอุปกรณ์ดนตรีออนไลน์ รองรับ 3 บทบาทผู้ใช้งาน: **Customer, Staff, Admin**
 
 ---
 
 ## 📚 สารบัญ
 
-1. [Brand Identity & Color Palette](#-brand-identity--color-palette)
-2. [Logo Generation Prompt](#-logo-generation-prompt)
-3. [Tech Stack](#-tech-stack)
-4. [Requirement](#-requirment)
-5. [User Personas](#-user-personas)
-6. [Use Case Diagram](#-use-case-diagram)
-7. [Class Diagram](#-class-diagram)
-8. [Sequence Diagrams](#-sequence-diagrams)
-9. [Wireframe](#-wire-frame)
-10. [System Architecture](#-system-architecture)
-11. [Data schema](#-data-schema)
-12. [User Accept Testing: UAT (Manual Testing)](#-user-accept-testing-UAT-(manual-testing))
+1. [Contributors](#-contributors)
+2. [หลักการและเหตุผล (Rationale)](#-rationale)
+3. [Brand Identity & Color Palette](#-brand-identity--color-palette)
+5. [Tech Stack](#-tech-stack)
+6. [Requirement](#-requirment)
+7. [User Personas](#-user-personas)
+8. [Use Case Diagram](#-use-case-diagram)
+9. [Class Diagram](#-class-diagram)
+10. [Sequence Diagrams](#-sequence-diagrams)
+11. [Wireframe](#-wire-frame)
+12. [System Architecture](#-system-architecture)
+13. [Data schema](#-data-schema)
+14. [User Accept Testing: UAT (Manual Testing)](#-user-accept-testing-UAT-(manual-testing))
+
+---
+
+## 🤼 Contributors
+
+### Group Name : องครักษ์พิทักษ์ลาบ
+1. 67095474 นายธีรภัทร เนียมสุวรรณ SA, Core Backend
+2. 67096366 นายปวริศ ธรรมวงษ์ Frontend, Backend lead
+3. 67118456 นายเขตโสภณ อินอุตออน PM, infrastructure
+
+---
+
+## 💭 หลักการและเหตุผล (Rationale)
+ปัจจุบันตลาดเครื่องดนตรีและอุปกรณ์ ออนไลน์มีการขยายตัวสูง แต่ร้านค้าส่วนใหญ่ยังขาดแพลตฟอร์มที่มี การจัดการที่ครอบคลุมครบวงจรยังมีน้อยอยู่ โครงงานนี้จึงมุ่งพัฒนาระบบด้วยสถาปัตยกรรม Microservices ที่มีความสามารถในการรองรับการขยายตัวของระบบได้ดี เพื่อจัดการ สต๊อกสินค้า, ระบบชำระเงินที่ปลอดภัย, และเพิ่มการดึงดูดความสนใจของผู้ใช้ ผ่านระบบแนะนำสินค้าและ Bundle Set
 
 ---
 
