@@ -9,17 +9,23 @@
 
 1. [Contributors](#-contributors)
 2. [หลักการและเหตุผล (Rationale)](#-หลักการและเหตุผล-rationale)
-3. [Brand Identity & Color Palette](#-brand-identity--color-palette)
-5. [Tech Stack](#-tech-stack)
-6. [Requirement](#-requirment)
-7. [User Personas](#-user-personas)
-8. [Use Case Diagram](#-use-case-diagram)
-9. [Class Diagram](#%EF%B8%8F-class-diagram)
-10. [Sequence Diagrams](#-sequence-diagrams)
-11. [Wireframe](#-wireframe--prototype---clik-to-inspect)
-12. [System Architecture](#%EF%B8%8F-system-architecture)
-13. [Data schema](#data-schema-json)
-14. [User Accept Testing: UAT (Manual Testing)](#user-acceptance-testing-uat-manual-testing)
+3. [วัตถุประสงค์ของโครงงาน (Objectives)](#%EF%B8%8F-วัตถุประสงค์ของโครงงาน-objectives)
+4. [ขอบเขตของระบบ (System Scope)](#-หลักการและเหตุผล-rationale)
+5. [แนวทางของการพัฒนาตาม SDLC (System Development Life Cycle))](#%E2%80%8D-แนวทางของการพัฒนาตาม-sdlc-system-development-life-cycle)
+7. [Tech Stack](#-tech-stack)
+8. [แนวทางการทดสอบ (Testing Approach)](#%EF%B8%8F-แนวทางการทดสอบ-testing-approach)
+9. [ผลลัพธ์ที่คาดว่าจะได้รับ (Expected Outcomes)](#%EF%B8%8F-ผลลัพธ์ที่คาดว่าจะได้รับ-expected-outcomes)
+10. [แผนการดำเนินงาน 4 สัปดาห์ (Work Plan: 4 Weeks)](#%EF%B8%8F-แผนการดำเนินงาน-4-สัปดาห์-work-plan-4-weeks)
+11. [Brand Identity & Color Palette](#-brand-identity--color-palette)
+12. [Requirement](#-requirment)
+13. [User Personas](#-user-personas)
+14. [Use Case Diagram](#-use-case-diagram)
+15. [Class Diagram](#%EF%B8%8F-class-diagram)
+16. [Sequence Diagrams](#-sequence-diagrams)
+17. [Wireframe](#-wireframe--prototype---clik-to-inspect)
+18. [System Architecture](#%EF%B8%8F-system-architecture)
+19. [Data schema](#data-schema-json)
+20. [User Accept Testing: UAT (Manual Testing)](#user-acceptance-testing-uat-manual-testing)
 
 ---
 
@@ -33,7 +39,108 @@
 ---
 
 ## 💭 หลักการและเหตุผล (Rationale)
+
 ปัจจุบันตลาดเครื่องดนตรีและอุปกรณ์ ออนไลน์มีการขยายตัวสูง แต่ร้านค้าส่วนใหญ่ยังขาดแพลตฟอร์มที่มี การจัดการที่ครอบคลุมครบวงจรยังมีน้อยอยู่ โครงงานนี้จึงมุ่งพัฒนาระบบด้วยสถาปัตยกรรม Microservices ที่มีความสามารถในการรองรับการขยายตัวของระบบได้ดี เพื่อจัดการ สต๊อกสินค้า, ระบบชำระเงินที่ปลอดภัย, และเพิ่มการดึงดูดความสนใจของผู้ใช้ ผ่านระบบแนะนำสินค้าและ Bundle Set
+
+---
+
+## 🗃️ วัตถุประสงค์ของโครงงาน (Objectives)
+
+1. เพื่อพัฒนาระบบรวบรวมและจัดเก็บข้อมูลอุปกรณ์ดนตรีจากแหล่งข้อมูลออนไลน์ให้อยู่ในรูปแบบที่เป็นระบบ
+2. เพื่อพัฒนาระบบแนะนำอุปกรณ์ดนตรีสำหรับผู้เริ่มต้น โดยพิจารณาจากความต้องการและงบประมาณของผู้ใช้งาน
+3. เพื่อช่วยลดความสับสนในการเลือกซื้ออุปกรณ์ดนตรี และเพิ่มความมั่นใจในการตัดสินใจของผู้ใช้งาน
+
+---
+
+## 📑 ขอบเขตของระบบ (System Scope)
+
+### ผู้ใช้งาน (Actors)
+- [x] ลูกค้า (Customer)
+- [x] พนักงาน (Staff)
+- [x] ผู้ดูแลระบบ (Administrator)
+
+### ความสามารถหลักของระบบ (Main Function)
+1. การจัดการสมาชิก (Register/Login)
+2. การจัดการข้อมูลสินค้า
+3. การค้นหาและแสดงรายละเอียดสินค้า
+4. ระบบตะกร้าสินค้า (Shopping Cart)
+5. ระบบสั่งซื้อสินค้า (Order Management)
+6. ระบบชำระเงิน (Simulation/Mockup - Stripe/Omise sandbox)
+7. ระบบติดตามสถานะคำสั่งซื้อ
+8. ระบบจัดการสินค้าและคำสั่งซื้อสำหรับ Staff/Admin
+9. รายงาน/Dashboard
+10. ระบบแนะนำอุปกรณ์ที่เหมาะสำหรับมือใหม่ (Beginner)
+11. ระบบแนะนำสินค้าที่ใช้ร่วมกันได้ + Bundle Set
+12. ระบบเปรียบเทียบสินค้า (Compare Product)
+13. ระบบแจ้งเตือนทางอีเมลเมื่อสินค้าเข้าสต็อก (Back-in-stock notification)
+
+---
+
+## 🧑‍💻 แนวทางของการพัฒนาตาม SDLC (System Development Life Cycle)
+
+| ขั้นตอน (Phase) | รายละเอียดโดยย่อ (Brief Description) |
+|---|---|
+| **1.Planing** | กำหนด Scope และประเมิน ความเป็นไปได้ ของโปรเจกต์ |
+| **2.Analysis** | มีการกำหนดความต้องการและระบุขอบเขตของการพัฒนาโดยนำ UMLมาใช้วิเคราห์ เช่น Class diagram, Use case diagram, Sequence diagram  |
+| **3.Design** | ออกแบบฐานข้อมูลโดยใช้ ER diagramมาช่วยออกแบบหน้าบ้านผู้ใช้โดยการนำFigmaเข้ามาช่วย ออกแบบหลังบ้านโดยใช้การออกแบบsystem architecture เข้ามาช่วย |
+| **4.Development** | ลงมือ Implement เขียนโค้ดสร้างระบบ สร้างฐานข้อมูล เขียนโค้ดส่วนหน้าและหลังบ้าน ตามที่วิเคราะห์ไว้ |
+| **5.Testing** | Testด้วยมือด้วยวิธีการการ UAT |
+| **6.Deployment** | เอาโค้ดขึ้น Production สภาพแวดล้อมระบบที่ใช้งานจริงให้Users เข้ามาใช้ |
+| **7.Maintenance** | คอย Monitor ติดตาม ระบบ อัปเดตเวอร์ชัน และแก้ไขปัญหา หลังเปิดใช้งาน |
+
+---
+
+## 🧰 Tech Stack
+
+| หมวด | เทคโนโลยี | รายละเอียด |
+|---|---|---|
+| **Frontend** | Next.js + TypeScript | Framework: Vinext |
+| **Backend** | Node.js (JavaScript) | Runtime |
+| **Backend Framework** | Hono | Lightweight backend framework |
+| **ORM** | Prisma (+ adapter-neon) | จัดการฐานข้อมูล |
+| **Database** | PostgreSQL (Neon DB) | Serverless Postgres |
+| **Storage Images** | Cloudflare R2 | ตัวเก็บรูป |
+| **Caching** | Redis (Upstash) | สำหรับทำcart(caching) |
+| **Auth** | Kinde SDK | ระบบ Authentication |
+| **Validation** | Zod | Validate ข้อมูล |
+| **Payment** | Omise SDK | ระบบชำระเงิน |
+| **Styling** | Tailwind CSS + shadcn/ui | ออกแบบ UI และ component |
+| **Deployment (Frontend)** | Cloudflare Pages | โฮสต์ฝั่ง frontend |
+| **Deployment (Backend)** | Cloudflare Workers | โฮสต์ฝั่ง backend |
+| **DevOps** | Wrangler CLI, Git, GitHub | Deploy & version control |
+| **API Testing** | Postman | ทดสอบ API |
+| **Design** | Figma | ออกแบบ UI/UX |
+| **Version Control** | GIT,GitHub | History,VersionControl |
+
+---
+
+## ⚙️ แนวทางการทดสอบ (Testing Approach)
+### ประเภทการทดสอบ (Test Types)
+- **User Acceptance Testing (UAT)**
+### เครื่องมือที่ใช้คือ (Tools)
+- **Manual Testing**
+### รายละเอียดการทดสอบ (Testing Details)
+- **ไม่วัดผลจากการใช้เครื่องมือทดสอบอัตโนมัติ หรือการจัดทำรายงานผลการทดสอบอย่างเป็นทางการ**
+- การทดสอบการทำงานของระบบ โดยอธิบายขั้นตอนการทดสอบ ผลลัพธ์ที่คาดหวัง และผลลัพธ์ที่เกิดขึ้นจริง เพื่อแสดงให้เห็นว่าระบบสามารถทำงานได้ถูกต้องตามวัตถุประสงค์ที่กำหนดไว้ รวมถึงการทดสอบการทำงานของระบบด้วยตนเอง (Manual Testing) ตามฟังก์ชันต่าง ๆ ที่ได้พัฒนาขึ้น พร้อมทั้งสาธิตการทำงานของระบบต่อผู้สอน เพื่อยืนยันความถูกต้อง ความสมบูรณ์ และประสิทธิภาพของระบบในการใช้งานจริง
+
+---
+
+## 🖼️ ผลลัพธ์ที่คาดว่าจะได้รับ (Expected Outcomes)
+### ระบุประโยชน์ที่คาดว่าจะได้รับจากการพัฒนาระบบ
+- **ได้เว็บแอป e-commerce สำหรับขาย music gear ที่ใช้งานได้จริงครบ flow ตั้งแต่ค้นหาสินค้า → ตะกร้า → ชำระเงิน สำเร็จ**
+- **ผู้ใช้ (ลูกค้า/พนักงาน/แอดมิน) สามารถเข้าระบบตาม role ของตนเองได้ พร้อม Dashboard สรุปข้อมูลเชิงวิเคราะห์สำหรับแอดมิน**
+- **ระบบจัดการสต็อกสินค้าที่อัปเดตสถานะอัตโนมัติเมื่อมีการสั่งซื้อ ลดความผิดพลาดจากการจัดการสต็อกแบบ manual**
+- **ทีมได้ฝึกกระบวนการพัฒนาตาม Agile/Scrum จริง (4 sprints) และได้ codebase ที่ deploy บน Cloudflare stack ตามที่ออกแบบไว้**
+
+---
+
+## 🗺️ แผนการดำเนินงาน 4 สัปดาห์ (Work Plan: 4 Weeks)
+| สัปดาห์ (Week) | กิจกรรม (Activities) | รายละเอียดโดยย่อ (ฺBrief Description) |
+|:---:|---|---|
+| **1** | **วิเคราะห์และออกแบบระบบ (Analysis & Design)** | วางแผนว่าจะทำอะไร แบ่งหน้าที่ ออกแบบdiagram ออกแบบtech stack ทำยังไงให้เว็บเร็วและ setup file |
+| **2** | **พัฒนา Frontend (Frontend development)** | ทำตามprototype ที่ทำไว้ และรอต่อapi จาก backendจากนั้น deploy |
+| **3** | **พัฒนา Backend และฐานข้อมูล (Backend & Database Development)** | ทำตามwork flow ที่กำหนดไว้ และtest api เพื่อนำไปต่อกับ frontend และต่อdatabase จากนั้นdeploy |
+| **4** | **ทดสอบระบบและนำเสนอผลงาน (Testing & Presentation)** | เตรียมการนำเสนอ และ ทดสอบUAT ตามส่วนที่ตัวเองรับผิดชอบ |
 
 ---
 
@@ -58,45 +165,22 @@
 
 ---
 
-## 🧰 Tech Stack
-
-| หมวด | เทคโนโลยี | รายละเอียด |
-|---|---|---|
-| **Frontend** | Next.js + TypeScript | Framework: Vinext |
-| **Backend** | Node.js (JavaScript) | Runtime |
-| **Backend Framework** | Hono | Lightweight backend framework |
-| **ORM** | Prisma (+ adapter-neon) | จัดการฐานข้อมูล |
-| **Database** | PostgreSQL (Neon DB) | Serverless Postgres |
-| **Storage Images** | Cloudflare R2 | ตัวเก็บรูป |
-| **Caching** | Redis (Upstash) | สำหรับทำcart(caching) |
-| **Auth** | Kinde SDK | ระบบ Authentication |
-| **Validation** | Zod | Validate ข้อมูล |
-| **Payment** | Omise SDK | ระบบชำระเงิน |
-| **Styling** | Tailwind CSS + shadcn/ui | ออกแบบ UI และ component |
-| **Deployment (Frontend)** | Cloudflare Pages | โฮสต์ฝั่ง frontend |
-| **Deployment (Backend)** | Cloudflare Workers | โฮสต์ฝั่ง backend |
-| **DevOps** | Wrangler CLI, Git, GitHub | Deploy & version control |
-| **API Testing** | Postman | ทดสอบ API |
-| **Design** | Figma | ออกแบบ UI/UX |
-
----
-
 ## 📃 Requirment
 
-Requirement หลักของระบบ (ตามเกณฑ์ - ครบทุกข้อ):  
-    1. การจัดการสมาชิก (Register/Login)  
-    2. การจัดการข้อมูลสินค้า  
-    3. การค้นหาและแสดงรายละเอียดสินค้า  
-    4. ระบบตะกร้าสินค้า (Shopping Cart)  
-    5. ระบบสั่งซื้อสินค้า (Order Management)  
-    6. ระบบชำระเงิน (Simulation/Mockup - Stripe/Omise sandbox)  
-    7. ระบบติดตามสถานะคำสั่งซื้อ  
-    8. ระบบจัดการสินค้าและคำสั่งซื้อสำหรับ Staff/Admin  
-    9. รายงาน/Dashboard  
-    10. ระบบแนะนำอุปกรณ์ที่เหมาะสำหรับมือใหม่ (Beginner)  
-    11. ระบบแนะนำสินค้าที่ใช้ร่วมกันได้ + Bundle Set  
-    12. ระบบเปรียบเทียบสินค้า (Compare Product)  
-    13. ระบบแจ้งเตือนทางอีเมลเมื่อสินค้าเข้าสต็อก (Back-in-stock notification)
+Requirement หลักของระบบ (ตามเกณฑ์ - ครบทุกข้อ):
+1. การจัดการสมาชิก (Register/Login)
+2. การจัดการข้อมูลสินค้า
+3. การค้นหาและแสดงรายละเอียดสินค้า
+4. ระบบตะกร้าสินค้า (Shopping Cart)
+5. ระบบสั่งซื้อสินค้า (Order Management)
+6. ระบบชำระเงิน (Simulation/Mockup - Stripe/Omise sandbox)
+7. ระบบติดตามสถานะคำสั่งซื้อ
+8. ระบบจัดการสินค้าและคำสั่งซื้อสำหรับ Staff/Admin
+9. รายงาน/Dashboard
+10. ระบบแนะนำอุปกรณ์ที่เหมาะสำหรับมือใหม่ (Beginner)
+11. ระบบแนะนำสินค้าที่ใช้ร่วมกันได้ + Bundle Set
+12. ระบบเปรียบเทียบสินค้า (Compare Product)
+13. ระบบแจ้งเตือนทางอีเมลเมื่อสินค้าเข้าสต็อก (Back-in-stock notification)
 
 ---
 
