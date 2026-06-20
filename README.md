@@ -451,6 +451,7 @@ classDiagram
     class Order {
         +UUID orderId
         +UUID customerId
+        +UUID addressId
         +datetime orderDate
         +string shippingAddressSnapshot
         +decimal totalAmount
@@ -482,6 +483,7 @@ classDiagram
     class Notification {
         +UUID notificationId
         +UUID customerId
+        +UUID productId
         +string title
         +string message
         +NotificationType type
@@ -514,6 +516,7 @@ classDiagram
     class Product {
         +UUID productId
         +string name
+        +string slug
         +string description
         +decimal price
         +string sku
@@ -545,11 +548,23 @@ classDiagram
         +dateTime updatedAt
     }
 
+    class InventoryLog {
+        +UUID id
+        +UUID productId
+        +int beforeQty
+        +int afterQty
+        +int changeQty
+        +string action
+        +UUID staffId
+        +datetime createAt
+    }
+
     class ProductImage {
         +UUID imageId
         +UUID productId
         +string imageUrl
         +boolean isPrimary
+        +int sortOrder
         +dateTime createdAt
     }
 
@@ -593,16 +608,24 @@ classDiagram
     Order "1" --> "1..*" OrderItem
     Order "1" --> "0..*" Payment
     Order "1" --> "0..*" Shipment
+    Order "0..*" --> "1" Address
     OrderItem "0..*" --> "1" Product
 
     %% Review relation
     Review "0..*" --> "1" Product
+
+    %% Notification relation
+    Notification "0..*" --> "0..1" Product
 
     %% Product relations
     Product "0..*" --> "1" Category
     Product "0..*" --> "1" Brand
     Product "1" --> "1" Inventory
     Product "1" --> "0..*" ProductImage
+    Product "1" --> "0..*" InventoryLog
+
+    %% Inventory log relation
+    InventoryLog "0..*" --> "0..1" Staff
 
     %% Bundle relations
     Bundle "1" --> "1..*" BundleItem
