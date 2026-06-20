@@ -16,7 +16,7 @@
 8. [Use Case Diagram](#-use-case-diagram)
 9. [Class Diagram](#-class-diagram)
 10. [Sequence Diagrams](#-sequence-diagrams)
-11. [Wireframe](#-wire-frame)
+11. [Wireframe / Prototype - Clik to inspect](#-wire-frame)
 12. [System Architecture](#-system-architecture)
 13. [Data schema](#-data-schema)
 14. [User Accept Testing: UAT (Manual Testing)](#-user-accept-testing-UAT-(manual-testing))
