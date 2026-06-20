@@ -238,8 +238,7 @@ Requirement หลักของระบบ (ตามเกณฑ์ - คร
 
 ## 🧩 Use Case Diagram
 
-```html
-<div class="mermaid">
+```mermaid
 %% Mermaid ไม่มี usecase diagram แบบ native จริงๆ
 %% เลยจำลองด้วย flowchart: actor = สี่เหลี่ยมมน, usecase = วงรี (stadium shape)
 flowchart LR
