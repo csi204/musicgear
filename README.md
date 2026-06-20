@@ -854,85 +854,85 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-
-    %% ===== Client Layer =====
+ 
     subgraph ClientLayer["Client Layer"]
         WebApp["💻 Customer Web App"]
         AdminPortal["📋 Admin Portal"]
         StaffPortal["📋 Staff Portal"]
     end
-
-    %% ===== API Gateway =====
+ 
     subgraph GatewayLayer["API Gateway"]
         APIGW(("🌐 API Gateway"))
     end
-
-    %% ===== Microservices =====
+ 
     subgraph Microservices["Microservice Layout"]
         UserSvc["👤 User Service"]
-        ProductSvc["📦 Product Service"]
+        ProductSvc["📦 Product Service (incl. Inventory)"]
         OrderSvc["📋 Order Service"]
         CartSvc["🛒 Cart Service"]
         PaymentSvc["💳 Payment Service"]
         NotifSvc["🔔 Notification Service"]
-        ReportSvc["👤 Report Service"]
-        AuthSvc["👤 Auth Service"]
+        ReportSvc["📊 Report Service"]
+        AuthSvc["🔑 Auth Service"]
     end
-
-    %% ===== Data Layer =====
+ 
+    subgraph EventLayer["Event Queue"]
+        QStash(("📨 Upstash QStash"))
+    end
+ 
     subgraph DataLayer["Data Layer"]
         UserDB[("User DB")]
         ProductDB[("Product DB")]
         OrderDB[("Order DB")]
-        RedisCart[("Redis (Cart)")]
+        RedisCart[("Redis (Cart) - Upstash")]
         PaymentDB[("Payment DB")]
         NotifDB[("Notification DB")]
         ReportDB[("Report DB")]
         R2Storage[("R2 Images Storage")]
-        InventoryDB[("inventory DB")]
+        InventoryDB[("Inventory DB + inventory_logs")]
     end
-
-    %% ===== External Services =====
+ 
     subgraph ExternalServices["External Services"]
         Omise["💳 Omise"]
         Resend["✉️ Resend"]
         Kinde["🔑 Kinde"]
     end
-
-    %% ----- Client -> Gateway -----
+ 
     WebApp --> APIGW
     AdminPortal --> APIGW
-
-    %% ----- Gateway -> Services -----
+    StaffPortal --> APIGW
+ 
     APIGW --> UserSvc
     APIGW --> ProductSvc
     APIGW --> OrderSvc
     APIGW --> CartSvc
     APIGW --> PaymentSvc
     APIGW --> NotifSvc
-
-    %% ----- Inter-service flow -----
+ 
     CartSvc -- "Checkout" --> OrderSvc
     PaymentSvc -- "Process / stock event" --> OrderSvc
     OrderSvc -- "data order selled" --> ReportSvc
     CartSvc -- "data Successful Transactions" --> ReportSvc
     ProductSvc -- "Stock Inventory" --> ReportSvc
     UserSvc -- "User Growth Rate" --> ReportSvc
-    ProductSvc -- "images" --> AuthSvc
     AuthSvc -. "auth" .-> Kinde
     PaymentSvc -. "charge" .-> Omise
     NotifSvc -. "email" .-> Resend
-
-    %% ----- Services -> own DB -----
+ 
+    ProductSvc -- "publish stock.updated" --> QStash
+    OrderSvc -- "publish order.status_changed" --> QStash
+    PaymentSvc -- "publish payment.success" --> QStash
+    QStash -- "webhook POST" --> NotifSvc
+ 
     UserSvc --> UserDB
     ProductSvc --> ProductDB
+    ProductSvc --> InventoryDB
     OrderSvc --> OrderDB
     CartSvc --> RedisCart
     PaymentSvc --> PaymentDB
     NotifSvc --> NotifDB
     ReportSvc --> ReportDB
     ProductSvc --> R2Storage
-    ProductSvc --> InventoryDB
 ```
 
 ---
@@ -1026,6 +1026,7 @@ flowchart TB
     "fields": {
       "productId":    { "type": "UUID", "primaryKey": true },
       "name":         { "type": "string", "required": true },
+      "slug":         { "type": "string", "unique": true, "required": true, "note": "PATCH: generate จาก name เช่น 'Yamaha F310 Acoustic Guitar' -> 'yamaha-f310-acoustic-guitar' ใช้ทำ URL /product/{slug} แทน UUID เพื่อ SEO" },
       "description":  { "type": "text", "required": false },
       "price":        { "type": "decimal(10,2)", "required": true, "min": 0 },
       "sku":          { "type": "string", "unique": true, "required": true },
@@ -1044,6 +1045,7 @@ flowchart TB
       "productId":    { "type": "UUID", "references": "products.productId", "required": true },
       "imageUrl":     { "type": "string", "required": true, "note": "URL ไปยัง Cloudflare R2" },
       "isPrimary":    { "type": "boolean", "default": false },
+      "sortOrder":    { "type": "integer", "default": 0, "note": "PATCH: 0 = รูปปก (cover), เรียงจากน้อยไปมาก เช่น 0=ปก, 1=ด้านข้าง, 2=ด้านหลัง" },
       "createdAt":    { "type": "datetime", "default": "now()" }
     }
   },
@@ -1055,6 +1057,21 @@ flowchart TB
       "quantity":         { "type": "integer", "default": 0, "min": 0 },
       "reservedQuantity": { "type": "integer", "default": 0, "min": 0, "note": "ตัดจองตอนลูกค้า checkout ก่อน payment confirm" },
       "updatedAt":        { "type": "datetime", "default": "now()" }
+    }
+  },
+ 
+  "inventory_logs": {
+    "description": "PATCH (ใหม่): เก็บประวัติทุกครั้งที่สต็อกถูกแก้ไข ใช้ตรวจสอบย้อนหลังว่า staff คนไหนทำอะไรกับสต็อกเมื่อไหร่ และเป็นจุด trigger event stock.updated ไปยัง Upstash QStash",
+    "fields": {
+      "id":          { "type": "UUID", "primaryKey": true },
+      "productId":   { "type": "UUID", "references": "products.productId", "required": true },
+      "beforeQty":   { "type": "integer", "required": true },
+      "afterQty":    { "type": "integer", "required": true },
+      "changeQty":   { "type": "integer", "required": true, "note": "afterQty - beforeQty เก็บแยกไว้ query เร็วกว่าคำนวณทุกครั้ง" },
+      "action":      { "type": "enum", "values": ["receive", "adjust", "reserve", "release", "sale_deduct"], "required": true,
+                       "note": "receive=รับของเข้า, adjust=แก้ไขด้วยมือ, reserve=จองตอน checkout, release=คืนสต็อกตอน payment fail, sale_deduct=ตัดสต็อกตอนขายสำเร็จ" },
+      "staffId":     { "type": "UUID", "references": "staff.staffId", "required": false, "note": "null ได้ถ้า action เกิดจากระบบอัตโนมัติ เช่น reserve/release ตอน checkout" },
+      "createdAt":   { "type": "datetime", "default": "now()" }
     }
   },
  
@@ -1103,8 +1120,9 @@ flowchart TB
     "fields": {
       "orderId":                  { "type": "UUID", "primaryKey": true },
       "customerId":               { "type": "UUID", "references": "customers.customerId", "required": true },
+      "addressId":                { "type": "UUID", "references": "addresses.addressId", "required": true, "note": "PATCH: เพิ่มไว้ join/query ว่าลูกค้าสั่งไปที่อยู่ไหนบ่อยสุด ส่วน shippingAddressSnapshot ยังเก็บไว้คู่กันเพื่อ freeze ข้อมูล ณ วันที่สั่งซื้อ" },
       "orderDate":                { "type": "datetime", "default": "now()" },
-      "shippingAddressSnapshot":  { "type": "json", "required": true, "note": "snapshot ที่อยู่ ณ ตอนสั่งซื้อ กันที่อยู่ลูกค้าถูกแก้ทีหลัง" },
+      "shippingAddressSnapshot":  { "type": "json", "required": true, "note": "snapshot ที่อยู่ ณ ตอนสั่งซื้อ กันที่อยู่ลูกค้าถูกแก้/ลบทีหลัง" },
       "totalAmount":              { "type": "decimal(10,2)", "required": true },
       "shippingFee":              { "type": "decimal(10,2)", "default": 0 },
       "discountAmount":           { "type": "decimal(10,2)", "default": 0 },
@@ -1166,6 +1184,7 @@ flowchart TB
     "fields": {
       "notificationId": { "type": "UUID", "primaryKey": true },
       "customerId":     { "type": "UUID", "references": "customers.customerId", "required": true },
+      "productId":      { "type": "UUID", "references": "products.productId", "required": false, "note": "PATCH: nullable เพราะ order_update/system ไม่ได้อ้างอิงสินค้า แต่ back_in_stock/promotion ต้องมีไว้บอกว่าพูดถึงสินค้าตัวไหน" },
       "title":          { "type": "string", "required": true },
       "message":        { "type": "text", "required": true },
       "type":           { "type": "enum", "values": ["order_update", "back_in_stock", "promotion", "system"], "required": true },
