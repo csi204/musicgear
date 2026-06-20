@@ -17,7 +17,7 @@
 9. [Class Diagram](#%EF%B8%8F-class-diagram)
 10. [Sequence Diagrams](#-sequence-diagrams)
 11. [Wireframe](#-wireframe--prototype---clik-to-inspect)
-12. [System Architecture](#-system-architecture)
+12. [System Architecture](#%EF%B8%8F-system-architecture)
 13. [Data schema](#data-schema-json)
 14. [User Accept Testing: UAT (Manual Testing)](#user-acceptance-testing-uat-manual-testing)
 
