@@ -8,7 +8,7 @@
 ## 📚 สารบัญ
 
 1. [Contributors](#-contributors)
-2. [หลักการและเหตุผล (Rationale)](#-rationale)
+2. [หลักการและเหตุผล (Rationale)](#-หลักการและเหตุผล-rationale)
 3. [Brand Identity & Color Palette](#-brand-identity--color-palette)
 5. [Tech Stack](#-tech-stack)
 6. [Requirement](#-requirment)
@@ -16,10 +16,10 @@
 8. [Use Case Diagram](#-use-case-diagram)
 9. [Class Diagram](#-class-diagram)
 10. [Sequence Diagrams](#-sequence-diagrams)
-11. [Wireframe](#-wireframe)
+11. [Wireframe](#-wireframe--prototype---clik-to-inspect)
 12. [System Architecture](#-system-architecture)
-13. [Data schema](#-data-schema)
-14. [User Accept Testing: UAT (Manual Testing)](#-user-accept-testing-UAT-(manual-testing))
+13. [Data schema](#data-schema-json)
+14. [User Accept Testing: UAT (Manual Testing)](#user-acceptance-testing-uat-manual-testing)
 
 ---
 
