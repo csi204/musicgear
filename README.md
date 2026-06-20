@@ -14,7 +14,7 @@
 6. [Requirement](#-requirment)
 7. [User Personas](#-user-personas)
 8. [Use Case Diagram](#-use-case-diagram)
-9. [Class Diagram](#-class-diagram)
+9. [Class Diagram](#%EF%B8%8F-class-diagram)
 10. [Sequence Diagrams](#-sequence-diagrams)
 11. [Wireframe](#-wireframe--prototype---clik-to-inspect)
 12. [System Architecture](#-system-architecture)
