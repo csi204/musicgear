@@ -11,6 +11,7 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.19.11",
     "@types/node": "^26.0.0",
     "dotenv": "^17.4.2",
     "prettier": "^3.7.4",
