@@ -38,7 +38,11 @@
     {
       "binding": "REPORT_SVC",
       "service": "report-svc"
-    }
+    },
+    {
+      "binding": "INVENTORY_SVC",
+      "service": "inventory-svc"
+     }
   ]
   // "compatibility_flags": [
   //   "nodejs_compat"

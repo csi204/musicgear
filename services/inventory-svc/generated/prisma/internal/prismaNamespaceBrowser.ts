@@ -51,13 +51,8 @@ export const AnyNull = runtime.AnyNull
 
 
 export const ModelName = {
-  Brand: 'Brand',
-  Category: 'Category',
-  Product: 'Product',
-  ProductImage: 'ProductImage',
-  Bundle: 'Bundle',
-  BundleItem: 'BundleItem',
-  Review: 'Review'
+  Inventory: 'Inventory',
+  InventoryLog: 'InventoryLog'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -76,87 +71,29 @@ export const TransactionIsolationLevel = runtime.makeStrictEnum({
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
 
 
-export const BrandScalarFieldEnum = {
-  brandId: 'brandId',
-  name: 'name',
-  description: 'description'
-} as const
-
-export type BrandScalarFieldEnum = (typeof BrandScalarFieldEnum)[keyof typeof BrandScalarFieldEnum]
-
-
-export const CategoryScalarFieldEnum = {
-  categoryId: 'categoryId',
-  name: 'name',
-  description: 'description'
-} as const
-
-export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typeof CategoryScalarFieldEnum]
-
-
-export const ProductScalarFieldEnum = {
+export const InventoryScalarFieldEnum = {
+  inventoryId: 'inventoryId',
   productId: 'productId',
-  name: 'name',
-  slug: 'slug',
-  description: 'description',
-  price: 'price',
-  sku: 'sku',
-  status: 'status',
-  skillLevel: 'skillLevel',
-  brandId: 'brandId',
-  categoryId: 'categoryId',
-  createdAt: 'createdAt',
+  quantity: 'quantity',
+  reservedQuantity: 'reservedQuantity',
   updatedAt: 'updatedAt'
 } as const
 
-export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
+export type InventoryScalarFieldEnum = (typeof InventoryScalarFieldEnum)[keyof typeof InventoryScalarFieldEnum]
 
 
-export const ProductImageScalarFieldEnum = {
-  imageId: 'imageId',
+export const InventoryLogScalarFieldEnum = {
+  id: 'id',
   productId: 'productId',
-  imageUrl: 'imageUrl',
-  isPrimary: 'isPrimary',
-  sortOrder: 'sortOrder',
+  beforeQty: 'beforeQty',
+  afterQty: 'afterQty',
+  changeQty: 'changeQty',
+  action: 'action',
+  staffId: 'staffId',
   createdAt: 'createdAt'
 } as const
 
-export type ProductImageScalarFieldEnum = (typeof ProductImageScalarFieldEnum)[keyof typeof ProductImageScalarFieldEnum]
-
-
-export const BundleScalarFieldEnum = {
-  bundleId: 'bundleId',
-  name: 'name',
-  description: 'description',
-  discountType: 'discountType',
-  discountValue: 'discountValue',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type BundleScalarFieldEnum = (typeof BundleScalarFieldEnum)[keyof typeof BundleScalarFieldEnum]
-
-
-export const BundleItemScalarFieldEnum = {
-  bundleItemId: 'bundleItemId',
-  bundleId: 'bundleId',
-  productId: 'productId',
-  quantity: 'quantity'
-} as const
-
-export type BundleItemScalarFieldEnum = (typeof BundleItemScalarFieldEnum)[keyof typeof BundleItemScalarFieldEnum]
-
-
-export const ReviewScalarFieldEnum = {
-  reviewId: 'reviewId',
-  customerId: 'customerId',
-  productId: 'productId',
-  rating: 'rating',
-  comment: 'comment',
-  createdAt: 'createdAt'
-} as const
-
-export type ReviewScalarFieldEnum = (typeof ReviewScalarFieldEnum)[keyof typeof ReviewScalarFieldEnum]
+export type InventoryLogScalarFieldEnum = (typeof InventoryLogScalarFieldEnum)[keyof typeof InventoryLogScalarFieldEnum]
 
 
 export const SortOrder = {

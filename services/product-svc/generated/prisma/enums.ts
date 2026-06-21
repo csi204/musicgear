@@ -28,17 +28,6 @@ export const SkillLevel = {
 export type SkillLevel = (typeof SkillLevel)[keyof typeof SkillLevel]
 
 
-export const InventoryAction = {
-  receive: 'receive',
-  adjust: 'adjust',
-  reserve: 'reserve',
-  release: 'release',
-  sale_deduct: 'sale_deduct'
-} as const
-
-export type InventoryAction = (typeof InventoryAction)[keyof typeof InventoryAction]
-
-
 export const DiscountType = {
   percentage: 'percentage',
   fixed_amount: 'fixed_amount'

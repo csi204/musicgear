@@ -31,8 +31,8 @@ export * from "./enums.ts"
  * const prisma = new PrismaClient({
  *   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL })
  * })
- * // Fetch zero or more Brands
- * const brands = await prisma.brand.findMany()
+ * // Fetch zero or more Inventories
+ * const inventories = await prisma.inventory.findMany()
  * ```
  * 
  * Read more in our [docs](https://pris.ly/d/client).
@@ -42,37 +42,12 @@ export type PrismaClient<LogOpts extends Prisma.LogLevel = never, OmitOpts exten
 export { Prisma }
 
 /**
- * Model Brand
+ * Model Inventory
  * 
  */
-export type Brand = Prisma.BrandModel
+export type Inventory = Prisma.InventoryModel
 /**
- * Model Category
+ * Model InventoryLog
  * 
  */
-export type Category = Prisma.CategoryModel
-/**
- * Model Product
- * 
- */
-export type Product = Prisma.ProductModel
-/**
- * Model ProductImage
- * 
- */
-export type ProductImage = Prisma.ProductImageModel
-/**
- * Model Bundle
- * 
- */
-export type Bundle = Prisma.BundleModel
-/**
- * Model BundleItem
- * 
- */
-export type BundleItem = Prisma.BundleItemModel
-/**
- * Model Review
- * 
- */
-export type Review = Prisma.ReviewModel
+export type InventoryLog = Prisma.InventoryLogModel

@@ -23,13 +23,6 @@ enum SkillLevel {
   intermediate 
   advanced 
 }
-enum InventoryAction { 
-  receive 
-  adjust 
-  reserve 
-  release 
-  sale_deduct 
-}
 enum DiscountType { 
   percentage 
   fixed_amount 
@@ -66,8 +59,6 @@ model Product {
   brand         Brand          @relation(fields: [brandId], references: [brandId])
   category      Category       @relation(fields: [categoryId], references: [categoryId])
   images        ProductImage[]
-  inventory     Inventory?
-  inventoryLogs InventoryLog[]
   bundleItems   BundleItem[]
   reviews       Review[]
 }
@@ -79,29 +70,6 @@ model ProductImage {
   isPrimary Boolean  @default(false)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
-
-  product Product @relation(fields: [productId], references: [productId])
-}
-
-model Inventory {
-  inventoryId      String   @id @default(uuid()) @db.Uuid
-  productId        String   @unique @db.Uuid
-  quantity         Int      @default(0)
-  reservedQuantity Int      @default(0)
-  updatedAt        DateTime @default(now()) @updatedAt
-
-  product Product @relation(fields: [productId], references: [productId])
-}
-
-model InventoryLog {
-  id        String          @id @default(uuid()) @db.Uuid
-  productId String          @db.Uuid
-  beforeQty Int
-  afterQty  Int
-  changeQty Int
-  action    InventoryAction
-  staffId   String?         @db.Uuid // Soft ref to user-svc
-  createdAt DateTime        @default(now())
 
   product Product @relation(fields: [productId], references: [productId])
 }

@@ -8,11 +8,6 @@
  *
  * 🟢 You can import this file directly.
  */
-export type * from './models/Brand.ts'
-export type * from './models/Category.ts'
-export type * from './models/Product.ts'
-export type * from './models/ProductImage.ts'
-export type * from './models/Bundle.ts'
-export type * from './models/BundleItem.ts'
-export type * from './models/Review.ts'
+export type * from './models/Inventory.ts'
+export type * from './models/InventoryLog.ts'
 export type * from './commonInputTypes.ts'
