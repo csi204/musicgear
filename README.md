@@ -888,9 +888,10 @@ flowchart TB
         APIGW(("🌐 API Gateway"))
     end
  
-    subgraph Microservices["Microservice Layout"]
+    subgraph Microservices["Microservice Layer"]
         UserSvc["👤 User Service"]
-        ProductSvc["📦 Product Service (incl. Inventory)"]
+        ProductSvc["📦 Product Service (catalog only)"]
+        InventorySvc["🧮 Inventory Service"]
         OrderSvc["📋 Order Service"]
         CartSvc["🛒 Cart Service"]
         PaymentSvc["💳 Payment Service"]
@@ -906,13 +907,13 @@ flowchart TB
     subgraph DataLayer["Data Layer"]
         UserDB[("User DB")]
         ProductDB[("Product DB")]
+        InventoryDB[("Inventory DB + inventory_logs")]
         OrderDB[("Order DB")]
         RedisCart[("Redis (Cart) - Upstash")]
         PaymentDB[("Payment DB")]
         NotifDB[("Notification DB")]
         ReportDB[("Report DB")]
         R2Storage[("R2 Images Storage")]
-        InventoryDB[("Inventory DB + inventory_logs")]
     end
  
     subgraph ExternalServices["External Services"]
@@ -927,29 +928,33 @@ flowchart TB
  
     APIGW --> UserSvc
     APIGW --> ProductSvc
+    APIGW --> InventorySvc
     APIGW --> OrderSvc
     APIGW --> CartSvc
     APIGW --> PaymentSvc
     APIGW --> NotifSvc
  
     CartSvc -- "Checkout" --> OrderSvc
+    OrderSvc -- "check / reserve / release stock" --> InventorySvc
+    ProductSvc -- "validate stock ตอนสร้าง bundle" --> InventorySvc
     PaymentSvc -- "Process / stock event" --> OrderSvc
     OrderSvc -- "data order selled" --> ReportSvc
     CartSvc -- "data Successful Transactions" --> ReportSvc
-    ProductSvc -- "Stock Inventory" --> ReportSvc
+    InventorySvc -- "Stock Inventory" --> ReportSvc
     UserSvc -- "User Growth Rate" --> ReportSvc
     AuthSvc -. "auth" .-> Kinde
     PaymentSvc -. "charge" .-> Omise
     NotifSvc -. "email" .-> Resend
  
-    ProductSvc -- "publish stock.updated" --> QStash
+    InventorySvc -- "publish stock.updated" --> QStash
     OrderSvc -- "publish order.status_changed" --> QStash
     PaymentSvc -- "publish payment.success" --> QStash
     QStash -- "webhook POST" --> NotifSvc
+    QStash -- "webhook POST" --> ReportSvc
  
     UserSvc --> UserDB
     ProductSvc --> ProductDB
-    ProductSvc --> InventoryDB
+    InventorySvc --> InventoryDB
     OrderSvc --> OrderDB
     CartSvc --> RedisCart
     PaymentSvc --> PaymentDB
