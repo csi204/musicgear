@@ -7,22 +7,24 @@ musicgear/
 │   ├── admin/                 # Admin Portal (Vinext)
 │   └── staff/                  # Staff Portal (Vinext)
 │
-├── services/                  # Backend microservices — Hono บน Cloudflare Workers
+├── services/                  # Backend microservices — Hono บน Cloudflare Workers (JavaScript ล้วน ไม่ใช่ TypeScript)
+│   ├── api-gateway/             # จุดเดียวที่ frontend เรียก, route ผ่าน Service Binding
 │   ├── auth-svc/
 │   ├── user-svc/
 │   ├── product-svc/            # รวม inventory + inventory_logs
 │   ├── cart-svc/
 │   ├── order-svc/
 │   ├── payment-svc/
-│   ├── notification-svc/
-│   └── report-svc/
+│   ├── notification-svc/        # QStash subscriber
+|   ├── inventory-svc/             
+│   └── report-svc/              # QStash subscriber เหมือนกัน (fan-out topic เดียวกับ notification-svc)
 │
 ├── packages/                  # โค้ดที่ใช้ร่วมกันข้าม apps/services
-│   ├── database/                # Prisma schema ของแต่ละ service + Neon client
-│   ├── ui/                      # shadcn components + design tokens (designsystem.md)
-│   ├── types/                   # Zod schemas + shared TypeScript types
-│   ├── config/                  # eslint, tsconfig, tailwind config กลาง
-│   └── api-client/              # typed fetch wrapper เรียก API Gateway แต่ละ service
+│   ├── database/                # แค่ helper เล็กๆ (createPrismaClient) — schema.prisma จริงอยู่ "ในแต่ละ service" ไม่ใช่ที่นี่
+│   ├── ui/                      # shadcn components (preset: Nova) + design tokens (designsystem.md)
+│   ├── types/                   # Zod schemas — เขียนเป็น plain JS เพื่อให้ทั้ง frontend(TS)/backend(JS) ใช้ร่วมกันได้
+│   ├── config/                  # tsconfig (เฉพาะ apps/* + packages/ui), eslint config แยกสำหรับ services/* (JS)
+│   └── api-client/               # typed fetch wrapper เรียก api-gateway ตัวเดียว ไม่เรียก service ภายในตรงๆ 
 │
 ├── docs/                      # เอกสารโปรเจกต์ (ไฟล์ที่อยู่ในชุดนี้ทั้งหมด)
 │   ├── skill.md
@@ -60,30 +62,30 @@ apps/web/
 └── wrangler.toml (ถ้า deploy เป็น Worker) หรือ cloudflare pages config
 ```
 
-## โครงสร้างภายในแต่ละ `services/*` (Hono)
+## โครงสร้างภายในแต่ละ `services/*` (Hono, JavaScript)
 
 ```
 services/product-svc/
 ├── src/
 │   ├── routes/
-│   │   ├── products.ts
-│   │   ├── inventory.ts        # receive/adjust/check stock + inventory_logs
-│   │   └── bundles.ts
+│   │   ├── products.js
+│   │   ├── inventory.js        # receive/adjust/check stock + inventory_logs
+│   │   └── bundles.js
 │   ├── services/                # business logic แยกจาก route handler
-│   │   ├── product.service.ts
-│   │   └── inventory.service.ts
-│   ├── db/
-│   │   ├── schema.ts             # Drizzle schema เฉพาะ table ที่ service นี้เป็นเจ้าของ
-│   │   └── client.ts
+│   │   ├── product.service.js
+│   │   └── inventory.service.js
 │   ├── middleware/
-│   │   ├── auth.ts                # verify Kinde JWT
-│   │   └── rbac.ts                 # guard ตาม role
+│   │   ├── auth.js                # verify Kinde JWT
+│   │   └── rbac.js                 # guard ตาม role
 │   ├── events/
-│   │   └── publishStockUpdated.ts  # publish ไป QStash
-│   └── index.ts                    # Hono app entry
+│   │   └── publishStockUpdated.js  # publish ไป QStash (ไปยัง notification-svc และ report-svc)
+│   └── index.js                    # Hono app entry
+├── prisma/
+│   └── schema.prisma                # schema ของ service นี้เท่านั้น ชี้ไปที่ Neon project ของตัวเอง
+├── .env                              # DATABASE_URL เฉพาะของ Neon project "product-svc"
+├── .dev.vars                         # ค่าเดียวกับ .env แต่ใช้ตอนรัน wrangler dev (gitignored)
 ├── wrangler.toml
-├── package.json
-└── drizzle.config.ts
+└── package.json
 ```
 
 ## กฎการวางไฟล์
