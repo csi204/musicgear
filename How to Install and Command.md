@@ -51,6 +51,8 @@ services/<ชื่อ-service>/.dev.vars
 ## 6️⃣ เริ่มทำงาน
 
 ```bash
+pr feature เข้า dev เท่านั้น
+
 # สร้าง branch ใหม่จากชื่องานของตัวเอง
 git checkout -b feature/<ชื่อ>
 ```
