@@ -3,6 +3,9 @@
   "name": "musicgear-api-gateway",
   "main": "src/index.js",
   "compatibility_date": "2026-06-20",
+  "dev": {
+    "port": 8788
+  },
   "services": [
     {
       "binding": "AUTH_SVC",

@@ -3,6 +3,9 @@
   "name": "musicgear-auth-svc",
   "main": "src/index.js",
   "compatibility_date": "2026-06-21",
+  "dev": {
+    "port": 8789
+  },
   "vars": {
     "KINDE_DOMAIN": "https://musicgear.kinde.com",
     "KINDE_CLIENT_ID": "ed22eb113b904bec84191ea3486b9722"

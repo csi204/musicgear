@@ -2,7 +2,10 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "user-svc",
   "main": "src/index.js",
-  "compatibility_date": "2026-06-21"
+  "compatibility_date": "2026-06-21",
+  "dev": {
+    "port": 8796
+  },
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
