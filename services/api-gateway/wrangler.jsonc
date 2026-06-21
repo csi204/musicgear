@@ -1,0 +1,72 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "musicgear-api-gateway",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-20",
+  "services": [
+    {
+      "binding": "AUTH_SVC",
+      "service": "musicgear-auth-svc"
+    },
+    {
+      "binding": "USER_SVC",
+      "service": "user-svc"
+    },
+    {
+      "binding": "PRODUCT_SVC",
+      "service": "product-svc"
+    },
+    {
+      "binding": "PAYMENT_SVC",
+      "service": "payment-svc"
+    },
+    {
+      "binding": "ORDER_SVC",
+      "service": "order-svc"
+    },
+    {
+      "binding": "CART_SVC",
+      "service": "cart-svc"
+    },
+    {
+      "binding": "NOTIFICATION_SVC",
+      "service": "notification-svc"
+    },
+    {
+      "binding": "REPORT_SVC",
+      "service": "report-svc"
+    }
+  ]
+  // "compatibility_flags": [
+  //   "nodejs_compat"
+  // ],
+  // "vars": {
+  //   "MY_VAR": "my-variable"
+  // },
+  // "kv_namespaces": [
+  //   {
+  //     "binding": "MY_KV_NAMESPACE",
+  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  //   }
+  // ],
+  // "r2_buckets": [
+  //   {
+  //     "binding": "MY_BUCKET",
+  //     "bucket_name": "my-bucket"
+  //   }
+  // ],
+  // "d1_databases": [
+  //   {
+  //     "binding": "MY_DB",
+  //     "database_name": "my-database",
+  //     "database_id": ""
+  //   }
+  // ],
+  // "ai": {
+  //   "binding": "AI"
+  // },
+  // "observability": {
+  //   "enabled": true,
+  //   "head_sampling_rate": 1
+  // }
+}

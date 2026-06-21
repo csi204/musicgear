@@ -1,0 +1,38 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PaymentMethod { 
+  credit_card 
+  promptpay 
+  bank_transfer 
+}
+
+enum PaymentStatus { 
+  pending 
+  paid 
+  failed 
+  refunded 
+}
+
+model Payment {
+  paymentId      String        @id @default(uuid()) @db.Uuid
+  orderId        String        @db.Uuid // Soft ref to order-svc
+  paymentMethod  PaymentMethod
+  provider       String        @default("omise")
+  amount         Decimal       @db.Decimal(10,2)
+  status         PaymentStatus @default(pending)
+  transactionRef String?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+}

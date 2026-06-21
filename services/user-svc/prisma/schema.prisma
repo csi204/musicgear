@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  customer
+  staff
+  admin
+}
+
+enum UserStatus {
+  active
+  inactive
+  banned
+}
+
+enum Gender {
+  male
+  female
+  other
+  prefer_not_to_say
+}
+
+model User {
+  userId       String     @id @default(uuid()) @db.Uuid
+  email        String     @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+  role         Role
+  status       UserStatus @default(active)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @default(now()) @updatedAt
+
+  // Local Relations
+  customer Customer?
+  staff    Staff?
+  admin    Admin?
+}
+
+model Customer {
+  customerId  String    @id @db.Uuid
+  dateOfBirth DateTime? @db.Date
+  gender      Gender?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  user      User      @relation(fields: [customerId], references: [userId])
+  addresses Address[]
+}
+
+model Staff {
+  staffId   String   @id @db.Uuid
+  position  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  user User @relation(fields: [staffId], references: [userId])
+}
+
+model Admin {
+  adminId   String   @id @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  user User @relation(fields: [adminId], references: [userId])
+}
+
+model Address {
+  addressId    String   @id @default(uuid()) @db.Uuid
+  customerId   String   @db.Uuid
+  receiverName String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  province     String
+  city         String
+  postalCode   String
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [customerId])
+}

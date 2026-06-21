@@ -1,0 +1,139 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProductStatus { 
+  active 
+  inactive 
+  discontinued 
+  out_of_stock 
+}
+enum SkillLevel { 
+  beginner 
+  intermediate 
+  advanced 
+}
+enum InventoryAction { 
+  receive 
+  adjust 
+  reserve 
+  release 
+  sale_deduct 
+}
+enum DiscountType { 
+  percentage 
+  fixed_amount 
+}
+
+model Brand {
+  brandId     String    @id @default(uuid()) @db.Uuid
+  name        String    @unique
+  description String?
+  products    Product[]
+}
+
+model Category {
+  categoryId  String    @id @default(uuid()) @db.Uuid
+  name        String    @unique
+  description String?
+  products    Product[]
+}
+
+model Product {
+  productId   String        @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String        @unique
+  description String?
+  price       Decimal       @db.Decimal(10,2)
+  sku         String        @unique
+  status      ProductStatus @default(active)
+  skillLevel  SkillLevel?
+  brandId     String        @db.Uuid
+  categoryId  String        @db.Uuid
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
+
+  brand         Brand          @relation(fields: [brandId], references: [brandId])
+  category      Category       @relation(fields: [categoryId], references: [categoryId])
+  images        ProductImage[]
+  inventory     Inventory?
+  inventoryLogs InventoryLog[]
+  bundleItems   BundleItem[]
+  reviews       Review[]
+}
+
+model ProductImage {
+  imageId   String   @id @default(uuid()) @db.Uuid
+  productId String   @db.Uuid
+  imageUrl  String
+  isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [productId])
+}
+
+model Inventory {
+  inventoryId      String   @id @default(uuid()) @db.Uuid
+  productId        String   @unique @db.Uuid
+  quantity         Int      @default(0)
+  reservedQuantity Int      @default(0)
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  product Product @relation(fields: [productId], references: [productId])
+}
+
+model InventoryLog {
+  id        String          @id @default(uuid()) @db.Uuid
+  productId String          @db.Uuid
+  beforeQty Int
+  afterQty  Int
+  changeQty Int
+  action    InventoryAction
+  staffId   String?         @db.Uuid // Soft ref to user-svc
+  createdAt DateTime        @default(now())
+
+  product Product @relation(fields: [productId], references: [productId])
+}
+
+model Bundle {
+  bundleId      String       @id @default(uuid()) @db.Uuid
+  name          String
+  description   String?
+  discountType  DiscountType
+  discountValue Decimal      @db.Decimal(10,2)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt
+  items         BundleItem[]
+}
+
+model BundleItem {
+  bundleItemId String @id @default(uuid()) @db.Uuid
+  bundleId     String @db.Uuid
+  productId    String @db.Uuid
+  quantity     Int
+
+  bundle  Bundle  @relation(fields: [bundleId], references: [bundleId])
+  product Product @relation(fields: [productId], references: [productId])
+}
+
+model Review {
+  reviewId   String   @id @default(uuid()) @db.Uuid
+  customerId String   @db.Uuid // Soft ref to user-svc
+  productId  String   @db.Uuid
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [productId])
+}

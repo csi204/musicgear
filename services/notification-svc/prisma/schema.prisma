@@ -1,0 +1,38 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum NotificationType {
+  order_update
+  back_in_stock
+  promotion
+  system
+}
+
+enum NotificationStatus {
+  sent
+  pending
+  failed
+}
+
+model Notification {
+  notificationId String             @id @default(uuid()) @db.Uuid
+  customerId     String             @db.Uuid // Soft ref
+  productId      String?            @db.Uuid // Soft ref
+  title          String
+  message        String
+  type           NotificationType
+  status         NotificationStatus @default(pending)
+  isRead         Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+}

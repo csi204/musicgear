@@ -1,0 +1,17 @@
+{
+  "name": "auth-svc",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+  },
+  "dependencies": {
+    "@kinde-oss/kinde-typescript-sdk": "^2.14.0",
+    "homo": "^0.0.0",
+    "hono": "^4.12.26"
+  },
+  "devDependencies": {
+    "wrangler": "^4.4.0"
+  }
+}

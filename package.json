@@ -1,0 +1,28 @@
+{
+  "name": "musicgear",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo dev",
+    "dev:frontend": "turbo dev --filter=./apps/*",
+    "dev:backend": "turbo dev --filter=./services/*",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check-types": "turbo run check-types"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "dotenv": "^17.4.2",
+    "prettier": "^3.7.4",
+    "prisma": "^7.8.0",
+    "turbo": "^2.9.18",
+    "typescript": "5.9.2"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.8.0"
+  }
+}
