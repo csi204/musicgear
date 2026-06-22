@@ -375,6 +375,9 @@ importers:
 
   services/api-gateway:
     dependencies:
+      '@musicgear/auth-middleware':
+        specifier: workspace:*
+        version: link:../../packages/auth-middleware
       hono:
         specifier: ^4.12.26
         version: 4.12.26
@@ -388,6 +391,9 @@ importers:
       '@kinde-oss/kinde-typescript-sdk':
         specifier: ^2.14.0
         version: 2.14.0
+      '@musicgear/auth-middleware':
+        specifier: workspace:*
+        version: link:../../packages/auth-middleware
       homo:
         specifier: ^0.0.0
         version: 0.0.0
@@ -401,6 +407,9 @@ importers:
 
   services/cart-svc:
     dependencies:
+      '@musicgear/auth-middleware':
+        specifier: workspace:*
+        version: link:../../packages/auth-middleware
       hono:
         specifier: ^4.12.26
         version: 4.12.26
@@ -411,6 +420,9 @@ importers:
 
   services/inventory-svc:
     dependencies:
+      '@musicgear/auth-middleware':
+        specifier: workspace:*
+        version: link:../../packages/auth-middleware
       hono:
         specifier: ^4.12.26
         version: 4.12.26
@@ -421,6 +433,9 @@ importers:
 
   services/notification-svc:
     dependencies:
+      '@musicgear/auth-middleware':
+        specifier: workspace:*
+        version: link:../../packages/auth-middleware
       hono:
         specifier: ^4.12.26
         version: 4.12.26
@@ -431,6 +446,9 @@ importers:
 
   services/order-svc:
     dependencies:
+      '@musicgear/auth-middleware':
+        specifier: workspace:*
+        version: link:../../packages/auth-middleware
       hono:
         specifier: ^4.12.26
         version: 4.12.26
@@ -441,6 +459,9 @@ importers:
 
   services/payment-svc:
     dependencies:
+      '@musicgear/auth-middleware':
+        specifier: workspace:*
+        version: link:../../packages/auth-middleware
       hono:
         specifier: ^4.12.26
         version: 4.12.26
@@ -451,6 +472,9 @@ importers:
 
   services/product-svc:
     dependencies:
+      '@musicgear/auth-middleware':
+        specifier: workspace:*
+        version: link:../../packages/auth-middleware
       hono:
         specifier: ^4.12.26
         version: 4.12.26
@@ -461,6 +485,9 @@ importers:
 
   services/report-svc:
     dependencies:
+      '@musicgear/auth-middleware':
+        specifier: workspace:*
+        version: link:../../packages/auth-middleware
       hono:
         specifier: ^4.12.26
         version: 4.12.26
@@ -471,6 +498,9 @@ importers:
 
   services/user-svc:
     dependencies:
+      '@musicgear/auth-middleware':
+        specifier: workspace:*
+        version: link:../../packages/auth-middleware
       hono:
         specifier: ^4.12.26
         version: 4.12.26
