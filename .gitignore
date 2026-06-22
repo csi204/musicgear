@@ -17,13 +17,15 @@ coverage
 onlyMe
 
 # Turbo
-.turbo
+**/.turbo
 
 # Vercel
 .vercel
+.open-next
 
 # Build Outputs
-.next/
+**/.next
+
 out/
 build
 dist
