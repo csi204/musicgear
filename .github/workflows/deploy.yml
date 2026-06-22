@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -23,6 +27,4 @@ jobs:
       
       # เพิ่ม --filter ถ้าอยากเจาะจง หรือรันตามนี้ถ้าอยากให้รันทุกตัวที่มี script deploy
       - run: pnpm turbo run deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        
