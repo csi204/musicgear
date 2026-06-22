@@ -6,6 +6,12 @@
   "dev": {
     "port": 8794
   },
+  "r2_buckets": [
+    {
+      "binding": "PRODUCT_IMAGES",
+      "bucket_name": "musicgear-product-images"
+    }
+  ],
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
