@@ -6,5 +6,12 @@
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
+	},
+	"vars": {
+		"NEXT_PUBLIC_AUTH_URL": "https://musicgear-api-gateway.thunderwolf2209.workers.dev",
+		"NEXT_PUBLIC_API_URL": "https://musicgear-api-gateway.thunderwolf2209.workers.dev"
+	},
+	"dev": {
+		"port": 8799
 	}
 }

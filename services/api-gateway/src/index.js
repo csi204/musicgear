@@ -1,7 +1,25 @@
 import { Hono } from "hono";
-
+import { cors } from "hono/cors";
 
 const app = new Hono();
+
+// Allow cross-origin requests from all frontend portals (local dev + production)
+app.use("*", cors({
+  origin: [
+    "http://localhost:8800",
+    "http://127.0.0.1:8800",
+    "http://localhost:8798",
+    "http://127.0.0.1:8798",
+    "http://localhost:8799",
+    "http://127.0.0.1:8799",
+    "https://musicgear-web.thunderwolf2209.workers.dev",
+    "https://musicgear-admin.thunderwolf2209.workers.dev",
+    "https://musicgear-staff.thunderwolf2209.workers.dev",
+  ],
+  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+}));
 
 app.all("/auth/*", (c) => c.env.AUTH_SVC.fetch(c.req.raw));
 app.all("/users/*", (c) => c.env.USER_SVC.fetch(c.req.raw));

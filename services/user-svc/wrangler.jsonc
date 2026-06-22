@@ -6,9 +6,15 @@
   "dev": {
     "port": 8796
   },
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
+  "alias": {
+    ".prisma/client/default": "./generated/prisma/client.ts"
+  },
+  "define": {
+    "import.meta.url": "\"file:///worker\""
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   // "vars": {
   //   "MY_VAR": "my-variable"
   // },

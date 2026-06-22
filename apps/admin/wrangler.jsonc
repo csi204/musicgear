@@ -2,9 +2,18 @@
 	"name": "musicgear-admin",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2024-09-23",
-	"compatibility_flags": ["nodejs_compat"],
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
+	},
+	"vars": {
+		"NEXT_PUBLIC_AUTH_URL": "https://musicgear-api-gateway.thunderwolf2209.workers.dev",
+		"NEXT_PUBLIC_API_URL": "https://musicgear-api-gateway.thunderwolf2209.workers.dev"
+	},
+	"dev": {
+		"port": 8798
 	}
 }

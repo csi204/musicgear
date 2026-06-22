@@ -8,7 +8,9 @@
   },
   "dependencies": {
     "hono": "^4.12.26",
-    "@musicgear/auth-middleware": "workspace:*"
+    "@musicgear/auth-middleware": "workspace:*",
+    "@prisma/adapter-neon": "^7.8.0",
+    "@prisma/client": "^7.8.0"
   },
   "devDependencies": {
     "wrangler": "^4.4.0"

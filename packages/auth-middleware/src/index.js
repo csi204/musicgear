@@ -1,1 +1,1 @@
-export { createAuthMiddleware } from "./verifyToken.js";
+export { createAuthMiddleware, createRoleMiddleware } from "./verifyToken.js";

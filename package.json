@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo dev",
+    "dev": "turbo dev --concurrency=20",
     "dev:frontend": "turbo dev --filter=./apps/*",
     "dev:backend": "turbo dev --filter=./services/*",
     "lint": "turbo run lint",

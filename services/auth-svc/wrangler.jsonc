@@ -8,7 +8,12 @@
   },
   "vars": {
     "KINDE_DOMAIN": "https://musicgear.kinde.com",
-    "KINDE_CLIENT_ID": "ed22eb113b904bec84191ea3486b9722"
+    "KINDE_CLIENT_ID": "ed22eb113b904bec84191ea3486b9722",
+    "AUTH_CALLBACK_URI": "https://musicgear-api-gateway.thunderwolf2209.workers.dev/auth/callback",
+    "ALLOWED_REDIRECT_ORIGINS": "http://127.0.0.1:8800,http://127.0.0.1:8798,http://127.0.0.1:8799,http://localhost:8800,http://localhost:8798,http://localhost:8799,https://musicgear-web.thunderwolf2209.workers.dev,https://musicgear-admin.thunderwolf2209.workers.dev,https://musicgear-staff.thunderwolf2209.workers.dev",
+    "PORTAL_WEB_URL": "https://musicgear-web.thunderwolf2209.workers.dev",
+    "PORTAL_ADMIN_URL": "https://musicgear-admin.thunderwolf2209.workers.dev",
+    "PORTAL_STAFF_URL": "https://musicgear-staff.thunderwolf2209.workers.dev"
   },
   // "compatibility_flags": [
   //   "nodejs_compat"
