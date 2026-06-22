@@ -137,7 +137,7 @@ github page: [GitHub Page](https://csi204.github.io/musicgear/)
 ---
 
 ## 🗺️ แผนการดำเนินงาน 4 สัปดาห์ (Work Plan: 4 Weeks)
-| สัปดาห์ (Week) | กิจกรรม (Activities) | รายละเอียดโดยย่อ (ฺBrief Description) |
+| สัปดาห์ (Week) | กิจกรรม (Activities) | รายละเอียดโดยย่อ (Brief Description) |
 |:---:|---|---|
 | **1** | **วิเคราะห์และออกแบบระบบ (Analysis & Design)** | วางแผนว่าจะทำอะไร แบ่งหน้าที่ ออกแบบdiagram ออกแบบtech stack ทำยังไงให้เว็บเร็วและ setup file |
 | **2** | **พัฒนา Frontend (Frontend development)** | ทำตามprototype ที่ทำไว้ และรอต่อapi จาก backendจากนั้น deploy |
