@@ -81,3 +81,22 @@ export const userListQuerySchema = z
     search: z.string().trim().min(1).max(120).optional(),
   })
   .strict();
+
+export const adminCreateUserSchema = z
+  .object({
+    email: z.string().email(),
+    firstName: z.string().trim().min(1).max(100),
+    lastName: z.string().trim().min(1).max(100),
+    role: z.enum(["customer", "staff", "admin"]).default("customer"),
+    position: z.string().trim().min(1).max(120).optional(),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    if (data.role === "staff" && !data.position) {
+      ctx.addIssue({
+        code: "custom",
+        message: "position is required when role is staff",
+        path: ["position"],
+      });
+    }
+  });

@@ -43,7 +43,14 @@ export function createRoleMiddleware(allowedRoles) {
   const normalizedRoles = allowedRoles.map((role) => role.toLowerCase());
 
   return async function requireRole(c, next) {
-    const role = (c.get("user")?.role || "customer").toLowerCase();
+    const user = c.get("user");
+
+    // Allow M2M tokens to bypass role checks (act as root/admin)
+    if (user?.gty && user.gty.includes("client_credentials")) {
+      return await next();
+    }
+
+    const role = (user?.role || "customer").toLowerCase();
     if (!normalizedRoles.includes(role)) {
       return c.json({ error: { code: "FORBIDDEN", message: "Insufficient role" } }, 403);
     }

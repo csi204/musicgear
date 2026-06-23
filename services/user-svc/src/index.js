@@ -10,6 +10,7 @@ import {
   staffUpdateSchema,
   userListQuerySchema,
   userStatusUpdateSchema,
+  adminCreateUserSchema,
 } from "../../../packages/types/src/user.js";
 
 const app = new Hono();
@@ -79,6 +80,18 @@ function getPrismaClient(c) {
 
 function getAuthUser(c) {
   const user = c.get("user");
+  
+  if (user?.gty && user.gty.includes("client_credentials")) {
+    return {
+      userId: user.azp || "m2m-admin",
+      email: "m2m@musicgear.local",
+      firstName: "M2M",
+      lastName: "Admin",
+      role: "admin",
+      rawToken: c.req.header("Authorization")?.split(" ")[1],
+    };
+  }
+
   if (!user?.sub) {
     throw new Error("Authenticated token is missing sub");
   }
@@ -521,6 +534,62 @@ async function getKindeM2MToken(c) {
   return data.access_token;
 }
 
+async function createKindeUser(c, { email, firstName, lastName }) {
+  const token = await getKindeM2MToken(c);
+  if (!token) throw new Error("Failed to authenticate with Kinde M2M");
+
+  const url = `${c.env.KINDE_DOMAIN}/api/v1/user`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({
+      profile: {
+        given_name: firstName,
+        family_name: lastName,
+      },
+      identities: [
+        {
+          type: "email",
+          details: { email }
+        }
+      ]
+    }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("[user-svc] Failed to create Kinde user:", errorText);
+    throw new Error(`Failed to create Kinde user: ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  return data.id; // Usually returns the kp_... id
+}
+
+async function deleteKindeUser(c, userId) {
+  const token = await getKindeM2MToken(c);
+  if (!token) throw new Error("Failed to authenticate with Kinde M2M");
+
+  const url = `${c.env.KINDE_DOMAIN}/api/v1/user?id=${userId}`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json"
+    },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("[user-svc] Failed to delete Kinde user:", errorText);
+    throw new Error(`Failed to delete Kinde user: ${res.statusText}`);
+  }
+}
+
 async function syncNameToKinde(c, userId, firstName, lastName) {
   if (!c.env.KINDE_M2M_CLIENT_ID || !c.env.KINDE_M2M_CLIENT_SECRET) {
     console.warn("[user-svc] Missing Kinde M2M credentials, skipping Kinde sync");
@@ -611,6 +680,106 @@ app.patch("/users/me", async (c) => {
       return c.json({ error: { code: "FORBIDDEN", message: error.message } }, 403);
     }
 
+    return handleRouteError(c, error);
+  }
+});
+
+app.post("/users", adminMiddleware, async (c) => {
+  try {
+    const prisma = getPrismaClient(c);
+    const validation = await parseValidatedJson(c, adminCreateUserSchema);
+    if (!validation.ok) {
+      return validation.response;
+    }
+
+    const { email, firstName, lastName, role, position } = validation.data;
+
+    // 1. Create Kinde user via M2M
+    const kindeUserId = await createKindeUser(c, { email, firstName, lastName });
+
+    // 2. Create Neon DB user
+    const user = await prisma.user.create({
+      data: {
+        userId: kindeUserId,
+        email,
+        passwordHash: "", // Placeholder since Kinde manages auth
+        firstName,
+        lastName,
+        role,
+      },
+    });
+
+    // 3. Assign specific roles if needed
+    await assignRoleSequentially(prisma, kindeUserId, role, position);
+
+    const loadedUser = await loadUser(prisma, kindeUserId);
+    return c.json({ status: "ok", user: sanitizeUser(loadedUser) }, 201);
+  } catch (error) {
+    return handleRouteError(c, error);
+  }
+});
+
+app.patch("/users/:userId", adminMiddleware, async (c) => {
+  try {
+    const prisma = getPrismaClient(c);
+    const userId = c.req.param("userId");
+    
+    const validation = await parseValidatedJson(c, profileUpdateSchema);
+    if (!validation.ok) {
+      return validation.response;
+    }
+
+    const updates = validation.data;
+    
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({ where: { userId } });
+    if (!existingUser) {
+      return c.json({ error: { code: "NOT_FOUND", message: "User not found" } }, 404);
+    }
+
+    const userData = {};
+    if (updates.firstName !== undefined) userData.firstName = updates.firstName;
+    if (updates.lastName !== undefined) userData.lastName = updates.lastName;
+    if (updates.phone !== undefined) userData.phone = updates.phone;
+
+    if (Object.keys(userData).length > 0) {
+      await prisma.user.update({ where: { userId }, data: userData });
+      
+      // Sync to Kinde if name changed
+      if (updates.firstName !== undefined || updates.lastName !== undefined) {
+        c.executionCtx.waitUntil(
+          syncNameToKinde(c, userId, updates.firstName, updates.lastName)
+        );
+      }
+    }
+
+    const updatedUser = await loadUser(prisma, userId);
+    return c.json({ status: "ok", user: sanitizeUser(updatedUser) });
+  } catch (error) {
+    return handleRouteError(c, error);
+  }
+});
+
+app.delete("/users/:userId", adminMiddleware, async (c) => {
+  try {
+    const prisma = getPrismaClient(c);
+    const userId = c.req.param("userId");
+    
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({ where: { userId } });
+    if (!existingUser) {
+      return c.json({ error: { code: "NOT_FOUND", message: "User not found" } }, 404);
+    }
+
+    // 1. Delete from Kinde via M2M
+    // We wait for this to succeed before deleting locally to prevent desync
+    await deleteKindeUser(c, userId);
+
+    // 2. Delete locally
+    await prisma.user.delete({ where: { userId } });
+
+    return c.json({ status: "ok", message: "User deleted successfully" });
+  } catch (error) {
     return handleRouteError(c, error);
   }
 });
