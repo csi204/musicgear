@@ -19,7 +19,7 @@ const requireStaffOrAdmin = createRoleMiddleware(["staff", "admin"]);
 
 const KINDE_JWKS = createRemoteJWKSet(new URL("https://musicgear.kinde.com/.well-known/jwks"));
 
-app.post("/webhooks/kinde", async (c) => {
+app.post("/users/webhooks/kinde", async (c) => {
   try {
     const token = await c.req.text();
     const { payload } = await jwtVerify(token, KINDE_JWKS, { issuer: "https://musicgear.kinde.com" });
