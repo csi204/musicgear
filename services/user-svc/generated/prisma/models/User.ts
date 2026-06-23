@@ -212,7 +212,7 @@ export type UserWhereInput = {
   AND?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
   OR?: Prisma.UserWhereInput[]
   NOT?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
-  userId?: Prisma.UuidFilter<"User"> | string
+  userId?: Prisma.StringFilter<"User"> | string
   email?: Prisma.StringFilter<"User"> | string
   passwordHash?: Prisma.StringFilter<"User"> | string
   firstName?: Prisma.StringFilter<"User"> | string
@@ -282,7 +282,7 @@ export type UserScalarWhereWithAggregatesInput = {
   AND?: Prisma.UserScalarWhereWithAggregatesInput | Prisma.UserScalarWhereWithAggregatesInput[]
   OR?: Prisma.UserScalarWhereWithAggregatesInput[]
   NOT?: Prisma.UserScalarWhereWithAggregatesInput | Prisma.UserScalarWhereWithAggregatesInput[]
-  userId?: Prisma.UuidWithAggregatesFilter<"User"> | string
+  userId?: Prisma.StringWithAggregatesFilter<"User"> | string
   email?: Prisma.StringWithAggregatesFilter<"User"> | string
   passwordHash?: Prisma.StringWithAggregatesFilter<"User"> | string
   firstName?: Prisma.StringWithAggregatesFilter<"User"> | string
@@ -295,7 +295,7 @@ export type UserScalarWhereWithAggregatesInput = {
 }
 
 export type UserCreateInput = {
-  userId?: string
+  userId: string
   email: string
   passwordHash: string
   firstName: string
@@ -311,7 +311,7 @@ export type UserCreateInput = {
 }
 
 export type UserUncheckedCreateInput = {
-  userId?: string
+  userId: string
   email: string
   passwordHash: string
   firstName: string
@@ -359,7 +359,7 @@ export type UserUncheckedUpdateInput = {
 }
 
 export type UserCreateManyInput = {
-  userId?: string
+  userId: string
   email: string
   passwordHash: string
   firstName: string
@@ -504,7 +504,7 @@ export type UserUpdateOneRequiredWithoutAdminNestedInput = {
 }
 
 export type UserCreateWithoutCustomerInput = {
-  userId?: string
+  userId: string
   email: string
   passwordHash: string
   firstName: string
@@ -519,7 +519,7 @@ export type UserCreateWithoutCustomerInput = {
 }
 
 export type UserUncheckedCreateWithoutCustomerInput = {
-  userId?: string
+  userId: string
   email: string
   passwordHash: string
   firstName: string
@@ -580,7 +580,7 @@ export type UserUncheckedUpdateWithoutCustomerInput = {
 }
 
 export type UserCreateWithoutStaffInput = {
-  userId?: string
+  userId: string
   email: string
   passwordHash: string
   firstName: string
@@ -595,7 +595,7 @@ export type UserCreateWithoutStaffInput = {
 }
 
 export type UserUncheckedCreateWithoutStaffInput = {
-  userId?: string
+  userId: string
   email: string
   passwordHash: string
   firstName: string
@@ -656,7 +656,7 @@ export type UserUncheckedUpdateWithoutStaffInput = {
 }
 
 export type UserCreateWithoutAdminInput = {
-  userId?: string
+  userId: string
   email: string
   passwordHash: string
   firstName: string
@@ -671,7 +671,7 @@ export type UserCreateWithoutAdminInput = {
 }
 
 export type UserUncheckedCreateWithoutAdminInput = {
-  userId?: string
+  userId: string
   email: string
   passwordHash: string
   firstName: string

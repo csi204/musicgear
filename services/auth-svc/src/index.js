@@ -421,10 +421,11 @@ app.get("/auth/logout", (c) => {
 		return redirectResult.response;
 	}
 
+	// Kinde's /logout endpoint uses 'redirect' param (not post_logout_redirect_uri)
 	return c.redirect(
 		buildKindeUrl(c, "/logout", {
 			client_id: c.env.KINDE_CLIENT_ID,
-			post_logout_redirect_uri: redirectResult.redirectUri,
+			redirect: redirectResult.redirectUri,
 		}),
 	);
 });

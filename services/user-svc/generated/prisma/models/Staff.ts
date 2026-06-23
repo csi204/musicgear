@@ -170,7 +170,7 @@ export type StaffWhereInput = {
   AND?: Prisma.StaffWhereInput | Prisma.StaffWhereInput[]
   OR?: Prisma.StaffWhereInput[]
   NOT?: Prisma.StaffWhereInput | Prisma.StaffWhereInput[]
-  staffId?: Prisma.UuidFilter<"Staff"> | string
+  staffId?: Prisma.StringFilter<"Staff"> | string
   position?: Prisma.StringFilter<"Staff"> | string
   createdAt?: Prisma.DateTimeFilter<"Staff"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Staff"> | Date | string
@@ -210,7 +210,7 @@ export type StaffScalarWhereWithAggregatesInput = {
   AND?: Prisma.StaffScalarWhereWithAggregatesInput | Prisma.StaffScalarWhereWithAggregatesInput[]
   OR?: Prisma.StaffScalarWhereWithAggregatesInput[]
   NOT?: Prisma.StaffScalarWhereWithAggregatesInput | Prisma.StaffScalarWhereWithAggregatesInput[]
-  staffId?: Prisma.UuidWithAggregatesFilter<"Staff"> | string
+  staffId?: Prisma.StringWithAggregatesFilter<"Staff"> | string
   position?: Prisma.StringWithAggregatesFilter<"Staff"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Staff"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Staff"> | Date | string

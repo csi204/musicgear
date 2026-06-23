@@ -75,16 +75,30 @@ export async function fetchCurrentUser() {
     return null;
   }
 
-  const response = await fetch(`${getApiBaseUrl()}/auth/me`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const headers = { Authorization: `Bearer ${token}` };
+  const apiBase = getApiBaseUrl();
 
-  if (!response.ok) {
-    return null;
+  // Try /users/me first — creates DB record + returns proper firstName/lastName/role
+  try {
+    const res = await fetch(`${apiBase}/users/me`, { headers });
+    if (res.ok) {
+      const payload = await res.json();
+      return payload.user ?? null;
+    }
+  } catch {
+    // network error, fall through
   }
 
-  const payload = await response.json();
-  return payload.user ?? null;
+  // Fallback: /auth/me returns basic JWT claims
+  try {
+    const res = await fetch(`${apiBase}/auth/me`, { headers });
+    if (res.ok) {
+      const payload = await res.json();
+      return payload.user ?? null;
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
 }

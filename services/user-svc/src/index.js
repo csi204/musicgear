@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { createAuthMiddleware, createRoleMiddleware } from "@musicgear/auth-middleware";
 import { createPrismaClient } from "./createClient.js";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import {
   addressCreateSchema,
   addressUpdateSchema,
@@ -14,6 +15,32 @@ import {
 const app = new Hono();
 const authMiddleware = createAuthMiddleware("musicgear.kinde.com");
 const adminMiddleware = createRoleMiddleware(["admin"]);
+const requireStaffOrAdmin = createRoleMiddleware(["staff", "admin"]);
+
+const KINDE_JWKS = createRemoteJWKSet(new URL("https://musicgear.kinde.com/.well-known/jwks"));
+
+app.post("/webhooks/kinde", async (c) => {
+  try {
+    const token = await c.req.text();
+    const { payload } = await jwtVerify(token, KINDE_JWKS, { issuer: "https://musicgear.kinde.com" });
+
+    if (payload.type === "user.deleted") {
+      const userId = payload.data?.user?.id;
+      if (userId) {
+        const prisma = getPrismaClient(c);
+        await prisma.user.delete({ where: { userId } }).catch(() => {
+          // Ignore if user is already deleted or not found
+        });
+        console.log(`[user-svc] Webhook: deleted user ${userId}`);
+      }
+    }
+
+    return c.json({ status: "ok" });
+  } catch (error) {
+    console.error("[user-svc] Webhook verification failed", error);
+    return c.json({ error: "Invalid webhook token" }, 401);
+  }
+});
 
 let prismaClient;
 
@@ -56,6 +83,7 @@ function getAuthUser(c) {
     firstName: user.given_name || user.first_name || "MusicGear",
     lastName: user.family_name || user.last_name || "User",
     role: normalizedRole,
+    rawToken: c.req.header("Authorization")?.split(" ")[1],
   };
 }
 
@@ -80,6 +108,8 @@ function sanitizeUser(user) {
 }
 
 async function ensureUser(prisma, authUser) {
+  console.log("[user-svc] ensureUser called:", { userId: authUser.userId, email: authUser.email, role: authUser.role });
+
   const existingUser = await loadUser(prisma, authUser.userId);
   if (existingUser) {
     if (existingUser.status === "banned" || existingUser.status === "inactive") {
@@ -88,6 +118,26 @@ async function ensureUser(prisma, authUser) {
       throw error;
     }
 
+    // Auto-update if email was a kinde.user placeholder and we now have the real email
+    const hasPlaceholderEmail = existingUser.email.endsWith("@kinde.user");
+    const hasRealEmail = authUser.email && !authUser.email.endsWith("@kinde.user");
+    const hasDefaultName = existingUser.firstName === "MusicGear" || existingUser.lastName === "User";
+    const tokenHasRealName = authUser.firstName !== "MusicGear" || authUser.lastName !== "User";
+
+    if ((hasPlaceholderEmail && hasRealEmail) || (hasDefaultName && tokenHasRealName)) {
+      console.log("[user-svc] Updating user profile info (email or name) from Kinde token");
+      await prisma.user.update({
+        where: { userId: existingUser.userId },
+        data: {
+          email: hasRealEmail ? authUser.email : existingUser.email,
+          firstName: authUser.firstName !== "MusicGear" ? authUser.firstName : existingUser.firstName,
+          lastName: authUser.lastName !== "User" ? authUser.lastName : existingUser.lastName,
+        },
+      });
+      return loadUser(prisma, existingUser.userId);
+    }
+
+    console.log("[user-svc] Found existing user:", existingUser.userId);
     return existingUser;
   }
 
@@ -107,6 +157,22 @@ async function ensureUser(prisma, authUser) {
       throw error;
     }
 
+    console.log("[user-svc] Found user by email:", existingByEmail.userId);
+    // Link Kinde sub to this existing user
+    if (existingByEmail.userId !== authUser.userId) {
+      console.log("[user-svc] Updating userId to Kinde sub:", authUser.userId);
+      await prisma.user.update({
+        where: { userId: existingByEmail.userId },
+        data: { userId: authUser.userId },
+      });
+      // Also update related tables
+      await Promise.allSettled([
+        prisma.customer.updateMany({ where: { customerId: existingByEmail.userId }, data: { customerId: authUser.userId } }),
+        prisma.staff.updateMany({ where: { staffId: existingByEmail.userId }, data: { staffId: authUser.userId } }),
+        prisma.admin.updateMany({ where: { adminId: existingByEmail.userId }, data: { adminId: authUser.userId } }),
+      ]);
+      return loadUser(prisma, authUser.userId);
+    }
     return existingByEmail;
   }
 
@@ -121,15 +187,25 @@ async function ensureUser(prisma, authUser) {
     status: "active",
   };
 
-  if (authUser.role === "customer") {
-    createData.customer = { create: { customerId: authUser.userId } };
-  } else if (authUser.role === "admin") {
-    createData.admin = { create: { adminId: authUser.userId } };
-  } else if (authUser.role === "staff") {
-    createData.staff = { create: { staffId: authUser.userId, position: "Unassigned" } };
-  }
+  console.log("[user-svc] Creating new user:", authUser.userId, authUser.email, authUser.role);
+  try {
+    // 1. Create the base user
+    await prisma.user.create({ data: createData });
 
-  await prisma.user.create({ data: createData });
+    // 2. Create the associated role record sequentially (bypassing transaction limitation)
+    if (authUser.role === "customer") {
+      await prisma.customer.create({ data: { customerId: authUser.userId } });
+    } else if (authUser.role === "admin") {
+      await prisma.admin.create({ data: { adminId: authUser.userId } });
+    } else if (authUser.role === "staff") {
+      await prisma.staff.create({ data: { staffId: authUser.userId, position: "Unassigned" } });
+    }
+
+    console.log("[user-svc] User created successfully:", authUser.userId);
+  } catch (createErr) {
+    console.error("[user-svc] Failed to create user:", createErr?.message, createErr?.code);
+    throw createErr;
+  }
 
   return loadUser(prisma, authUser.userId);
 }
@@ -206,8 +282,8 @@ function requireCustomerRole(c, authUser) {
   return null;
 }
 
-async function assignRoleTransaction(tx, userId, role, position) {
-  const user = await tx.user.findUnique({
+async function assignRoleSequentially(prisma, userId, role, position) {
+  const user = await prisma.user.findUnique({
     where: { userId },
     include: { customer: true, staff: true, admin: true },
   });
@@ -218,37 +294,37 @@ async function assignRoleTransaction(tx, userId, role, position) {
     throw error;
   }
 
-  await tx.user.update({ where: { userId }, data: { role } });
+  await prisma.user.update({ where: { userId }, data: { role } });
 
   if (role === "customer") {
     if (!user.customer) {
-      await tx.customer.create({ data: { customerId: userId } });
+      await prisma.customer.create({ data: { customerId: userId } });
     }
     if (user.staff) {
-      await tx.staff.delete({ where: { staffId: userId } });
+      await prisma.staff.delete({ where: { staffId: userId } });
     }
     if (user.admin) {
-      await tx.admin.delete({ where: { adminId: userId } });
+      await prisma.admin.delete({ where: { adminId: userId } });
     }
   } else if (role === "staff") {
     if (!user.staff) {
-      await tx.staff.create({ data: { staffId: userId, position: position || "Unassigned" } });
+      await prisma.staff.create({ data: { staffId: userId, position: position || "Unassigned" } });
     } else if (position) {
-      await tx.staff.update({ where: { staffId: userId }, data: { position } });
+      await prisma.staff.update({ where: { staffId: userId }, data: { position } });
     }
     if (user.admin) {
-      await tx.admin.delete({ where: { adminId: userId } });
+      await prisma.admin.delete({ where: { adminId: userId } });
     }
   } else if (role === "admin") {
     if (!user.admin) {
-      await tx.admin.create({ data: { adminId: userId } });
+      await prisma.admin.create({ data: { adminId: userId } });
     }
     if (user.staff) {
-      await tx.staff.delete({ where: { staffId: userId } });
+      await prisma.staff.delete({ where: { staffId: userId } });
     }
   }
 
-  return loadUser(tx, userId);
+  return loadUser(prisma, userId);
 }
 
 function handleRouteError(c, error) {
@@ -376,6 +452,24 @@ app.get("/users/me", async (c) => {
   try {
     const prisma = getPrismaClient(c);
     const authUser = getAuthUser(c);
+
+    // If we have default fallback names, try to fetch real names from Kinde Profile API
+    if (authUser.firstName === "MusicGear" || authUser.lastName === "User") {
+      try {
+        const profileRes = await fetch("https://musicgear.kinde.com/oauth2/v2/user_profile", {
+          headers: { Authorization: `Bearer ${authUser.rawToken}` },
+        });
+        if (profileRes.ok) {
+          const profile = await profileRes.json();
+          if (profile.given_name) authUser.firstName = profile.given_name;
+          if (profile.family_name) authUser.lastName = profile.family_name;
+          if (profile.email) authUser.email = profile.email;
+        }
+      } catch (err) {
+        console.error("[user-svc] Failed to fetch Kinde profile:", err);
+      }
+    }
+
     const user = await ensureUser(prisma, authUser);
 
     return c.json({ status: "ok", user: sanitizeUser(user) });
@@ -412,22 +506,20 @@ app.patch("/users/me", async (c) => {
     if (updates.dateOfBirth !== undefined) customerData.dateOfBirth = updates.dateOfBirth;
     if (updates.gender !== undefined) customerData.gender = updates.gender;
 
-    const updatedUser = await prisma.$transaction(async (tx) => {
-      if (Object.keys(userData).length > 0) {
-        await tx.user.update({ where: { userId: currentUser.userId }, data: userData });
+    if (Object.keys(userData).length > 0) {
+      await prisma.user.update({ where: { userId: currentUser.userId }, data: userData });
+    }
+
+    if (Object.keys(customerData).length > 0) {
+      if (authUser.role !== "customer") {
+        throw Object.assign(new Error("Customer profile fields require customer role"), { code: "FORBIDDEN" });
       }
 
-      if (Object.keys(customerData).length > 0) {
-        if (authUser.role !== "customer") {
-          throw Object.assign(new Error("Customer profile fields require customer role"), { code: "FORBIDDEN" });
-        }
+      await ensureCustomer(prisma, currentUser.userId);
+      await prisma.customer.update({ where: { customerId: currentUser.userId }, data: customerData });
+    }
 
-        await ensureCustomer(tx, currentUser.userId);
-        await tx.customer.update({ where: { customerId: currentUser.userId }, data: customerData });
-      }
-
-      return loadUser(tx, currentUser.userId);
-    });
+    const updatedUser = await loadUser(prisma, currentUser.userId);
 
     return c.json({ status: "ok", user: sanitizeUser(updatedUser) });
   } catch (error) {
@@ -488,9 +580,7 @@ app.patch("/users/:userId/role", adminMiddleware, async (c) => {
       return c.json({ error: { code: "NOT_FOUND", message: "User not found" } }, 404);
     }
 
-    const user = await prisma.$transaction(async (tx) =>
-      assignRoleTransaction(tx, userId, validation.data.role, validation.data.position),
-    );
+    const user = await assignRoleSequentially(prisma, userId, validation.data.role, validation.data.position);
 
     return c.json({ status: "ok", user: sanitizeUser(user) });
   } catch (error) {
@@ -539,27 +629,25 @@ app.post("/users/me/addresses", async (c) => {
     const customer = await ensureCustomer(prisma, user.userId);
     const addressData = validation.data;
 
-    const address = await prisma.$transaction(async (tx) => {
-      if (addressData.isDefault) {
-        await tx.address.updateMany({
-          where: { customerId: customer.customerId },
-          data: { isDefault: false },
-        });
-      }
-
-      return tx.address.create({
-        data: {
-          customerId: customer.customerId,
-          receiverName: addressData.receiverName,
-          phone: addressData.phone,
-          addressLine1: addressData.addressLine1,
-          addressLine2: addressData.addressLine2 || null,
-          province: addressData.province,
-          city: addressData.city,
-          postalCode: addressData.postalCode,
-          isDefault: Boolean(addressData.isDefault),
-        },
+    if (addressData.isDefault) {
+      await prisma.address.updateMany({
+        where: { customerId: customer.customerId },
+        data: { isDefault: false },
       });
+    }
+
+    const address = await prisma.address.create({
+      data: {
+        customerId: customer.customerId,
+        receiverName: addressData.receiverName,
+        phone: addressData.phone,
+        addressLine1: addressData.addressLine1,
+        addressLine2: addressData.addressLine2 || null,
+        province: addressData.province,
+        city: addressData.city,
+        postalCode: addressData.postalCode,
+        isDefault: Boolean(addressData.isDefault),
+      },
     });
 
     return c.json({ status: "ok", address }, 201);
@@ -595,27 +683,25 @@ app.patch("/users/me/addresses/:addressId", async (c) => {
       return c.json({ error: { code: "NOT_FOUND", message: "Address not found" } }, 404);
     }
 
-    const address = await prisma.$transaction(async (tx) => {
-      if (updates.isDefault) {
-        await tx.address.updateMany({
-          where: { customerId: customer.customerId },
-          data: { isDefault: false },
-        });
-      }
-
-      return tx.address.update({
-        where: { addressId },
-        data: {
-          receiverName: updates.receiverName ?? existingAddress.receiverName,
-          phone: updates.phone ?? existingAddress.phone,
-          addressLine1: updates.addressLine1 ?? existingAddress.addressLine1,
-          addressLine2: updates.addressLine2 !== undefined ? updates.addressLine2 : existingAddress.addressLine2,
-          province: updates.province ?? existingAddress.province,
-          city: updates.city ?? existingAddress.city,
-          postalCode: updates.postalCode ?? existingAddress.postalCode,
-          isDefault: updates.isDefault ?? existingAddress.isDefault,
-        },
+    if (updates.isDefault) {
+      await prisma.address.updateMany({
+        where: { customerId: customer.customerId },
+        data: { isDefault: false },
       });
+    }
+
+    const address = await prisma.address.update({
+      where: { addressId },
+      data: {
+        receiverName: updates.receiverName ?? existingAddress.receiverName,
+        phone: updates.phone ?? existingAddress.phone,
+        addressLine1: updates.addressLine1 ?? existingAddress.addressLine1,
+        addressLine2: updates.addressLine2 !== undefined ? updates.addressLine2 : existingAddress.addressLine2,
+        province: updates.province ?? existingAddress.province,
+        city: updates.city ?? existingAddress.city,
+        postalCode: updates.postalCode ?? existingAddress.postalCode,
+        isDefault: updates.isDefault ?? existingAddress.isDefault,
+      },
     });
 
     return c.json({ status: "ok", address });
@@ -674,16 +760,14 @@ app.post("/users/me/addresses/:addressId/default", async (c) => {
       return c.json({ error: { code: "NOT_FOUND", message: "Address not found" } }, 404);
     }
 
-    const address = await prisma.$transaction(async (tx) => {
-      await tx.address.updateMany({
-        where: { customerId: customer.customerId },
-        data: { isDefault: false },
-      });
+    await prisma.address.updateMany({
+      where: { customerId: customer.customerId },
+      data: { isDefault: false },
+    });
 
-      return tx.address.update({
-        where: { addressId },
-        data: { isDefault: true },
-      });
+    const address = await prisma.address.update({
+      where: { addressId },
+      data: { isDefault: true },
     });
 
     return c.json({ status: "ok", address });

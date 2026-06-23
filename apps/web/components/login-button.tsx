@@ -12,10 +12,21 @@ import {
 } from "../lib/auth";
 
 type AuthUser = {
+  // DB format (from /users/me)
+  firstName?: string;
+  lastName?: string;
   email?: string;
+  role?: string;
+  // JWT format fallback (from /auth/me)
   given_name?: string;
   family_name?: string;
-  role?: string;
+  roles?: { key: string }[];
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "แอดมิน",
+  staff: "พนักงาน",
+  customer: "ลูกค้า",
 };
 
 export function LoginButton() {
@@ -53,14 +64,21 @@ export function LoginButton() {
   }
 
   if (user) {
+    // Support both DB format (firstName/lastName) and JWT format (given_name/family_name)
     const displayName =
-      [user.given_name, user.family_name].filter(Boolean).join(" ") || user.email || "ผู้ใช้";
+      [user.firstName ?? user.given_name, user.lastName ?? user.family_name]
+        .filter(Boolean)
+        .join(" ") || user.email || "ผู้ใช้";
+
+    // Role from DB (flat string) or JWT (roles array)
+    const rawRole = user.role ?? user.roles?.[0]?.key ?? null;
+    const roleLabel = rawRole ? (ROLE_LABELS[rawRole] ?? rawRole) : null;
 
     return (
       <div className="flex flex-col gap-2">
         <p className="text-sm">
           เข้าสู่ระบบแล้ว: <span className="font-medium">{displayName}</span>
-          {user.role ? ` (${user.role})` : null}
+          {roleLabel ? ` (${roleLabel})` : null}
         </p>
         <Button
           variant="outline"

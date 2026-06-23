@@ -6,12 +6,16 @@
   "dev": {
     "port": 8796
   },
-  "alias": {
-    ".prisma/client/default": "./generated/prisma/client.ts"
-  },
   "define": {
     "import.meta.url": "\"file:///worker\""
   },
+  "rules": [
+    {
+      "type": "CompiledWasm",
+      "globs": ["**/*.wasm"],
+      "fallthrough": true
+    }
+  ],
   "compatibility_flags": [
     "nodejs_compat"
   ],

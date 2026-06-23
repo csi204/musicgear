@@ -177,7 +177,7 @@ export type CustomerWhereInput = {
   AND?: Prisma.CustomerWhereInput | Prisma.CustomerWhereInput[]
   OR?: Prisma.CustomerWhereInput[]
   NOT?: Prisma.CustomerWhereInput | Prisma.CustomerWhereInput[]
-  customerId?: Prisma.UuidFilter<"Customer"> | string
+  customerId?: Prisma.StringFilter<"Customer"> | string
   dateOfBirth?: Prisma.DateTimeNullableFilter<"Customer"> | Date | string | null
   gender?: Prisma.EnumGenderNullableFilter<"Customer"> | $Enums.Gender | null
   createdAt?: Prisma.DateTimeFilter<"Customer"> | Date | string
@@ -224,7 +224,7 @@ export type CustomerScalarWhereWithAggregatesInput = {
   AND?: Prisma.CustomerScalarWhereWithAggregatesInput | Prisma.CustomerScalarWhereWithAggregatesInput[]
   OR?: Prisma.CustomerScalarWhereWithAggregatesInput[]
   NOT?: Prisma.CustomerScalarWhereWithAggregatesInput | Prisma.CustomerScalarWhereWithAggregatesInput[]
-  customerId?: Prisma.UuidWithAggregatesFilter<"Customer"> | string
+  customerId?: Prisma.StringWithAggregatesFilter<"Customer"> | string
   dateOfBirth?: Prisma.DateTimeNullableWithAggregatesFilter<"Customer"> | Date | string | null
   gender?: Prisma.EnumGenderNullableWithAggregatesFilter<"Customer"> | $Enums.Gender | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Customer"> | Date | string
