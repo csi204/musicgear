@@ -498,6 +498,62 @@ app.get("/users/me", async (c) => {
   }
 });
 
+async function getKindeM2MToken(c) {
+  const tokenUrl = `${c.env.KINDE_DOMAIN}/oauth2/token`;
+  const body = new URLSearchParams();
+  body.append("grant_type", "client_credentials");
+  body.append("client_id", c.env.KINDE_M2M_CLIENT_ID);
+  body.append("client_secret", c.env.KINDE_M2M_CLIENT_SECRET);
+  body.append("audience", `${c.env.KINDE_DOMAIN}/api`);
+
+  const res = await fetch(tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    console.error("[user-svc] Failed to get M2M token:", txt);
+    return null;
+  }
+  const data = await res.json();
+  return data.access_token;
+}
+
+async function syncNameToKinde(c, userId, firstName, lastName) {
+  if (!c.env.KINDE_M2M_CLIENT_ID || !c.env.KINDE_M2M_CLIENT_SECRET) {
+    console.warn("[user-svc] Missing Kinde M2M credentials, skipping Kinde sync");
+    return;
+  }
+
+  const token = await getKindeM2MToken(c);
+  if (!token) return;
+
+  const updateBody = {};
+  if (firstName !== undefined) updateBody.given_name = firstName;
+  if (lastName !== undefined) updateBody.family_name = lastName;
+
+  if (Object.keys(updateBody).length === 0) return;
+
+  const url = `${c.env.KINDE_DOMAIN}/api/v1/user?id=${userId}`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify(updateBody),
+  });
+  
+  if (!res.ok) {
+    console.error("[user-svc] Failed to sync name to Kinde:", await res.text());
+  } else {
+    console.log(`[user-svc] Synced name to Kinde for ${userId}`);
+  }
+}
+
 app.patch("/users/me", async (c) => {
   try {
     const prisma = getPrismaClient(c);
@@ -528,6 +584,14 @@ app.patch("/users/me", async (c) => {
 
     if (Object.keys(userData).length > 0) {
       await prisma.user.update({ where: { userId: currentUser.userId }, data: userData });
+      
+      // Sync to Kinde if name changed
+      if (updates.firstName !== undefined || updates.lastName !== undefined) {
+        // Run in background without waiting
+        c.executionCtx.waitUntil(
+          syncNameToKinde(c, currentUser.userId, updates.firstName, updates.lastName)
+        );
+      }
     }
 
     if (Object.keys(customerData).length > 0) {

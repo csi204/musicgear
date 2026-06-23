@@ -430,6 +430,31 @@ app.get("/auth/logout", (c) => {
 	);
 });
 
+app.get("/auth/portal", async (c) => {
+	const authHeader = c.req.header("Authorization");
+	if (!authHeader) {
+		return c.json({ error: "Missing authorization header" }, 401);
+	}
+
+	try {
+		const response = await fetch(buildKindeUrl(c, "/account_api/v1/portal_link"), {
+			headers: { Authorization: authHeader },
+		});
+		
+		if (!response.ok) {
+			const text = await response.text();
+			console.error("[auth-svc] Portal link error:", text);
+			return c.json({ error: "Failed to fetch portal link" }, response.status);
+		}
+		
+		const data = await response.json();
+		return c.json(data);
+	} catch (error) {
+		console.error("[auth-svc] Portal error:", error);
+		return c.json({ error: "Internal server error" }, 500);
+	}
+});
+
 app.get("/auth/me", authMiddleware, (c) => {
 	const user = c.get("user");
 	return c.json({ status: "ok", user });

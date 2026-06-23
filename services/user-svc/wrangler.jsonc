@@ -19,9 +19,10 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
+  "vars": {
+    "KINDE_DOMAIN": "https://musicgear.kinde.com",
+    "KINDE_M2M_CLIENT_ID": "e3315944b8d34ba4b8f94cca134a32e0"
+  },
   // "kv_namespaces": [
   //   {
   //     "binding": "MY_KV_NAMESPACE",

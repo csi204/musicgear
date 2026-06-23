@@ -9,6 +9,8 @@ import {
   clearSession,
   fetchCurrentUser,
   isAuthenticated,
+  getStoredSession,
+  getApiBaseUrl,
 } from "../lib/auth";
 
 type AuthUser = {
@@ -74,22 +76,51 @@ export function LoginButton() {
     const rawRole = user.role ?? user.roles?.[0]?.key ?? null;
     const roleLabel = rawRole ? (ROLE_LABELS[rawRole] ?? rawRole) : null;
 
+    const goToAccountManagement = async () => {
+      try {
+        const session = getStoredSession();
+        if (!session?.access_token) return;
+
+        const response = await fetch(`${getApiBaseUrl()}/auth/portal`, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        const data = await response.json();
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      } catch (error) {
+        console.error("Failed to fetch portal link:", error);
+      }
+    };
+
     return (
       <div className="flex flex-col gap-2">
         <p className="text-sm">
           เข้าสู่ระบบแล้ว: <span className="font-medium">{displayName}</span>
           {roleLabel ? ` (${roleLabel})` : null}
         </p>
-        <Button
-          variant="outline"
-          className="w-fit"
-          onClick={() => {
-            clearSession();
-            window.location.href = buildLogoutUrl("/");
-          }}
-        >
-          ออกจากระบบ
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="w-fit"
+            onClick={goToAccountManagement}
+          >
+            จัดการบัญชี
+          </Button>
+          <Button
+            variant="outline"
+            className="w-fit"
+            onClick={() => {
+              clearSession();
+              window.location.href = buildLogoutUrl("/");
+            }}
+          >
+            ออกจากระบบ
+          </Button>
+        </div>
       </div>
     );
   }
