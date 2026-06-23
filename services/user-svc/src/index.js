@@ -22,7 +22,7 @@ const KINDE_JWKS = createRemoteJWKSet(new URL("https://musicgear.kinde.com/.well
 app.post("/users/webhooks/kinde", async (c) => {
   try {
     const token = await c.req.text();
-    const { payload } = await jwtVerify(token, KINDE_JWKS, { issuer: "https://musicgear.kinde.com" });
+    const { payload } = await jwtVerify(token, KINDE_JWKS);
 
     if (payload.type === "user.deleted") {
       const userId = payload.data?.user?.id;
