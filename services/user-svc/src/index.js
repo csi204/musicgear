@@ -33,6 +33,26 @@ app.post("/users/webhooks/kinde", async (c) => {
         });
         console.log(`[user-svc] Webhook: deleted user ${userId}`);
       }
+    } else if (payload.type === "user.updated") {
+      const userData = payload.data?.user;
+      if (userData && userData.id) {
+        const prisma = getPrismaClient(c);
+        
+        const updateData = {};
+        if (userData.first_name) updateData.firstName = userData.first_name;
+        if (userData.last_name) updateData.lastName = userData.last_name;
+        if (userData.email) updateData.email = userData.email;
+
+        if (Object.keys(updateData).length > 0) {
+          await prisma.user.update({
+            where: { userId: userData.id },
+            data: updateData
+          }).catch((err) => {
+            console.log(`[user-svc] Webhook update error (user might not exist yet):`, err.message);
+          });
+          console.log(`[user-svc] Webhook: updated user ${userData.id}`);
+        }
+      }
     }
 
     return c.json({ status: "ok" });
