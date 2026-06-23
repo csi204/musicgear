@@ -57,7 +57,7 @@ model Customer {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @default(now()) @updatedAt
 
-  user      User      @relation(fields: [customerId], references: [userId])
+  user      User      @relation(fields: [customerId], references: [userId], onDelete: Cascade)
   addresses Address[]
 }
 
@@ -67,7 +67,7 @@ model Staff {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  user User @relation(fields: [staffId], references: [userId])
+  user User @relation(fields: [staffId], references: [userId], onDelete: Cascade)
 }
 
 model Admin {
@@ -75,7 +75,7 @@ model Admin {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  user User @relation(fields: [adminId], references: [userId])
+  user User @relation(fields: [adminId], references: [userId], onDelete: Cascade)
 }
 
 model Address {
@@ -92,5 +92,5 @@ model Address {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
 
-  customer Customer @relation(fields: [customerId], references: [customerId])
+  customer Customer @relation(fields: [customerId], references: [customerId], onDelete: Cascade)
 }
