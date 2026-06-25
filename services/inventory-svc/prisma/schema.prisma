@@ -6,6 +6,7 @@
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
+  runtime  = "workerd"
 }
 
 datasource db {
@@ -18,32 +19,29 @@ enum InventoryAction {
   reserve
   release
   sale_deduct
-
-  @@map("inventory_action")
 }
 
 model Inventory {
-  inventoryId      String   @id @default(uuid()) @map("inventory_id") @db.Uuid
-  productId        String   @unique @map("product_id") @db.Uuid // Soft ref -> product-svc
+  inventoryId      String   @id @default(uuid()) @db.Uuid
+  productId        String   @unique @db.Uuid // Soft ref -> product-svc
   quantity         Int      @default(0)
-  reservedQuantity Int      @default(0) @map("reserved_quantity")
-  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-
-  @@map("inventory")
+  reservedQuantity Int      @default(0)
+  updatedAt        DateTime @default(now()) @updatedAt @db.Timestamptz
 }
 
 model InventoryLog {
   id         String          @id @default(uuid()) @db.Uuid
-  productId  String          @map("product_id") @db.Uuid // Soft ref -> product-svc
-  beforeQty  Int             @map("before_qty")
-  afterQty   Int             @map("after_qty")
-  changeQty  Int             @map("change_qty")
+  productId  String          @db.Uuid // Soft ref -> product-svc
+  orderId    String?         @db.Uuid  // Soft ref -> order-svc (à¹ƒà¸Šà¹‰à¸•à¸­à¸™ reserve/release/sale_deduct)
+  beforeQty  Int
+  afterQty   Int
+  changeQty  Int
   action     InventoryAction
-  staffId    String?         @map("staff_id") @db.Uuid // Soft ref -> user-svc
-  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  staffId    String?         @db.Uuid // Soft ref -> user-svc
+  createdAt  DateTime        @default(now()) @db.Timestamptz
 
-  @@map("inventory_logs")
-  @@index([productId], map: "idx_inventory_logs_product_id")
-  @@index([staffId], map: "idx_inventory_logs_staff_id")
-  @@index([createdAt], map: "idx_inventory_logs_created_at")
+  @@index([productId])
+  @@index([orderId])
+  @@index([staffId])
+  @@index([createdAt])
 }

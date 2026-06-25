@@ -420,26 +420,68 @@ importers:
 
   services/inventory-svc:
     dependencies:
+      '@hono/zod-validator':
+        specifier: ^0.8.0
+        version: 0.8.0(hono@4.12.26)(zod@4.4.3)
       '@musicgear/auth-middleware':
         specifier: workspace:*
         version: link:../../packages/auth-middleware
+      '@neondatabase/serverless':
+        specifier: ^1.1.0
+        version: 1.1.0
+      '@prisma/adapter-neon':
+        specifier: ^7.8.0
+        version: 7.8.0
+      '@prisma/client':
+        specifier: ^7.8.0
+        version: 7.8.0(prisma@7.8.0(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.2))(typescript@5.9.2)
       hono:
         specifier: ^4.12.26
         version: 4.12.26
+      types:
+        specifier: workspace:*
+        version: link:../../packages/types
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
+      prisma:
+        specifier: ^7.8.0
+        version: 7.8.0(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.2)
       wrangler:
         specifier: ^4.4.0
         version: 4.103.0
 
   services/notification-svc:
     dependencies:
+      '@hono/zod-validator':
+        specifier: ^0.8.0
+        version: 0.8.0(hono@4.12.26)(zod@4.4.3)
       '@musicgear/auth-middleware':
         specifier: workspace:*
         version: link:../../packages/auth-middleware
+      '@neondatabase/serverless':
+        specifier: ^1.1.0
+        version: 1.1.0
+      '@prisma/adapter-neon':
+        specifier: ^7.8.0
+        version: 7.8.0
+      '@prisma/client':
+        specifier: ^7.8.0
+        version: 7.8.0(prisma@7.8.0(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.2))(typescript@5.9.2)
       hono:
         specifier: ^4.12.26
         version: 4.12.26
+      types:
+        specifier: workspace:*
+        version: link:../../packages/types
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
+      prisma:
+        specifier: ^7.8.0
+        version: 7.8.0(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.2)
       wrangler:
         specifier: ^4.4.0
         version: 4.103.0
@@ -472,13 +514,31 @@ importers:
 
   services/product-svc:
     dependencies:
+      '@hono/zod-validator':
+        specifier: ^0.8.0
+        version: 0.8.0(hono@4.12.26)(zod@4.4.3)
       '@musicgear/auth-middleware':
         specifier: workspace:*
         version: link:../../packages/auth-middleware
+      '@neondatabase/serverless':
+        specifier: ^1.1.0
+        version: 1.1.0
+      '@prisma/adapter-neon':
+        specifier: ^7.8.0
+        version: 7.8.0
+      '@prisma/client':
+        specifier: ^7.8.0
+        version: 7.8.0(prisma@7.8.0(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.2))(typescript@5.9.2)
       hono:
         specifier: ^4.12.26
         version: 4.12.26
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
+      prisma:
+        specifier: ^7.8.0
+        version: 7.8.0(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.2)
       wrangler:
         specifier: ^4.4.0
         version: 4.103.0
@@ -1513,6 +1573,12 @@ packages:
     engines: {node: '>=18.14.1'}
     peerDependencies:
       hono: ^4
+
+  '@hono/zod-validator@0.8.0':
+    resolution: {integrity: sha512-5uS4S1/LKtZQYvD4BtpPUFkOv8d1wNxHHrChm26buMiEYc1FrHWvDUaKVBwkiVtvSExHSpLGDvcnpI2Copyj9w==}
+    peerDependencies:
+      hono: '>=4.10.0'
+      zod: ^3.25.0 || ^4.0.0
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -7485,6 +7551,11 @@ snapshots:
   '@hono/node-server@1.19.11(hono@4.12.26)':
     dependencies:
       hono: 4.12.26
+
+  '@hono/zod-validator@0.8.0(hono@4.12.26)(zod@4.4.3)':
+    dependencies:
+      hono: 4.12.26
+      zod: 4.4.3
 
   '@humanfs/core@0.19.2':
     dependencies:

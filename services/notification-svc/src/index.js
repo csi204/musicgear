@@ -1,9 +1,19 @@
-import { Hono } from 'hono'
-import { createAuthMiddleware } from "@musicgear/auth-middleware";
+﻿import { Hono } from "hono";
+import { webhookRoutes } from "./routes/webhooks.js";
 
-const app = new Hono()
-const authMiddleware = createAuthMiddleware("https://musicgear.kinde.com");
+const app = new Hono();
 
-app.get('/', (c) => c.json({ status: 'ok', service: 'notification-svc' }))
+// ──────────────────────────────────────────────────────────────────────────────
+// Health Check
+// ──────────────────────────────────────────────────────────────────────────────
+app.get("/", (c) => c.json({ status: "ok", service: "notification-svc" }));
 
-export default app
+// ──────────────────────────────────────────────────────────────────────────────
+// Routes
+//
+// /webhooks/* — ไม่มี verifyKindeToken เพราะเป็น QStash subscriber
+//   QStash ยิงมาด้วย Signing Key ของตัวเอง (ถ้า production ใช้ QSTASH_CURRENT_SIGNING_KEY)
+// ──────────────────────────────────────────────────────────────────────────────
+app.route("/webhooks", webhookRoutes);
+
+export default app;

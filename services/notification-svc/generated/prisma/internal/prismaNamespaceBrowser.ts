@@ -73,12 +73,14 @@ export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof
 export const NotificationScalarFieldEnum = {
   notificationId: 'notificationId',
   customerId: 'customerId',
+  orderId: 'orderId',
   productId: 'productId',
   title: 'title',
   message: 'message',
   type: 'type',
   status: 'status',
   isRead: 'isRead',
+  isStaffAlert: 'isStaffAlert',
   createdAt: 'createdAt'
 } as const
 
