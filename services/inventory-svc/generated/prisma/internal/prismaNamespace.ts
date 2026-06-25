@@ -15,7 +15,7 @@
  * model files in the `model` directory!
  */
 
-import * as runtime from "@prisma/client/runtime/client"
+import * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import type * as Prisma from "../models.ts"
 import { type PrismaClient } from "./class.ts"
 
@@ -606,6 +606,7 @@ export type InventoryScalarFieldEnum = (typeof InventoryScalarFieldEnum)[keyof t
 export const InventoryLogScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
+  orderId: 'orderId',
   beforeQty: 'beforeQty',
   afterQty: 'afterQty',
   changeQty: 'changeQty',

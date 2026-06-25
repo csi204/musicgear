@@ -1,50 +1,50 @@
-// upload
+﻿import { Hono } from "hono";
+import { createClient } from "../db/client.js";
+import { getProductById } from "../services/product.service.js";
 
-app.post('/products/:id/images', async (c) => {
-  const formData = await c.req.formData()
-  const file = formData.get('image')           // รับไฟล์จาก multipart form
+export const productRoutes = new Hono();
 
-  if (!file || !(file instanceof File)) {
-    return c.json({ error: 'No image provided' }, 400)
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /products/:productId — ดึงข้อมูลสินค้าพร้อมรูปภาพ (Contract 6 กับบุญ)
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.get("/:productId", async (c) => {
+  const productId = c.req.param("productId");
+
+  // Basic UUID validation
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(productId)) {
+    return c.json({ error: { code: "INVALID_PRODUCT_ID", message: "productId must be a valid UUID" } }, 400);
   }
 
-  // สร้าง key ไม่ให้ชนกัน
-  const ext = file.name.split('.').pop()
-  const key = `products/${c.req.param('id')}/${crypto.randomUUID()}.${ext}`
+  const db = createClient(c.env.DATABASE_URL);
 
-  // อัปโหลดขึ้น R2
-  await c.env.PRODUCT_IMAGES.put(key, file.stream(), {
-    httpMetadata: { contentType: file.type },
-  })
+  try {
+    const product = await getProductById(db, productId);
 
-  // เก็บ URL ลง DB (ผ่าน public domain ที่ตั้งไว้ ดูข้อ 5)
-  const imageUrl = `${c.env.R2_PUBLIC_URL}/${key}`
+    if (!product) {
+      return c.json({ error: { code: "PRODUCT_NOT_FOUND", message: "Product not found" } }, 404);
+    }
 
-  await db.productImage.create({
-    data: {
-      productId: c.req.param('id'),
-      imageUrl,
-      isPrimary: false,
-      sortOrder: 0,
-    },
-  })
-
-  return c.json({ imageUrl }, 201)
-})
-
-// delete
-
-app.delete('/products/images/:imageId', async (c) => {
-  const image = await db.productImage.findUnique({
-    where: { id: c.req.param('imageId') }
-  })
-
-  // ดึง key จาก URL เช่น "products/xxx/yyy.jpg"
-  const key = image.imageUrl.replace(`${c.env.R2_PUBLIC_URL}/`, '')
-
-  await c.env.PRODUCT_IMAGES.delete(key)
-  await db.productImage.delete({ where: { id: c.req.param('imageId') } })
-
-  return c.json({ success: true })
-})
-
+    return c.json({
+      productId: product.productId,
+      name: product.name,
+      slug: product.slug,
+      price: parseFloat(product.price.toString()),
+      sku: product.sku,
+      status: product.status,
+      description: product.description ?? null,
+      skillLevel: product.skillLevel ?? null,
+      brand: product.brand,
+      category: product.category,
+      images: product.images.map((img) => ({
+        imageId: img.imageId,
+        imageUrl: img.imageUrl,
+        isPrimary: img.isPrimary,
+        sortOrder: img.sortOrder,
+      })),
+    });
+  } catch (err) {
+    console.error("[GET /products/:productId]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
+  }
+});

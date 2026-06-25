@@ -8,7 +8,7 @@
  *
  * 🟢 You can import this file directly.
  */
-import type * as runtime from "@prisma/client/runtime/client"
+import type * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import type * as $Enums from "../enums.ts"
 import type * as Prisma from "../internal/prismaNamespace.ts"
 
@@ -41,6 +41,7 @@ export type InventoryLogSumAggregateOutputType = {
 export type InventoryLogMinAggregateOutputType = {
   id: string | null
   productId: string | null
+  orderId: string | null
   beforeQty: number | null
   afterQty: number | null
   changeQty: number | null
@@ -52,6 +53,7 @@ export type InventoryLogMinAggregateOutputType = {
 export type InventoryLogMaxAggregateOutputType = {
   id: string | null
   productId: string | null
+  orderId: string | null
   beforeQty: number | null
   afterQty: number | null
   changeQty: number | null
@@ -63,6 +65,7 @@ export type InventoryLogMaxAggregateOutputType = {
 export type InventoryLogCountAggregateOutputType = {
   id: number
   productId: number
+  orderId: number
   beforeQty: number
   afterQty: number
   changeQty: number
@@ -88,6 +91,7 @@ export type InventoryLogSumAggregateInputType = {
 export type InventoryLogMinAggregateInputType = {
   id?: true
   productId?: true
+  orderId?: true
   beforeQty?: true
   afterQty?: true
   changeQty?: true
@@ -99,6 +103,7 @@ export type InventoryLogMinAggregateInputType = {
 export type InventoryLogMaxAggregateInputType = {
   id?: true
   productId?: true
+  orderId?: true
   beforeQty?: true
   afterQty?: true
   changeQty?: true
@@ -110,6 +115,7 @@ export type InventoryLogMaxAggregateInputType = {
 export type InventoryLogCountAggregateInputType = {
   id?: true
   productId?: true
+  orderId?: true
   beforeQty?: true
   afterQty?: true
   changeQty?: true
@@ -208,6 +214,7 @@ export type InventoryLogGroupByArgs<ExtArgs extends runtime.Types.Extensions.Int
 export type InventoryLogGroupByOutputType = {
   id: string
   productId: string
+  orderId: string | null
   beforeQty: number
   afterQty: number
   changeQty: number
@@ -242,6 +249,7 @@ export type InventoryLogWhereInput = {
   NOT?: Prisma.InventoryLogWhereInput | Prisma.InventoryLogWhereInput[]
   id?: Prisma.UuidFilter<"InventoryLog"> | string
   productId?: Prisma.UuidFilter<"InventoryLog"> | string
+  orderId?: Prisma.UuidNullableFilter<"InventoryLog"> | string | null
   beforeQty?: Prisma.IntFilter<"InventoryLog"> | number
   afterQty?: Prisma.IntFilter<"InventoryLog"> | number
   changeQty?: Prisma.IntFilter<"InventoryLog"> | number
@@ -253,6 +261,7 @@ export type InventoryLogWhereInput = {
 export type InventoryLogOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  orderId?: Prisma.SortOrderInput | Prisma.SortOrder
   beforeQty?: Prisma.SortOrder
   afterQty?: Prisma.SortOrder
   changeQty?: Prisma.SortOrder
@@ -267,6 +276,7 @@ export type InventoryLogWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.InventoryLogWhereInput[]
   NOT?: Prisma.InventoryLogWhereInput | Prisma.InventoryLogWhereInput[]
   productId?: Prisma.UuidFilter<"InventoryLog"> | string
+  orderId?: Prisma.UuidNullableFilter<"InventoryLog"> | string | null
   beforeQty?: Prisma.IntFilter<"InventoryLog"> | number
   afterQty?: Prisma.IntFilter<"InventoryLog"> | number
   changeQty?: Prisma.IntFilter<"InventoryLog"> | number
@@ -278,6 +288,7 @@ export type InventoryLogWhereUniqueInput = Prisma.AtLeast<{
 export type InventoryLogOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  orderId?: Prisma.SortOrderInput | Prisma.SortOrder
   beforeQty?: Prisma.SortOrder
   afterQty?: Prisma.SortOrder
   changeQty?: Prisma.SortOrder
@@ -297,6 +308,7 @@ export type InventoryLogScalarWhereWithAggregatesInput = {
   NOT?: Prisma.InventoryLogScalarWhereWithAggregatesInput | Prisma.InventoryLogScalarWhereWithAggregatesInput[]
   id?: Prisma.UuidWithAggregatesFilter<"InventoryLog"> | string
   productId?: Prisma.UuidWithAggregatesFilter<"InventoryLog"> | string
+  orderId?: Prisma.UuidNullableWithAggregatesFilter<"InventoryLog"> | string | null
   beforeQty?: Prisma.IntWithAggregatesFilter<"InventoryLog"> | number
   afterQty?: Prisma.IntWithAggregatesFilter<"InventoryLog"> | number
   changeQty?: Prisma.IntWithAggregatesFilter<"InventoryLog"> | number
@@ -308,6 +320,7 @@ export type InventoryLogScalarWhereWithAggregatesInput = {
 export type InventoryLogCreateInput = {
   id?: string
   productId: string
+  orderId?: string | null
   beforeQty: number
   afterQty: number
   changeQty: number
@@ -319,6 +332,7 @@ export type InventoryLogCreateInput = {
 export type InventoryLogUncheckedCreateInput = {
   id?: string
   productId: string
+  orderId?: string | null
   beforeQty: number
   afterQty: number
   changeQty: number
@@ -330,6 +344,7 @@ export type InventoryLogUncheckedCreateInput = {
 export type InventoryLogUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   beforeQty?: Prisma.IntFieldUpdateOperationsInput | number
   afterQty?: Prisma.IntFieldUpdateOperationsInput | number
   changeQty?: Prisma.IntFieldUpdateOperationsInput | number
@@ -341,6 +356,7 @@ export type InventoryLogUpdateInput = {
 export type InventoryLogUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   beforeQty?: Prisma.IntFieldUpdateOperationsInput | number
   afterQty?: Prisma.IntFieldUpdateOperationsInput | number
   changeQty?: Prisma.IntFieldUpdateOperationsInput | number
@@ -352,6 +368,7 @@ export type InventoryLogUncheckedUpdateInput = {
 export type InventoryLogCreateManyInput = {
   id?: string
   productId: string
+  orderId?: string | null
   beforeQty: number
   afterQty: number
   changeQty: number
@@ -363,6 +380,7 @@ export type InventoryLogCreateManyInput = {
 export type InventoryLogUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   beforeQty?: Prisma.IntFieldUpdateOperationsInput | number
   afterQty?: Prisma.IntFieldUpdateOperationsInput | number
   changeQty?: Prisma.IntFieldUpdateOperationsInput | number
@@ -374,6 +392,7 @@ export type InventoryLogUpdateManyMutationInput = {
 export type InventoryLogUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   beforeQty?: Prisma.IntFieldUpdateOperationsInput | number
   afterQty?: Prisma.IntFieldUpdateOperationsInput | number
   changeQty?: Prisma.IntFieldUpdateOperationsInput | number
@@ -385,6 +404,7 @@ export type InventoryLogUncheckedUpdateManyInput = {
 export type InventoryLogCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  orderId?: Prisma.SortOrder
   beforeQty?: Prisma.SortOrder
   afterQty?: Prisma.SortOrder
   changeQty?: Prisma.SortOrder
@@ -402,6 +422,7 @@ export type InventoryLogAvgOrderByAggregateInput = {
 export type InventoryLogMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  orderId?: Prisma.SortOrder
   beforeQty?: Prisma.SortOrder
   afterQty?: Prisma.SortOrder
   changeQty?: Prisma.SortOrder
@@ -413,6 +434,7 @@ export type InventoryLogMaxOrderByAggregateInput = {
 export type InventoryLogMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  orderId?: Prisma.SortOrder
   beforeQty?: Prisma.SortOrder
   afterQty?: Prisma.SortOrder
   changeQty?: Prisma.SortOrder
@@ -427,12 +449,12 @@ export type InventoryLogSumOrderByAggregateInput = {
   changeQty?: Prisma.SortOrder
 }
 
-export type EnumInventoryActionFieldUpdateOperationsInput = {
-  set?: $Enums.InventoryAction
-}
-
 export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
+}
+
+export type EnumInventoryActionFieldUpdateOperationsInput = {
+  set?: $Enums.InventoryAction
 }
 
 
@@ -440,6 +462,7 @@ export type NullableStringFieldUpdateOperationsInput = {
 export type InventoryLogSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   productId?: boolean
+  orderId?: boolean
   beforeQty?: boolean
   afterQty?: boolean
   changeQty?: boolean
@@ -451,6 +474,7 @@ export type InventoryLogSelect<ExtArgs extends runtime.Types.Extensions.Internal
 export type InventoryLogSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   productId?: boolean
+  orderId?: boolean
   beforeQty?: boolean
   afterQty?: boolean
   changeQty?: boolean
@@ -462,6 +486,7 @@ export type InventoryLogSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
 export type InventoryLogSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   productId?: boolean
+  orderId?: boolean
   beforeQty?: boolean
   afterQty?: boolean
   changeQty?: boolean
@@ -473,6 +498,7 @@ export type InventoryLogSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
 export type InventoryLogSelectScalar = {
   id?: boolean
   productId?: boolean
+  orderId?: boolean
   beforeQty?: boolean
   afterQty?: boolean
   changeQty?: boolean
@@ -481,7 +507,7 @@ export type InventoryLogSelectScalar = {
   createdAt?: boolean
 }
 
-export type InventoryLogOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "beforeQty" | "afterQty" | "changeQty" | "action" | "staffId" | "createdAt", ExtArgs["result"]["inventoryLog"]>
+export type InventoryLogOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "orderId" | "beforeQty" | "afterQty" | "changeQty" | "action" | "staffId" | "createdAt", ExtArgs["result"]["inventoryLog"]>
 
 export type $InventoryLogPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "InventoryLog"
@@ -489,6 +515,7 @@ export type $InventoryLogPayload<ExtArgs extends runtime.Types.Extensions.Intern
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     productId: string
+    orderId: string | null
     beforeQty: number
     afterQty: number
     changeQty: number
@@ -920,6 +947,7 @@ export interface Prisma__InventoryLogClient<T, Null = never, ExtArgs extends run
 export interface InventoryLogFieldRefs {
   readonly id: Prisma.FieldRef<"InventoryLog", 'String'>
   readonly productId: Prisma.FieldRef<"InventoryLog", 'String'>
+  readonly orderId: Prisma.FieldRef<"InventoryLog", 'String'>
   readonly beforeQty: Prisma.FieldRef<"InventoryLog", 'Int'>
   readonly afterQty: Prisma.FieldRef<"InventoryLog", 'Int'>
   readonly changeQty: Prisma.FieldRef<"InventoryLog", 'Int'>

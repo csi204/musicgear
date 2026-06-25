@@ -85,6 +85,7 @@ export type InventoryScalarFieldEnum = (typeof InventoryScalarFieldEnum)[keyof t
 export const InventoryLogScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
+  orderId: 'orderId',
   beforeQty: 'beforeQty',
   afterQty: 'afterQty',
   changeQty: 'changeQty',

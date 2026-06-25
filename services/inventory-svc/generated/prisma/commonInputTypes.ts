@@ -9,7 +9,7 @@
  * 🟢 You can import this file directly.
  */
 
-import type * as runtime from "@prisma/client/runtime/client"
+import type * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import * as $Enums from "./enums.ts"
 import type * as Prisma from "./internal/prismaNamespace.ts"
 
@@ -93,13 +93,6 @@ export type DateTimeWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedDateTimeFilter<$PrismaModel>
 }
 
-export type EnumInventoryActionFilter<$PrismaModel = never> = {
-  equals?: $Enums.InventoryAction | Prisma.EnumInventoryActionFieldRefInput<$PrismaModel>
-  in?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
-  notIn?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel> | $Enums.InventoryAction
-}
-
 export type UuidNullableFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel> | null
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel> | null
@@ -112,19 +105,16 @@ export type UuidNullableFilter<$PrismaModel = never> = {
   not?: Prisma.NestedUuidNullableFilter<$PrismaModel> | string | null
 }
 
-export type SortOrderInput = {
-  sort: Prisma.SortOrder
-  nulls?: Prisma.NullsOrder
-}
-
-export type EnumInventoryActionWithAggregatesFilter<$PrismaModel = never> = {
+export type EnumInventoryActionFilter<$PrismaModel = never> = {
   equals?: $Enums.InventoryAction | Prisma.EnumInventoryActionFieldRefInput<$PrismaModel>
   in?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
   notIn?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumInventoryActionWithAggregatesFilter<$PrismaModel> | $Enums.InventoryAction
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel>
+  not?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel> | $Enums.InventoryAction
+}
+
+export type SortOrderInput = {
+  sort: Prisma.SortOrder
+  nulls?: Prisma.NullsOrder
 }
 
 export type UuidNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -140,6 +130,16 @@ export type UuidNullableWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
   _min?: Prisma.NestedStringNullableFilter<$PrismaModel>
   _max?: Prisma.NestedStringNullableFilter<$PrismaModel>
+}
+
+export type EnumInventoryActionWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.InventoryAction | Prisma.EnumInventoryActionFieldRefInput<$PrismaModel>
+  in?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
+  notIn?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumInventoryActionWithAggregatesFilter<$PrismaModel> | $Enums.InventoryAction
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel>
 }
 
 export type NestedUuidFilter<$PrismaModel = never> = {
@@ -244,13 +244,6 @@ export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedDateTimeFilter<$PrismaModel>
 }
 
-export type NestedEnumInventoryActionFilter<$PrismaModel = never> = {
-  equals?: $Enums.InventoryAction | Prisma.EnumInventoryActionFieldRefInput<$PrismaModel>
-  in?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
-  notIn?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel> | $Enums.InventoryAction
-}
-
 export type NestedUuidNullableFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel> | null
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel> | null
@@ -262,14 +255,11 @@ export type NestedUuidNullableFilter<$PrismaModel = never> = {
   not?: Prisma.NestedUuidNullableFilter<$PrismaModel> | string | null
 }
 
-export type NestedEnumInventoryActionWithAggregatesFilter<$PrismaModel = never> = {
+export type NestedEnumInventoryActionFilter<$PrismaModel = never> = {
   equals?: $Enums.InventoryAction | Prisma.EnumInventoryActionFieldRefInput<$PrismaModel>
   in?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
   notIn?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumInventoryActionWithAggregatesFilter<$PrismaModel> | $Enums.InventoryAction
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel>
+  not?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel> | $Enums.InventoryAction
 }
 
 export type NestedUuidNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -309,6 +299,16 @@ export type NestedStringNullableFilter<$PrismaModel = never> = {
   startsWith?: string | Prisma.StringFieldRefInput<$PrismaModel>
   endsWith?: string | Prisma.StringFieldRefInput<$PrismaModel>
   not?: Prisma.NestedStringNullableFilter<$PrismaModel> | string | null
+}
+
+export type NestedEnumInventoryActionWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.InventoryAction | Prisma.EnumInventoryActionFieldRefInput<$PrismaModel>
+  in?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
+  notIn?: $Enums.InventoryAction[] | Prisma.ListEnumInventoryActionFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumInventoryActionWithAggregatesFilter<$PrismaModel> | $Enums.InventoryAction
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumInventoryActionFilter<$PrismaModel>
 }
 
 

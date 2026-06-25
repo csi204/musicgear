@@ -6,6 +6,7 @@
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
+  runtime  = "workerd"
 }
 
 datasource db {
@@ -28,11 +29,16 @@ enum NotificationStatus {
 model Notification {
   notificationId String             @id @default(uuid()) @db.Uuid
   customerId     String             @db.Uuid // Soft ref
+  orderId        String?            @db.Uuid // Soft ref -> order-svc
   productId      String?            @db.Uuid // Soft ref
   title          String
   message        String
   type           NotificationType
   status         NotificationStatus @default(pending)
   isRead         Boolean            @default(false)
+  isStaffAlert   Boolean            @default(false) // true = à¹à¸ªà¸”à¸‡à¹ƒà¸™ Staff Portal
   createdAt      DateTime           @default(now())
+
+  @@index([orderId])
+  @@index([isStaffAlert, isRead])
 }
