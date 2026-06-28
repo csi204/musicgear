@@ -241,122 +241,152 @@ Requirement หลักของระบบ (ตามเกณฑ์ - คร
 ## 🧩 Use Case Diagram
 
 ```mermaid
-%% Mermaid ไม่มี usecase diagram แบบ native จริงๆ
-%% เลยจำลองด้วย flowchart: actor = สี่เหลี่ยมมน, usecase = วงรี (stadium shape)
 flowchart LR
 
+    %% ── Actors ──
+    User(["👤 User\n(abstract)"])
+    Guest(["👤 Guest"])
     Customer(["👤 Customer"])
     Staff(["👤 Staff"])
-    Guest(["👤 Guest"])
     Admin(["👤 Admin"])
 
-    %% ===== Customer Use Cases =====
-    subgraph CustomerUC["Customer"]
-        direction LR
-        UC_Register(("Register / Login"))
-        UC_ManageAcc(("Manage account"))
-        UC_Search(("Search"))
-        UC_Browse(("Browse Item"))
-        UC_Filter(("Filter brand type..."))
-        UC_Cart(("Manage Cart"))
-        UC_Compare(("Compare a product"))
-        UC_Notify(("Receive Notification"))
-        UC_Review(("Review(star)"))
-        UC_Address(("Manage Address"))
-        UC_History(("History"))
-        UC_Details(("Watch details"))
-        UC_Tracking(("Tracking order"))
-        UC_AddCart(("Add to cart"))
-        UC_Buy(("Buy Items"))
-        UC_Confirm(("Confirm order"))
-        UC_Pay(("Payments"))
-        UC_Select(("Select"))
+    %% Actor Generalization — ลูกศรชี้จากลูกไปหาพ่อแม่ (standard UML)
+    Customer -.->|"<<generalize>>"| User
+    Staff    -.->|"<<generalize>>"| User
+    Admin    -.->|"<<generalize>>"| User
+
+    %% ── Shared Use Cases (User level — ทุก role ใช้ร่วมกันผ่าน inheritance) ──
+    subgraph SharedUC["User (Shared)"]
+        direction TB
+        UC_Login(("Login / Register"))
+        UC_Logout(("Logout"))
+        UC_UpdateProfile(("Update Profile"))
+        UC_ChangePassword(("Change Password"))
     end
 
-    Customer --- UC_Register
-    Customer --- UC_ManageAcc
-    Customer --- UC_Browse
-    Customer --- UC_Cart
-    Customer --- UC_Compare
-    Customer --- UC_Notify
-    Customer --- UC_Address
-    Customer --- UC_Details
-    Customer --- UC_AddCart
-    Customer --- UC_Buy
-    Customer --- UC_Pay
-    Customer --- UC_Review
-    Customer --- UC_History
-    Customer --- UC_Tracking
+    User --- UC_Login
+    User --- UC_Logout
+    User --- UC_UpdateProfile
+    User --- UC_ChangePassword
 
-    UC_ManageAcc -.->|"<<extend>>"| UC_Search
-    UC_Browse -.->|"<<extend>>"| UC_Filter
-    UC_Buy -.->|"<<include>>"| UC_Confirm
-    UC_Pay -.->|"<<include>>"| UC_Select
-
-    %% ===== Staff Use Cases =====
-    subgraph StaffUC["Staff"]
-        direction LR
-        UC_ReviewOrder(("Review and confirm order"))
-        UC_Login2(("Login"))
-        UC_Prepare(("Prepare product / pack product"))
-        UC_ViewOrders(("View all order list"))
-        UC_UpdateStatus(("Update order status"))
-        UC_DashReport(("Manage Dashboard Report"))
-        UC_CheckStock(("Check stock"))
-        UC_Receiving(("Receiving product"))
-        UC_StockProduct(("Manage Stock Product"))
-        UC_ManageStock(("Manage stock"))
-        UC_BundleSet(("Manage bundle set"))
-    end
-
-    Staff --- UC_Login2
-    Staff --- UC_ReviewOrder
-    Staff --- UC_Prepare
-    Staff --- UC_ViewOrders
-    Staff --- UC_UpdateStatus
-    Staff --- UC_DashReport
-    Staff --- UC_StockProduct
-
-    UC_CheckStock -.->|"<<include>>"| UC_StockProduct
-    UC_Receiving -.->|"<<include>>"| UC_StockProduct
-    UC_ManageStock -.->|"<<include>>"| UC_StockProduct
-    UC_StockProduct -.->|"<<extend>>"| UC_BundleSet
-
-    %% ===== Guest Use Cases =====
+    %% ── Guest Use Cases ──
     subgraph GuestUC["Guest"]
-        direction LR
-        UC_GSearch(("Search"))
-        UC_GAddCart(("Add to cart"))
-        UC_GFilter(("Filter brand type..."))
-        UC_GBrowse(("Browse Item"))
+        direction TB
+        UC_GBrowse(("Browse Product"))
+        UC_GSearch(("Search Product"))
+        UC_GFilter(("Filter Product"))
+        UC_GAddCart(("Add to Cart"))
+        UC_GViewDetail(("View Product Detail"))
     end
 
-    Guest --- UC_GSearch
     Guest --- UC_GBrowse
-    UC_GSearch -.->|"<<extend>>"| UC_GAddCart
-    UC_GFilter -.->|"<<extend>>"| UC_GBrowse
+    Guest --- UC_GSearch
+    Guest --- UC_GAddCart
+    UC_GBrowse -.->|"<<extend>>"| UC_GFilter
+    UC_GSearch -.->|"<<extend>>"| UC_GFilter
+    UC_GAddCart -.->|"<<include>>"| UC_GViewDetail
 
-    %% ===== Admin Use Cases =====
-    subgraph AdminUC["Admin"]
-        direction LR
-        UC_ALogin(("Login"))
-        UC_Dashboard(("Dashboard"))
-        UC_Category(("Manage Category"))
-        UC_Product(("Manage Product"))
-        UC_Financial(("Financial results report"))
-        UC_Inventory(("Inventory Report"))
-        UC_ManageUser(("Manage User"))
-        UC_SalesReport(("Sales report"))
+    %% ── Customer Use Cases ──
+    subgraph CustomerUC["Customer"]
+        direction TB
+        UC_Browse(("Browse Product"))
+        UC_Search(("Search Product"))
+        UC_Filter(("Filter Product"))
+        UC_ViewDetail(("View Product Detail"))
+        UC_Compare(("Compare Product"))
+        UC_ManageCart(("Manage Cart"))
+        UC_AddCart(("Add to Cart"))
+        UC_ManageAddress(("Manage Address"))
+        UC_Checkout(("Checkout"))
+        UC_Pay(("Payment (Omise)"))
+        UC_SelectPayMethod(("Select Payment Method"))
+        UC_TrackOrder(("Track Order"))
+        UC_OrderHistory(("Order History"))
+        UC_Review(("Write Review"))
+        UC_Notification(("Receive Notification"))
+        UC_BackInStock(("Subscribe Back-in-Stock"))
     end
 
-    Admin --- UC_ALogin
-    Admin --- UC_Dashboard
-    Admin --- UC_Category
-    Admin --- UC_Product
-    Admin --- UC_Financial
-    Admin --- UC_Inventory
+    Customer --- UC_Browse
+    Customer --- UC_Search
+    Customer --- UC_Compare
+    Customer --- UC_ManageCart
+    Customer --- UC_ManageAddress
+    Customer --- UC_Checkout
+    Customer --- UC_Pay
+    Customer --- UC_TrackOrder
+    Customer --- UC_OrderHistory
+    Customer --- UC_Review
+    Customer --- UC_Notification
+    Customer --- UC_BackInStock
+
+    UC_Browse -.->|"<<extend>>"| UC_Filter
+    UC_Search -.->|"<<extend>>"| UC_Filter
+    UC_AddCart -.->|"<<include>>"| UC_ViewDetail
+    UC_ManageCart -.->|"<<include>>"| UC_AddCart
+    UC_Checkout -.->|"<<include>>"| UC_ManageAddress
+    UC_Pay -.->|"<<include>>"| UC_SelectPayMethod
+    UC_Pay -.->|"<<include>>"| UC_Checkout
+
+    %% ── Staff Use Cases ──
+    subgraph StaffUC["Staff"]
+        direction TB
+        UC_ViewOrders(("View Order List"))
+        UC_ConfirmOrder(("Confirm Order"))
+        UC_PrepareOrder(("Prepare / Pack Order"))
+        UC_UpdateOrderStatus(("Update Order Status"))
+        UC_CheckStock(("Check Stock"))
+        UC_ReceiveProduct(("Receive Product"))
+        UC_AdjustStock(("Adjust Stock"))
+        UC_ManageStock(("Manage Stock Product"))
+        UC_ManageBundle(("Manage Bundle Set"))
+        UC_StaffDashboard(("View Dashboard"))
+    end
+
+    Staff --- UC_ViewOrders
+    Staff --- UC_ConfirmOrder
+    Staff --- UC_PrepareOrder
+    Staff --- UC_UpdateOrderStatus
+    Staff --- UC_ManageStock
+    Staff --- UC_ManageBundle
+    Staff --- UC_StaffDashboard
+
+    UC_CheckStock   -.->|"<<include>>"| UC_ManageStock
+    UC_ReceiveProduct -.->|"<<include>>"| UC_ManageStock
+    UC_AdjustStock  -.->|"<<include>>"| UC_ManageStock
+    UC_ManageBundle -.->|"<<extend>>"| UC_ManageStock
+    UC_ConfirmOrder -.->|"<<include>>"| UC_ViewOrders
+    UC_PrepareOrder -.->|"<<include>>"| UC_CheckStock
+
+    %% ── Admin Use Cases ──
+    subgraph AdminUC["Admin"]
+        direction TB
+        UC_AdminDashboard(("Admin Dashboard"))
+        UC_ManageProduct(("Manage Product"))
+        UC_ManageCategory(("Manage Category"))
+        UC_ManageBrand(("Manage Brand"))
+        UC_ManageUser(("Manage User"))
+        UC_SalesReport(("Sales Report"))
+        UC_InventoryReport(("Inventory Report"))
+        UC_FinancialReport(("Financial Report"))
+        UC_UploadImage(("Upload Product Image"))
+        UC_SetSkillLevel(("Set Skill Level / Tag"))
+    end
+
+    Admin --- UC_AdminDashboard
+    Admin --- UC_ManageProduct
+    Admin --- UC_ManageCategory
+    Admin --- UC_ManageBrand
     Admin --- UC_ManageUser
     Admin --- UC_SalesReport
+    Admin --- UC_InventoryReport
+    Admin --- UC_FinancialReport
+
+    UC_UploadImage  -.->|"<<include>>"| UC_ManageProduct
+    UC_SetSkillLevel -.->|"<<include>>"| UC_ManageProduct
+    UC_SalesReport  -.->|"<<include>>"| UC_AdminDashboard
+    UC_InventoryReport -.->|"<<include>>"| UC_AdminDashboard
+    UC_FinancialReport -.->|"<<include>>"| UC_AdminDashboard
 ```
 
 ---
@@ -367,269 +397,365 @@ flowchart LR
 classDiagram
 
     class User {
-        <<abstract>>
-        +UUID userID
-        +string email
-        +string passwordHash
-        +string firstName
-        +string lastName
-        +string phone
+        +String userId
+        +String email
+        +String passwordHash
+        +String firstName
+        +String lastName
+        +String phone
+        +Role role
         +UserStatus status
-        +datetime createAt
-        +datetime updateAt
-        +login(email, password) boolean
-        +logout() void
-        +updateProfile() void
-        +changePassword() void
-    }
-
-    class Guest {
-        +string sessionId
-        +browsProduct() void
-        +searchProduct() void
+        +DateTime createdAt
+        +DateTime updatedAt
+        +login(email: String, password: String) JWT
+        +logout(userId: String) boolean
+        +updateProfile(userId: String, data: Json) User
+        +changePassword(oldPwd: String, newPwd: String) boolean
     }
 
     class Customer {
-        +date dateOfBirth
-        +string gender
-        +datetime createAt
-        +datetime updateAt
-        +manageProfile() void
-        +viewOrderHistory() void
-        +manageAddress() void
-        +addReview() void
+        +String customerId
+        +DateTime dateOfBirth
+        +Gender gender
+        +DateTime createdAt
+        +DateTime updatedAt
+        +manageProfile(data: Json) Customer
+        +manageAddress(data: Json) Address
+        +viewOrderHistory(customerId: String) Order[]
+        +trackOrder(orderId: String) OrderStatus
+        +addReview(productId: String, rating: Int, comment: String) Review
+        +compareProducts(productIds: String[]) Product[]
+        +subscribeBackInStock(productId: String) Notification
+        +viewNotifications(customerId: String) Notification[]
     }
 
     class Staff {
-        +string position
-        +datetime createAt
-        +datetime updateAt
-        +manageProduct() void
-        +manageOrder() void
-        +manageStock() void
+        +String staffId
+        +String position
+        +DateTime createdAt
+        +DateTime updatedAt
+        +viewOrders() Order[]
+        +confirmOrder(orderId: String) Order
+        +prepareOrder(orderId: String) Order
+        +updateOrderStatus(orderId: String, status: OrderStatus) Order
+        +receivingProduct(productId: String, qty: Int) InventoryLog
+        +checkStock(productId: String) Inventory
+        +adjustStock(productId: String, qty: Int, reason: String) InventoryLog
+        +createBundleSet(bundleData: Json) Bundle
+        +updateBundleSet(bundleId: String, data: Json) Bundle
+        +viewDashboard() Json
     }
 
     class Admin {
-        +datetime createAt
-        +datetime updateAt
-        +manageUser() void
-        +viewDashboard() void
-        +manageSystem() void
+        +String adminId
+        +DateTime createdAt
+        +DateTime updatedAt
+        +manageUser(userId: String, action: String) User
+        +viewDashboard() Json
+        +createProduct(productData: Json) Product
+        +updateProduct(productId: String, data: Json) Product
+        +deleteProduct(productId: String) boolean
+        +manageCategory(action: String, data: Json) Category
+        +manageBrand(action: String, data: Json) Brand
+        +generateSalesReport(dateRange: Json) DailySalesReport[]
+        +generateInventoryReport() Json
+        +generateFinancialReport(dateRange: Json) Json
+        +manageSystem(config: Json) boolean
     }
 
     class Address {
-        +UUID addressId
-        +UUID customerId
-        +string receiverName
-        +string phone
-        +string addressLine1
-        +string addressLine2
-        +string province
-        +string city
-        +string postalCode
-        +boolean isDefault
-        +dateTime createdAt
-        +dateTime updateAt
+        +String addressId
+        +String customerId
+        +String receiverName
+        +String phone
+        +String addressLine1
+        +String addressLine2
+        +String province
+        +String city
+        +String postalCode
+        +Boolean isDefault
+        +DateTime createdAt
+        +DateTime updatedAt
+        +setAsDefault(addressId: String) Address
+        +validate(addressData: Json) boolean
     }
 
     class Cart {
-        +UUID cartId
-        +UUID customerId
-        +string sessionId
-        +datetime createAt
-        +datetime updateAt
+        +String cartId
+        +String customerId
+        +String sessionId
+        +DateTime createdAt
+        +DateTime updatedAt
+        +addItem(productId: String, qty: Int) CartItem
+        +removeItem(cartItemId: String) boolean
+        +updateItemQty(cartItemId: String, qty: Int) CartItem
+        +clear(cartId: String) boolean
+        +calculateTotal() Decimal
+        +checkout(addressId: String) Order
+        +mergeGuestCart(sessionId: String) Cart
     }
 
     class CartItem {
-        +UUID cartItemId
-        +UUID cartId
-        +UUID productId
-        +int quantity
-        +decimal price
+        +String cartItemId
+        +String cartId
+        +String productId
+        +Int quantity
+        +Decimal price
+        +updateQuantity(qty: Int) CartItem
+        +getSubtotal() Decimal
     }
 
     class Order {
-        +UUID orderId
-        +UUID customerId
-        +UUID addressId
-        +datetime orderDate
-        +string shippingAddressSnapshot
-        +decimal totalAmount
+        +String orderId
+        +String customerId
+        +String addressId
+        +DateTime orderDate
+        +Json shippingAddressSnapshot
+        +Decimal totalAmount
+        +Decimal shippingFee
+        +Decimal discountAmount
+        +Decimal grandTotal
         +OrderStatus status
-        +decimal shippingFee
-        +decimal discountAmount
-        +decimal grandTotal
-        +string remark
+        +String remark
+        +createOrder(cart: Cart, addressId: String) Order
+        +cancelOrder() Order
+        +calculateTotal() Decimal
+        +getStatus() OrderStatus
+        +getOrderItems() OrderItem[]
     }
 
     class OrderItem {
-        +UUID orderItemId
-        +UUID orderId
-        +UUID productId
-        +int quantity
-        +decimal unitPrice
-        +decimal totalPrice
+        +String orderItemId
+        +String orderId
+        +String productId
+        +Int quantity
+        +Decimal unitPrice
+        +Decimal totalPrice
+        +getSubtotal() Decimal
     }
 
     class Review {
-        +UUID reviewId
-        +UUID customerId
-        +UUID productId
-        +int rating
-        +string comment
-        +datetime createAt
+        +String reviewId
+        +String customerId
+        +String productId
+        +Int rating
+        +String comment
+        +DateTime createdAt
+        +create(customerId: String, productId: String, rating: Int, comment: String) Review
+        +update(rating: Int, comment: String) Review
+        +delete(reviewId: String) boolean
     }
 
     class Notification {
-        +UUID notificationId
-        +UUID customerId
-        +UUID productId
-        +string title
-        +string message
+        +String notificationId
+        +String customerId
+        +String productId
+        +String title
+        +String message
         +NotificationType type
         +NotificationStatus status
-        +boolean isRead
+        +Boolean isRead
+        +DateTime createdAt
+        +send(notificationId: String) boolean
+        +markAsRead(notificationId: String) Notification
+        +markAllAsRead(customerId: String) Int
     }
 
     class Payment {
-        +UUID paymentId
-        +UUID orderId
-        +string paymentMethod
-        +string provider
-        +decimal amount
+        +String paymentId
+        +String orderId
+        +PaymentMethod paymentMethod
+        +String provider
+        +Decimal amount
         +PaymentStatus status
-        +string transactionRef
-        +datetime paidAt
-        +datetime createAt
+        +String transactionRef
+        +DateTime paidAt
+        +DateTime createdAt
+        +processPayment(method: PaymentMethod, token: String) Payment
+        +refund(paymentId: String) Payment
+        +getStatus() PaymentStatus
+        +verifyWebhook(payload: Json) boolean
     }
 
     class Shipment {
-        +UUID shipmentId
-        +UUID orderId
-        +string trackingNumber
-        +string carrier
+        +String shipmentId
+        +String orderId
+        +String trackingNumber
+        +String carrier
         +ShippingStatus shippingStatus
-        +datetime shippingDate
-        +datetime deliveredDate
+        +DateTime shippingDate
+        +DateTime deliveredDate
+        +updateStatus(status: ShippingStatus) Shipment
+        +generateTrackingNumber() String
+        +getTrackingInfo() Json
     }
 
     class Product {
-        +UUID productId
-        +string name
-        +string slug
-        +string description
-        +decimal price
-        +string sku
+        +String productId
+        +String name
+        +String slug
+        +String description
+        +Decimal price
+        +String sku
         +ProductStatus status
-        +UUID brandId
-        +UUID categoryId
-        +datetime createAt
-        +datetime updateAt
-        +updateStock(quantity: int) void
+        +SkillLevel skillLevel
+        +String brandId
+        +String categoryId
+        +DateTime createdAt
+        +DateTime updatedAt
+        +generateSlug(name: String) String
+        +getImages() ProductImage[]
+        +getInventory() Inventory
+        +getBundles() Bundle[]
+        +getReviews() Review[]
+        +getAverageRating() Decimal
+        +getBeginnerRecommendations() Product[]
+        +getCompatibleProducts() Product[]
+        +updateStock(quantity: Int, action: InventoryAction) InventoryLog
     }
 
     class Category {
-        +UUID categoryId
-        +string name
-        +string description
+        +String categoryId
+        +String name
+        +String description
+        +getProducts() Product[]
+        +getProductCount() Int
     }
 
     class Brand {
-        +UUID brandId
-        +string name
-        +string description
+        +String brandId
+        +String name
+        +String description
+        +getProducts() Product[]
     }
 
     class Inventory {
-        +UUID inventoryId
-        +UUID productId
-        +int quantity
-        +int reservedQuantity
-        +dateTime updatedAt
+        +String inventoryId
+        +String productId
+        +Int quantity
+        +Int reservedQuantity
+        +DateTime updatedAt
+        +checkAvailable(qty: Int) boolean
+        +getAvailableQty() Int
+        +reserve(qty: Int) Inventory
+        +release(qty: Int) Inventory
+        +deduct(qty: Int) Inventory
+        +isOutOfStock() boolean
     }
 
     class InventoryLog {
-        +UUID id
-        +UUID productId
-        +int beforeQty
-        +int afterQty
-        +int changeQty
-        +string action
-        +UUID staffId
-        +datetime createAt
+        +String id
+        +String productId
+        +Int beforeQty
+        +Int afterQty
+        +Int changeQty
+        +InventoryAction action
+        +String staffId
+        +DateTime createdAt
+        +create(productId: String, before: Int, after: Int, action: InventoryAction, staffId: String) InventoryLog
+        +getHistory(productId: String) InventoryLog[]
     }
 
     class ProductImage {
-        +UUID imageId
-        +UUID productId
-        +string imageUrl
-        +boolean isPrimary
-        +int sortOrder
-        +dateTime createdAt
+        +String imageId
+        +String productId
+        +String imageUrl
+        +Boolean isPrimary
+        +Int sortOrder
+        +DateTime createdAt
+        +upload(file: String) ProductImage
+        +delete(imageId: String) boolean
+        +reorder(sortOrder: Int) ProductImage
+        +setPrimary(imageId: String) ProductImage
     }
 
     class Bundle {
-        +UUID bundleId
-        +string name
-        +string description
-        +string discountType
-        +decimal discountValue
-        +dateTime createdAt
-        +dateTime updateAt
+        +String bundleId
+        +String name
+        +String description
+        +DiscountType discountType
+        +Decimal discountValue
+        +DateTime createdAt
+        +DateTime updatedAt
+        +calculateDiscount(originalPrice: Decimal) Decimal
+        +getBundlePrice() Decimal
+        +getItems() BundleItem[]
+        +checkAllInStock() boolean
+        +isAvailable() boolean
     }
 
     class BundleItem {
-        +UUID bundleItemId
-        +UUID bundleId
-        +UUID productId
-        +int quantity
+        +String bundleItemId
+        +String bundleId
+        +String productId
+        +Int quantity
+        +validate() boolean
+        +checkStock() boolean
     }
 
-    %% Inheritance
-    Customer --|> User
-    Staff --|> User
-    Admin --|> User
+    class DailySalesReport {
+        +String id
+        +DateTime reportDate
+        +Int totalOrders
+        +Decimal totalRevenue
+        +DateTime updatedAt
+        +generateDaily(date: DateTime) DailySalesReport
+        +getReportByDateRange(startDate: DateTime, endDate: DateTime) DailySalesReport[]
+        +calculateTotalRevenue() Decimal
+    }
 
-    %% Customer relations
-    Customer "1" --> "0..*" Address
-    Customer "1" --> "0..1" Cart
-    Customer "1" --> "0..*" Order
-    Customer "1" --> "0..*" Review
-    Customer "1" --> "0..*" Notification
+    class SystemAuditLog {
+        +String logId
+        +String eventType
+        +String referenceId
+        +Json payload
+        +DateTime createdAt
+        +logEvent(type: String, refId: String, data: Json) SystemAuditLog
+        +getLogsByType(type: String, limit: Int) SystemAuditLog[]
+    }
 
-    %% Guest relations
-    Guest "1" --> "0..1" Cart
+    %% ── Inheritance ──
+    User <|-- Customer
+    User <|-- Staff
+    User <|-- Admin
 
-    %% Cart relations
-    Cart "1" --> "0..*" CartItem
-    CartItem "0..*" --> "1" Product
+    %% ── Customer relations ──
+    Customer "1"    --> "0..*" Address
+    Customer "1"    --> "0..1" Cart
+    Customer "1"    --> "0..*" Order
+    Customer "1"    --> "0..*" Review
+    Customer "1"    --> "0..*" Notification
 
-    %% Order relations
-    Order "1" --> "1..*" OrderItem
-    Order "1" --> "0..*" Payment
-    Order "1" --> "0..*" Shipment
-    Order "0..*" --> "1" Address
-    OrderItem "0..*" --> "1" Product
+    %% ── Cart relations ──
+    Cart     "1"    --> "0..*" CartItem
+    CartItem "0..*" --> "1"    Product
 
-    %% Review relation
+    %% ── Order relations ──
+    Order    "1"    --> "1..*" OrderItem
+    Order    "1"    --> "0..*" Payment
+    Order    "1"    --> "0..1" Shipment
+    Order    "0..*" --> "1"    Address
+    OrderItem "0..*" --> "1"   Product
+
+    %% ── Review relation ──
     Review "0..*" --> "1" Product
 
-    %% Notification relation
+    %% ── Notification relation ──
     Notification "0..*" --> "0..1" Product
 
-    %% Product relations
-    Product "0..*" --> "1" Category
-    Product "0..*" --> "1" Brand
-    Product "1" --> "1" Inventory
-    Product "1" --> "0..*" ProductImage
-    Product "1" --> "0..*" InventoryLog
+    %% ── Product relations ──
+    Product "0..*" --> "1"    Category
+    Product "0..*" --> "1"    Brand
+    Product "1"    --> "1"    Inventory
+    Product "1"    --> "0..*" ProductImage
+    Product "1"    --> "0..*" InventoryLog
 
-    %% Inventory log relation
+    %% ── InventoryLog ──
     InventoryLog "0..*" --> "0..1" Staff
 
-    %% Bundle relations
-    Bundle "1" --> "1..*" BundleItem
-    BundleItem "0..*" --> "1" Product
+    %% ── Bundle relations ──
+    Bundle     "1"    --> "1..*" BundleItem
+    BundleItem "0..*" --> "1"    Product
 ```
 
 ---
@@ -926,6 +1052,7 @@ flowchart TB
     AdminPortal --> APIGW
     StaffPortal --> APIGW
  
+    APIGW --> AuthSvc
     APIGW --> UserSvc
     APIGW --> ProductSvc
     APIGW --> InventorySvc
@@ -933,25 +1060,33 @@ flowchart TB
     APIGW --> CartSvc
     APIGW --> PaymentSvc
     APIGW --> NotifSvc
+    APIGW --> ReportSvc
  
-    CartSvc -- "Checkout" --> OrderSvc
-    OrderSvc -- "check / reserve / release stock" --> InventorySvc
-    ProductSvc -- "validate stock ตอนสร้าง bundle" --> InventorySvc
-    PaymentSvc -- "Process / stock event" --> OrderSvc
-    OrderSvc -- "data order selled" --> ReportSvc
-    CartSvc -- "data Successful Transactions" --> ReportSvc
-    InventorySvc -- "Stock Inventory" --> ReportSvc
-    UserSvc -- "User Growth Rate" --> ReportSvc
+    %% Synchronous Inter-service Communication (REST ต้องวิ่งผ่าน API Gateway ห้ามคุยตรง!)
+    CartSvc -- "Checkout (Sync)" --> APIGW
+    OrderSvc -- "check / reserve / release stock (Sync)" --> APIGW
+    ProductSvc -- "validate stock ตอนสร้าง bundle (Sync)" --> APIGW
+    PaymentSvc -- "Process / stock event (Sync)" --> APIGW
+    
     AuthSvc -. "auth" .-> Kinde
     PaymentSvc -. "charge" .-> Omise
-    NotifSvc -. "email" .-> Resend
  
+    %% External Webhooks (Syncing data back from 3rd Party)
+    Kinde -- "webhook POST (sync user info)" --> UserSvc
+    Omise -- "webhook POST (payment result)" --> PaymentSvc
+ 
+    %% Asynchronous Event Publishing (Upstash QStash)
     InventorySvc -- "publish stock.updated" --> QStash
     OrderSvc -- "publish order.status_changed" --> QStash
     PaymentSvc -- "publish payment.success" --> QStash
-    QStash -- "webhook POST" --> NotifSvc
-    QStash -- "webhook POST" --> ReportSvc
+    ProductSvc -- "publish product.updated" --> QStash
+    UserSvc -- "publish user.created" --> QStash
  
+    %% Webhook Subscribers (Internal Async)
+    QStash -- "webhook POST (fan-out)\n(ส่งอีเมล/แจ้งเตือน)" --> NotifSvc
+    QStash -- "webhook POST (fan-out)\n(อัปเดตยอด Report และ SystemAuditLog)" --> ReportSvc
+ 
+    %% Data Layer Connections
     UserSvc --> UserDB
     ProductSvc --> ProductDB
     InventorySvc --> InventoryDB
