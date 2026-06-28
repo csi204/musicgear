@@ -11,7 +11,7 @@
  * Please import the `PrismaClient` class from the `client.ts` file instead.
  */
 
-import * as runtime from "@prisma/client/runtime/client"
+import * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import type * as Prisma from "./prismaNamespace.ts"
 
 
@@ -20,7 +20,7 @@ const config: runtime.GetPrismaClientConfig = {
   "clientVersion": "7.8.0",
   "engineVersion": "3c6e192761c0362d496ed980de936e2f3cebcd3a",
   "activeProvider": "postgresql",
-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Get a free hosted Postgres database in seconds: `npx create-db`\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\nmodel DailySalesReport {\n  id           String   @id @default(uuid()) @db.Uuid\n  reportDate   DateTime @unique @db.Date\n  totalOrders  Int      @default(0)\n  totalRevenue Decimal  @default(0.00) @db.Decimal(10, 2)\n  updatedAt    DateTime @default(now()) @updatedAt\n}\n\nmodel SystemAuditLog {\n  logId       String   @id @default(uuid()) @db.Uuid\n  eventType   String // เช่น \"order_created\", \"inventory_adjusted\"\n  referenceId String   @db.Uuid // ID ของ Order หรือ Product\n  payload     Json // เก็บข้อมูลดิบที่ได้จาก QStash เผื่อใช้วิเคราะห์ย้อนหลัง\n  createdAt   DateTime @default(now())\n}\n",
+  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Get a free hosted Postgres database in seconds: `npx create-db`\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../generated/prisma\"\n  runtime  = \"workerd\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\nmodel DailySalesReport {\n  id           String   @id @default(uuid()) @db.Uuid\n  reportDate   DateTime @unique @db.Date\n  totalOrders  Int      @default(0)\n  totalRevenue Decimal  @default(0.00) @db.Decimal(10, 2)\n  updatedAt    DateTime @default(now()) @updatedAt\n}\n\nmodel SystemAuditLog {\n  logId       String   @id @default(uuid()) @db.Uuid\n  eventType   String // เช่น \"order_created\", \"inventory_adjusted\"\n  referenceId String   @db.Uuid // ID ของ Order หรือ Product\n  payload     Json // เก็บข้อมูลดิบที่ได้จาก QStash เผื่อใช้วิเคราะห์ย้อนหลัง\n  createdAt   DateTime @default(now())\n}\n",
   "runtimeDataModel": {
     "models": {},
     "enums": {},
@@ -37,22 +37,18 @@ config.parameterizationSchema = {
   strings: JSON.parse("[\"where\",\"DailySalesReport.findUnique\",\"DailySalesReport.findUniqueOrThrow\",\"orderBy\",\"cursor\",\"DailySalesReport.findFirst\",\"DailySalesReport.findFirstOrThrow\",\"DailySalesReport.findMany\",\"data\",\"DailySalesReport.createOne\",\"DailySalesReport.createMany\",\"DailySalesReport.createManyAndReturn\",\"DailySalesReport.updateOne\",\"DailySalesReport.updateMany\",\"DailySalesReport.updateManyAndReturn\",\"create\",\"update\",\"DailySalesReport.upsertOne\",\"DailySalesReport.deleteOne\",\"DailySalesReport.deleteMany\",\"having\",\"_count\",\"_avg\",\"_sum\",\"_min\",\"_max\",\"DailySalesReport.groupBy\",\"DailySalesReport.aggregate\",\"SystemAuditLog.findUnique\",\"SystemAuditLog.findUniqueOrThrow\",\"SystemAuditLog.findFirst\",\"SystemAuditLog.findFirstOrThrow\",\"SystemAuditLog.findMany\",\"SystemAuditLog.createOne\",\"SystemAuditLog.createMany\",\"SystemAuditLog.createManyAndReturn\",\"SystemAuditLog.updateOne\",\"SystemAuditLog.updateMany\",\"SystemAuditLog.updateManyAndReturn\",\"SystemAuditLog.upsertOne\",\"SystemAuditLog.deleteOne\",\"SystemAuditLog.deleteMany\",\"SystemAuditLog.groupBy\",\"SystemAuditLog.aggregate\",\"AND\",\"OR\",\"NOT\",\"logId\",\"eventType\",\"referenceId\",\"payload\",\"createdAt\",\"equals\",\"in\",\"notIn\",\"lt\",\"lte\",\"gt\",\"gte\",\"not\",\"string_contains\",\"string_starts_with\",\"string_ends_with\",\"array_starts_with\",\"array_ends_with\",\"array_contains\",\"contains\",\"startsWith\",\"endsWith\",\"id\",\"reportDate\",\"totalOrders\",\"totalRevenue\",\"updatedAt\",\"set\",\"increment\",\"decrement\",\"multiply\",\"divide\"]"),
   graph: "WhMgCCwAAEwAMC0AAAQAEC4AAEwAMEUBAAAAAUZAAAAAAUcCAE0AIUgQAE4AIUlAAEMAIQEAAAABACABAAAAAQAgCCwAAEwAMC0AAAQAEC4AAEwAMEUBAEAAIUZAAEMAIUcCAE0AIUgQAE4AIUlAAEMAIQADAAAABAAgAwAABQAwBAAAAQAgAwAAAAQAIAMAAAUAMAQAAAEAIAMAAAAEACADAAAFADAEAAABACAFRQEAAAABRkAAAAABRwIAAAABSBAAAAABSUAAAAABAQgAAAkAIAVFAQAAAAFGQAAAAAFHAgAAAAFIEAAAAAFJQAAAAAEBCAAACwAwAQgAAAsAMAVFAQBSACFGQABTACFHAgBZACFIEABaACFJQABTACECAAAAAQAgCAAADgAgBUUBAFIAIUZAAFMAIUcCAFkAIUgQAFoAIUlAAFMAIQIAAAAEACAIAAAQACACAAAABAAgCAAAEAAgAwAAAAEAIA8AAAkAIBAAAA4AIAEAAAABACABAAAABAAgBRUAAFQAIBYAAFUAIBcAAFgAIBgAAFcAIBkAAFYAIAgsAABFADAtAAAXABAuAABFADBFAQA0ACFGQAA3ACFHAgBGACFIEABHACFJQAA3ACEDAAAABAAgAwAAFgAwFAAAFwAgAwAAAAQAIAMAAAUAMAQAAAEAIAgsAAA_ADAtAAAdABAuAAA_ADAvAQAAAAEwAQBBACExAQBAACEyAABCACAzQABDACEBAAAAGgAgAQAAABoAIAgsAAA_ADAtAAAdABAuAAA_ADAvAQBAACEwAQBBACExAQBAACEyAABCACAzQABDACEAAwAAAB0AIAMAAB4AMAQAABoAIAMAAAAdACADAAAeADAEAAAaACADAAAAHQAgAwAAHgAwBAAAGgAgBS8BAAAAATABAAAAATEBAAAAATKAAAAAATNAAAAAAQEIAAAiACAFLwEAAAABMAEAAAABMQEAAAABMoAAAAABM0AAAAABAQgAACQAMAEIAAAkADAFLwEAUgAhMAEAUgAhMQEAUgAhMoAAAAABM0AAUwAhAgAAABoAIAgAACcAIAUvAQBSACEwAQBSACExAQBSACEygAAAAAEzQABTACECAAAAHQAgCAAAKQAgAgAAAB0AIAgAACkAIAMAAAAaACAPAAAiACAQAAAnACABAAAAGgAgAQAAAB0AIAMVAABPACAYAABRACAZAABQACAILAAAMwAwLQAAMAAQLgAAMwAwLwEANAAhMAEANQAhMQEANAAhMgAANgAgM0AANwAhAwAAAB0AIAMAAC8AMBQAADAAIAMAAAAdACADAAAeADAEAAAaACAILAAAMwAwLQAAMAAQLgAAMwAwLwEANAAhMAEANQAhMQEANAAhMgAANgAgM0AANwAhCxUAADkAIBgAAD0AIBkAAD0AIDQBAAAAATUBAAAABDYBAAAABDcBAAAAATgBAAAAATkBAAAAAToBAAAAATsBAD4AIQ4VAAA5ACAYAAA9ACAZAAA9ACA0AQAAAAE1AQAAAAQ2AQAAAAQ3AQAAAAE4AQAAAAE5AQAAAAE6AQAAAAE7AQA8ACFCAQAAAAFDAQAAAAFEAQAAAAEPFQAAOQAgGAAAOwAgGQAAOwAgNIAAAAABN4AAAAABOIAAAAABOYAAAAABOoAAAAABO4AAAAABPAEAAAABPQEAAAABPgEAAAABP4AAAAABQIAAAAABQYAAAAABCxUAADkAIBgAADoAIBkAADoAIDRAAAAAATVAAAAABDZAAAAABDdAAAAAAThAAAAAATlAAAAAATpAAAAAATtAADgAIQsVAAA5ACAYAAA6ACAZAAA6ACA0QAAAAAE1QAAAAAQ2QAAAAAQ3QAAAAAE4QAAAAAE5QAAAAAE6QAAAAAE7QAA4ACEINAIAAAABNQIAAAAENgIAAAAENwIAAAABOAIAAAABOQIAAAABOgIAAAABOwIAOQAhCDRAAAAAATVAAAAABDZAAAAABDdAAAAAAThAAAAAATlAAAAAATpAAAAAATtAADoAIQw0gAAAAAE3gAAAAAE4gAAAAAE5gAAAAAE6gAAAAAE7gAAAAAE8AQAAAAE9AQAAAAE-AQAAAAE_gAAAAAFAgAAAAAFBgAAAAAEOFQAAOQAgGAAAPQAgGQAAPQAgNAEAAAABNQEAAAAENgEAAAAENwEAAAABOAEAAAABOQEAAAABOgEAAAABOwEAPAAhQgEAAAABQwEAAAABRAEAAAABCzQBAAAAATUBAAAABDYBAAAABDcBAAAAATgBAAAAATkBAAAAAToBAAAAATsBAD0AIUIBAAAAAUMBAAAAAUQBAAAAAQsVAAA5ACAYAAA9ACAZAAA9ACA0AQAAAAE1AQAAAAQ2AQAAAAQ3AQAAAAE4AQAAAAE5AQAAAAE6AQAAAAE7AQA-ACEILAAAPwAwLQAAHQAQLgAAPwAwLwEAQAAhMAEAQQAhMQEAQAAhMgAAQgAgM0AAQwAhCDQBAAAAATUBAAAABDYBAAAABDcBAAAAATgBAAAAATkBAAAAAToBAAAAATsBAEQAIQs0AQAAAAE1AQAAAAQ2AQAAAAQ3AQAAAAE4AQAAAAE5AQAAAAE6AQAAAAE7AQA9ACFCAQAAAAFDAQAAAAFEAQAAAAEMNIAAAAABN4AAAAABOIAAAAABOYAAAAABOoAAAAABO4AAAAABPAEAAAABPQEAAAABPgEAAAABP4AAAAABQIAAAAABQYAAAAABCDRAAAAAATVAAAAABDZAAAAABDdAAAAAAThAAAAAATlAAAAAATpAAAAAATtAADoAIQg0AQAAAAE1AQAAAAQ2AQAAAAQ3AQAAAAE4AQAAAAE5AQAAAAE6AQAAAAE7AQBEACEILAAARQAwLQAAFwAQLgAARQAwRQEANAAhRkAANwAhRwIARgAhSBAARwAhSUAANwAhDRUAADkAIBYAAEsAIBcAADkAIBgAADkAIBkAADkAIDQCAAAAATUCAAAABDYCAAAABDcCAAAAATgCAAAAATkCAAAAAToCAAAAATsCAEoAIQ0VAAA5ACAWAABJACAXAABJACAYAABJACAZAABJACA0EAAAAAE1EAAAAAQ2EAAAAAQ3EAAAAAE4EAAAAAE5EAAAAAE6EAAAAAE7EABIACENFQAAOQAgFgAASQAgFwAASQAgGAAASQAgGQAASQAgNBAAAAABNRAAAAAENhAAAAAENxAAAAABOBAAAAABORAAAAABOhAAAAABOxAASAAhCDQQAAAAATUQAAAABDYQAAAABDcQAAAAATgQAAAAATkQAAAAAToQAAAAATsQAEkAIQ0VAAA5ACAWAABLACAXAAA5ACAYAAA5ACAZAAA5ACA0AgAAAAE1AgAAAAQ2AgAAAAQ3AgAAAAE4AgAAAAE5AgAAAAE6AgAAAAE7AgBKACEINAgAAAABNQgAAAAENggAAAAENwgAAAABOAgAAAABOQgAAAABOggAAAABOwgASwAhCCwAAEwAMC0AAAQAEC4AAEwAMEUBAEAAIUZAAEMAIUcCAE0AIUgQAE4AIUlAAEMAIQg0AgAAAAE1AgAAAAQ2AgAAAAQ3AgAAAAE4AgAAAAE5AgAAAAE6AgAAAAE7AgA5ACEINBAAAAABNRAAAAAENhAAAAAENxAAAAABOBAAAAABORAAAAABOhAAAAABOxAASQAhAAAAAUoBAAAAAQFKQAAAAAEAAAAAAAVKAgAAAAFLAgAAAAFMAgAAAAFNAgAAAAFOAgAAAAEFShAAAAABSxAAAAABTBAAAAABTRAAAAABThAAAAABAAAAAAUVAAYWAAcXAAgYAAkZAAoAAAAAAAUVAAYWAAcXAAgYAAkZAAoAAAADFQAQGAARGQASAAAAAxUAEBgAERkAEgECAQIDAQUGAQYHAQcIAQkKAQoMAgsNAwwPAQ0RAg4SBBETARIUARMVAhoYBRsZCxwbDB0cDB4fDB8gDCAhDCEjDCIlAiMmDSQoDCUqAiYrDicsDCgtDCkuAioxDysyEw"
 }
-
-async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Module> {
-  const { Buffer } = await import('node:buffer')
-  const wasmArray = Buffer.from(wasmBase64, 'base64')
-  return new WebAssembly.Module(wasmArray)
-}
-
 config.compilerWasm = {
-  getRuntime: async () => await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.mjs"),
+  getRuntime: async () => await import("./query_compiler_fast_bg.js"),
 
   getQueryCompilerWasmModule: async () => {
-    const { wasm } = await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs")
-    return await decodeBase64AsWasm(wasm)
+    const { default: module } = await import("./query_compiler_fast_bg.wasm?module")
+    return module
   },
 
   importName: "./query_compiler_fast_bg.js"
+}
+if (typeof globalThis !== 'undefined' && globalThis['DEBUG'] || (typeof process !== 'undefined' && process.env && process.env.DEBUG) || undefined) {
+  runtime.Debug.enable(typeof globalThis !== 'undefined' && globalThis['DEBUG'] || (typeof process !== 'undefined' && process.env && process.env.DEBUG) || undefined)
 }
 
 

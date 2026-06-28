@@ -28,6 +28,21 @@ export const paymentSuccessEvent = z.object({
   event: z.literal("payment.success"),
   orderId: uuidSchema,
   customerId: uuidSchema,
+  amount: z.number(),
+});
+
+export const addressCreatedEvent = z.object({
+  event: z.literal("address.created"),
+  addressId: uuidSchema,
+  customerId: uuidSchema,
+  addressData: z.any(), // Add specific fields if needed
+});
+
+export const addressUpdatedEvent = z.object({
+  event: z.literal("address.updated"),
+  addressId: uuidSchema,
+  customerId: uuidSchema,
+  addressData: z.any(),
 });
 
 // subscriber ทั้งสองตัวที่ต้องฟัง event ชุดนี้ (QStash Topic fan-out)
@@ -87,4 +102,6 @@ export const qstashWebhookSchema = z.discriminatedUnion("event", [
   orderStatusChangedEvent,
   paymentSuccessEvent,
   stockUpdatedEvent,
+  addressCreatedEvent,
+  addressUpdatedEvent,
 ]);
