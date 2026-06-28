@@ -8,7 +8,7 @@
 @source "../**/*.{ts,tsx}";
 
 @theme inline {
-    --font-heading: var(--font-sans), var(--font-thai), sans-serif;
+    --font-heading: var(--font-outfit), var(--font-anuphan), sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,6 +48,15 @@
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
     --font-sans: var(--font-sans);
+
+    /* Electric Stage Custom Colors */
+    --color-jet-black: #0B0B0E;
+    --color-electric-blue: #2F5DFF;
+    --color-amber-spotlight: #FF8A3D;
+    --color-warm-offwhite: #F5F3EE;
+    --color-slate-gray: #6B6B74;
+    --color-success-green: #2BBF7A;
+    --color-alert-red: #E54848;
 }
 
 :root {
@@ -126,4 +135,62 @@
   body {
     @apply bg-background text-foreground;
     }
+}
+
+/* ─── Cart Drawer Animations ─── */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.35s cubic-bezier(0.32, 0, 0.15, 1) both;
+}
+
+.animate-slide-out-right {
+  animation: slideOutRight 0.3s cubic-bezier(0.32, 0, 0.15, 1) both;
+}
+
+.animate-fade-in {
+  animation: fadeInOverlay 0.25s ease both;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s ease both;
 }
