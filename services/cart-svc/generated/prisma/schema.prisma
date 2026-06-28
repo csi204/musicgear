@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Cart {
+  cartId     String   @id @default(uuid()) @db.Uuid
+  customerId String?  @db.Uuid // Soft ref to user-svc
+  sessionId  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  items CartItem[]
+}
+
+model CartItem {
+  cartItemId String  @id @default(uuid()) @db.Uuid
+  cartId     String  @db.Uuid
+  productId  String  @db.Uuid // Soft ref to product-svc
+  quantity   Int
+  price      Decimal @db.Decimal(10, 2)
+
+  cart Cart @relation(fields: [cartId], references: [cartId])
+}

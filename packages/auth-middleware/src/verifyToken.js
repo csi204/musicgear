@@ -24,6 +24,20 @@ export function createAuthMiddleware(kindeDomain, options = {}) {
       return c.json({ error: { code: "UNAUTHORIZED" } }, 401);
     }
 
+    // Support local testing with Mock Token
+    if (token.startsWith("mock-")) {
+      try {
+        const base64Part = token.substring(5);
+        const rawJson = atob(base64Part.replace(/-/g, "+").replace(/_/g, "/"));
+        const payload = JSON.parse(rawJson);
+        c.set("user", payload);
+        return await next();
+      } catch (err) {
+        console.error("[auth-middleware] Invalid mock token:", err);
+        return c.json({ error: { code: "UNAUTHORIZED", message: "Invalid mock token format" } }, 401);
+      }
+    }
+
     try {
       const verifyOptions = { issuer };
       if (options.clientId) {

@@ -1,13 +1,34 @@
-import Link from "next/link";
+import { Navbar } from "../../components/navbar";
+import { Footer } from "../../components/footer";
+import { ProductListClient } from "./product-list-client";
+import { Suspense } from "react";
 
-export default function ProductsPage() {
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; brand?: string }>;
+}) {
+  const resolvedParams = await searchParams;
+  const category = resolvedParams.category;
+  const brand = resolvedParams.brand;
+
+  // Default to guitars only if both category and brand are missing
+  const activeCategory = !category && !brand ? "guitars" : category;
+
   return (
-    <div className="flex min-h-svh flex-col gap-4 p-6 text-sm">
-      <h1 className="font-medium">สินค้า</h1>
-      <p>หน้านี้เปิดให้ guest ดูได้โดยไม่ต้อง login</p>
-      <Link className="text-primary underline" href="/">
-        กลับหน้าแรก
-      </Link>
+    <div className="min-h-screen bg-white text-neutral-900 flex flex-col">
+      {/* Header / Navigation bar */}
+      <Navbar />
+      
+      {/* Main page content wrapper */}
+      <main className="flex-grow">
+        <Suspense fallback={<div className="p-12 text-center text-slate-gray font-medium">กำลังโหลดสินค้า...</div>}>
+          <ProductListClient initialCategory={activeCategory} initialBrand={brand} />
+        </Suspense>
+      </main>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

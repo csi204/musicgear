@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  packed
+  shipped
+  delivered
+  cancelled
+  refunded
+}
+
+enum ShippingStatus {
+  preparing
+  shipped
+  in_transit
+  delivered
+  returned
+}
+
+model Order {
+  orderId                 String      @id @default(uuid()) @db.Uuid
+  customerId              String      @db.Uuid // Soft ref
+  addressId               String      @db.Uuid // Soft ref
+  orderDate               DateTime    @default(now())
+  shippingAddressSnapshot Json
+  totalAmount             Decimal     @db.Decimal(10, 2)
+  shippingFee             Decimal     @default(0) @db.Decimal(10, 2)
+  discountAmount          Decimal     @default(0) @db.Decimal(10, 2)
+  grandTotal              Decimal     @db.Decimal(10, 2)
+  status                  OrderStatus @default(pending)
+  remark                  String?
+
+  items    OrderItem[]
+  shipment Shipment?
+}
+
+model OrderItem {
+  orderItemId String  @id @default(uuid()) @db.Uuid
+  orderId     String  @db.Uuid
+  productId   String  @db.Uuid // Soft ref
+  quantity    Int
+  unitPrice   Decimal @db.Decimal(10, 2)
+  totalPrice  Decimal @db.Decimal(10, 2)
+
+  order Order @relation(fields: [orderId], references: [orderId])
+}
+
+model Shipment {
+  shipmentId     String         @id @default(uuid()) @db.Uuid
+  orderId        String         @unique @db.Uuid
+  trackingNumber String?
+  carrier        String?
+  shippingStatus ShippingStatus @default(preparing)
+  shippingDate   DateTime?
+  deliveredDate  DateTime?
+
+  order Order @relation(fields: [orderId], references: [orderId])
+}

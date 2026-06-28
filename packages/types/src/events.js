@@ -94,9 +94,14 @@ export const adjustStockSchema = z.object({
   staffId: uuidSchema.optional(),
 });
 
+export const productCreatedEvent = z.object({
+  event: z.literal("product.created"),
+  productId: uuidSchema,
+});
+
 // ---------------------------------------------------------------------------
-// QStash Webhook Payload (ใช้ใน notification-svc)
-// รวม 3 event types: 2 จากบุญ + 1 จากเดียร์ (discriminated union)
+// QStash Webhook Payload (ใช้ใน notification-svc และ inventory-svc)
+// รวม 4 event types: 2 จากบุญ + 2 จากเดียร์ (discriminated union)
 // ---------------------------------------------------------------------------
 export const qstashWebhookSchema = z.discriminatedUnion("event", [
   orderStatusChangedEvent,
@@ -104,4 +109,5 @@ export const qstashWebhookSchema = z.discriminatedUnion("event", [
   stockUpdatedEvent,
   addressCreatedEvent,
   addressUpdatedEvent,
+  productCreatedEvent,
 ]);
