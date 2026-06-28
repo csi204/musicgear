@@ -7,12 +7,10 @@
   "dev": {
     "port": 8797
   },
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
+  "vars": {
+    "QSTASH_URL": "https://qstash-us-east-1.upstash.io",
+    "NOTIFICATION_SVC_URL": "https://notification-svc.thunderwolf2209.workers.dev"
+  },
   // "kv_namespaces": [
   //   {
   //     "binding": "MY_KV_NAMESPACE",

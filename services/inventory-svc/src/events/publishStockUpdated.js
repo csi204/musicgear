@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Publish `stock.updated` event ไปยัง QStash
  * เรียกเมื่อ quantity ของสินค้าตัวใดตัวหนึ่งลดเหลือ 0 หลัง sale-deduct
  *
@@ -15,7 +15,11 @@
 export async function publishStockUpdated(env, productId, beforeQty, afterQty) {
   const qstashUrl = env.QSTASH_URL;
   const qstashToken = env.QSTASH_TOKEN;
-  const subscriberUrl = `${env.NOTIFICATION_SVC_URL}/webhooks/qstash`;
+  let cleanNotificationUrl = env.NOTIFICATION_SVC_URL || "";
+  if (cleanNotificationUrl.endsWith("/")) {
+    cleanNotificationUrl = cleanNotificationUrl.slice(0, -1);
+  }
+  const subscriberUrl = `${cleanNotificationUrl}/webhooks/qstash`;
 
   if (!qstashUrl || !qstashToken || !env.NOTIFICATION_SVC_URL) {
     console.warn("[publishStockUpdated] QSTASH_URL / QSTASH_TOKEN / NOTIFICATION_SVC_URL not set — skipping publish");
@@ -29,7 +33,7 @@ export async function publishStockUpdated(env, productId, beforeQty, afterQty) {
     afterQty,
   };
 
-  const res = await fetch(`${qstashUrl}/v2/publish/${encodeURIComponent(subscriberUrl)}`, {
+  const res = await fetch(`${qstashUrl}/v2/publish/${subscriberUrl}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${qstashToken}`,

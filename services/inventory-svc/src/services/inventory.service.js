@@ -306,3 +306,30 @@ export async function adjustStock(db, productId, changeQty, action, staffId, env
 
   return { adjusted: true, productId, beforeQty, afterQty };
 }
+
+// ---------------------------------------------------------------------------
+// initializeInventory — สร้างข้อมูลสต็อกสินค้าใหม่ให้เป็น 0 (Idempotent)
+// ---------------------------------------------------------------------------
+/**
+ * @param {import("../../generated/prisma/client.js").PrismaClient} db
+ * @param {string} productId
+ */
+export async function initializeInventory(db, productId) {
+  const existing = await db.inventory.findUnique({
+    where: { productId },
+  });
+
+  if (existing) {
+    console.info(`[inventory-svc] Inventory already initialized for product: ${productId}`);
+    return existing;
+  }
+
+  console.info(`[inventory-svc] Initializing inventory to 0 for product: ${productId}`);
+  return await db.inventory.create({
+    data: {
+      productId,
+      quantity: 0,
+      reservedQuantity: 0,
+    },
+  });
+}
