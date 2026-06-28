@@ -13,12 +13,10 @@
       "bucket_name": "musicgear-product-images"
     }
   ],
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
+  "vars": {
+    "QSTASH_URL": "https://qstash-us-east-1.upstash.io",
+    "INVENTORY_SVC_URL": "https://inventory-svc.thunderwolf2209.workers.dev"
+  },
   // "kv_namespaces": [
   //   {
   //     "binding": "MY_KV_NAMESPACE",
