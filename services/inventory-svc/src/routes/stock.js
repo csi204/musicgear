@@ -15,6 +15,7 @@ import {
   saleDeductStock,
   adjustStock,
 } from "../services/inventory.service.js";
+import { createRoleMiddleware } from "@musicgear/auth-middleware";
 
 export const stockRoutes = new Hono();
 
@@ -122,6 +123,7 @@ stockRoutes.post(
 // ──────────────────────────────────────────────────────────────────────────────
 stockRoutes.post(
   "/adjust",
+  createRoleMiddleware(["staff", "admin"]),
   zValidator("json", adjustStockSchema, (result, c) => {
     if (!result.success) {
       return c.json({ error: { code: "VALIDATION_ERROR", message: result.error.message } }, 400);
