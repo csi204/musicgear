@@ -9,7 +9,7 @@ const AUTH_STORAGE_KEY = "mg_auth";
 const SESSION_COOKIE = "mg_session";
 
 export function getAuthBaseUrl() {
-  return process.env.NEXT_PUBLIC_AUTH_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8787";
+  return process.env.NEXT_PUBLIC_AUTH_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8788";
 }
 
 export function getApiBaseUrl() {

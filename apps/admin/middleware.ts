@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 function buildLoginRedirect(request: NextRequest) {
-  const authBase = process.env.NEXT_PUBLIC_AUTH_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8787";
+  const authBase = process.env.NEXT_PUBLIC_AUTH_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8788";
   const origin = request.nextUrl.origin.replace("0.0.0.0", "127.0.0.1");
   const redirectUri = `${origin}/auth/callback`;
   const loginUrl = new URL(`${authBase}/auth/login`);
