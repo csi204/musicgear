@@ -28,3 +28,25 @@ model SystemAuditLog {
   payload     Json     // เก็บข้อมูลดิบที่ได้จาก QStash เผื่อใช้วิเคราะห์ย้อนหลัง
   createdAt   DateTime @default(now())
 }
+
+model ProductSalesSnapshot {
+  id           String   @id @default(uuid()) @db.Uuid
+  reportDate   DateTime @db.Date
+  productId    String   @db.Uuid
+  productName  String
+  category     String
+  quantitySold Int      @default(0)
+  revenue      Decimal  @default(0.00) @db.Decimal(10,2)
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  @@unique([reportDate, productId])
+}
+
+model InventorySnapshot {
+  id           String   @id @default(uuid()) @db.Uuid
+  productId    String   @unique @db.Uuid
+  productName  String
+  stockLevel   Int      @default(0)
+  status       String   // e.g. "Low", "Critical", "In Stock"
+  updatedAt    DateTime @default(now()) @updatedAt
+}

@@ -385,7 +385,9 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 export const ModelName = {
   DailySalesReport: 'DailySalesReport',
-  SystemAuditLog: 'SystemAuditLog'
+  SystemAuditLog: 'SystemAuditLog',
+  ProductSalesSnapshot: 'ProductSalesSnapshot',
+  InventorySnapshot: 'InventorySnapshot'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -401,7 +403,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "dailySalesReport" | "systemAuditLog"
+    modelProps: "dailySalesReport" | "systemAuditLog" | "productSalesSnapshot" | "inventorySnapshot"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -553,6 +555,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ProductSalesSnapshot: {
+      payload: Prisma.$ProductSalesSnapshotPayload<ExtArgs>
+      fields: Prisma.ProductSalesSnapshotFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProductSalesSnapshotFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductSalesSnapshotPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProductSalesSnapshotFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductSalesSnapshotPayload>
+        }
+        findFirst: {
+          args: Prisma.ProductSalesSnapshotFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductSalesSnapshotPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProductSalesSnapshotFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductSalesSnapshotPayload>
+        }
+        findMany: {
+          args: Prisma.ProductSalesSnapshotFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductSalesSnapshotPayload>[]
+        }
+        create: {
+          args: Prisma.ProductSalesSnapshotCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductSalesSnapshotPayload>
+        }
+        createMany: {
+          args: Prisma.ProductSalesSnapshotCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProductSalesSnapshotCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductSalesSnapshotPayload>[]
+        }
+        delete: {
+          args: Prisma.ProductSalesSnapshotDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductSalesSnapshotPayload>
+        }
+        update: {
+          args: Prisma.ProductSalesSnapshotUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductSalesSnapshotPayload>
+        }
+        deleteMany: {
+          args: Prisma.ProductSalesSnapshotDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProductSalesSnapshotUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProductSalesSnapshotUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductSalesSnapshotPayload>[]
+        }
+        upsert: {
+          args: Prisma.ProductSalesSnapshotUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductSalesSnapshotPayload>
+        }
+        aggregate: {
+          args: Prisma.ProductSalesSnapshotAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProductSalesSnapshot>
+        }
+        groupBy: {
+          args: Prisma.ProductSalesSnapshotGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProductSalesSnapshotGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProductSalesSnapshotCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProductSalesSnapshotCountAggregateOutputType> | number
+        }
+      }
+    }
+    InventorySnapshot: {
+      payload: Prisma.$InventorySnapshotPayload<ExtArgs>
+      fields: Prisma.InventorySnapshotFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.InventorySnapshotFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.InventorySnapshotFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
+        }
+        findFirst: {
+          args: Prisma.InventorySnapshotFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.InventorySnapshotFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
+        }
+        findMany: {
+          args: Prisma.InventorySnapshotFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>[]
+        }
+        create: {
+          args: Prisma.InventorySnapshotCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
+        }
+        createMany: {
+          args: Prisma.InventorySnapshotCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.InventorySnapshotCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>[]
+        }
+        delete: {
+          args: Prisma.InventorySnapshotDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
+        }
+        update: {
+          args: Prisma.InventorySnapshotUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
+        }
+        deleteMany: {
+          args: Prisma.InventorySnapshotDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.InventorySnapshotUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.InventorySnapshotUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>[]
+        }
+        upsert: {
+          args: Prisma.InventorySnapshotUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
+        }
+        aggregate: {
+          args: Prisma.InventorySnapshotAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateInventorySnapshot>
+        }
+        groupBy: {
+          args: Prisma.InventorySnapshotGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InventorySnapshotGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.InventorySnapshotCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InventorySnapshotCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -612,6 +762,32 @@ export const SystemAuditLogScalarFieldEnum = {
 } as const
 
 export type SystemAuditLogScalarFieldEnum = (typeof SystemAuditLogScalarFieldEnum)[keyof typeof SystemAuditLogScalarFieldEnum]
+
+
+export const ProductSalesSnapshotScalarFieldEnum = {
+  id: 'id',
+  reportDate: 'reportDate',
+  productId: 'productId',
+  productName: 'productName',
+  category: 'category',
+  quantitySold: 'quantitySold',
+  revenue: 'revenue',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProductSalesSnapshotScalarFieldEnum = (typeof ProductSalesSnapshotScalarFieldEnum)[keyof typeof ProductSalesSnapshotScalarFieldEnum]
+
+
+export const InventorySnapshotScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  productName: 'productName',
+  stockLevel: 'stockLevel',
+  status: 'status',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InventorySnapshotScalarFieldEnum = (typeof InventorySnapshotScalarFieldEnum)[keyof typeof InventorySnapshotScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -847,6 +1023,8 @@ export type PrismaClientOptions = ({
 export type GlobalOmitConfig = {
   dailySalesReport?: Prisma.DailySalesReportOmit
   systemAuditLog?: Prisma.SystemAuditLogOmit
+  productSalesSnapshot?: Prisma.ProductSalesSnapshotOmit
+  inventorySnapshot?: Prisma.InventorySnapshotOmit
 }
 
 /* Types for Logging */

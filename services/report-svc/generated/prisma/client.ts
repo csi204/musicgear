@@ -48,3 +48,13 @@ export type DailySalesReport = Prisma.DailySalesReportModel
  * 
  */
 export type SystemAuditLog = Prisma.SystemAuditLogModel
+/**
+ * Model ProductSalesSnapshot
+ * 
+ */
+export type ProductSalesSnapshot = Prisma.ProductSalesSnapshotModel
+/**
+ * Model InventorySnapshot
+ * 
+ */
+export type InventorySnapshot = Prisma.InventorySnapshotModel
