@@ -284,8 +284,17 @@ async function parseValidatedJson(c, schema) {
   return { ok: true, data: result.data };
 }
 
-function parseValidatedQuery(c, schema) {
-  const query = Object.fromEntries(new URL(c.req.url).searchParams.entries());
+async function parseValidatedQuery(c, schema) {
+  let query;
+  if (c.req.method === "QUERY") {
+    try {
+      query = await c.req.json();
+    } catch {
+      query = {};
+    }
+  } else {
+    query = Object.fromEntries(new URL(c.req.url).searchParams.entries());
+  }
   const result = schema.safeParse(query);
 
   if (!result.success) {
@@ -434,9 +443,9 @@ app.patch("/users/staff/:staffId", adminMiddleware, async (c) => {
   });
 });
 
-app.get("/users", adminMiddleware, async (c) => {
+const userListHandler = async (c) => {
   const prisma = getPrismaClient(c);
-  const validation = parseValidatedQuery(c, userListQuerySchema);
+  const validation = await parseValidatedQuery(c, userListQuerySchema);
   if (!validation.ok) {
     return validation.response;
   }
@@ -479,7 +488,9 @@ app.get("/users", adminMiddleware, async (c) => {
       totalPages: Math.ceil(total / limit),
     },
   });
-});
+};
+app.get("/users", adminMiddleware, userListHandler);
+app.on("QUERY", "/users", adminMiddleware, userListHandler);
 
 app.get("/users/me", async (c) => {
   try {
