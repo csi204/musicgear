@@ -4,6 +4,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, Filter, Plus, Users, UserCheck, UserPlus, ShieldAlert, Edit2, Trash2, X, Loader2 } from "lucide-react";
 import { getUsers, createUser, deleteUser, type UserRecord, type UserListQuery } from "@/lib/api";
+import { getAccessToken, clearSession } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 
 const ROLE_LABELS: Record<string, string> = { admin: "ผู้ดูแลระบบ", staff: "พนักงาน", customer: "ลูกค้า" };
 const ROLE_COLORS: Record<string, string> = {
@@ -13,6 +15,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 export default function ManageUsers() {
+  const router = useRouter();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
@@ -33,21 +36,32 @@ export default function ManageUsers() {
     setLoading(true);
     setError(null);
     try {
+      const token = getAccessToken();
+      if (!token) {
+        clearSession();
+        router.push("/");
+        return;
+      }
       const query: UserListQuery = {
         page: currentPage,
         limit: 10,
         ...(searchQuery && { search: searchQuery }),
         ...(roleFilter && { role: roleFilter as any }),
       };
-      const res = await getUsers(query);
+      const res = await getUsers(query, token);
       setUsers(res.users);
       setPagination(res.pagination);
     } catch (err: any) {
-      setError(err.message ?? "เกิดข้อผิดพลาด");
+      if (err.message.includes("401")) {
+        clearSession();
+        router.push("/");
+      } else {
+        setError(err.message ?? "เกิดข้อผิดพลาด");
+      }
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery, roleFilter]);
+  }, [currentPage, searchQuery, roleFilter, router]);
 
   useEffect(() => {
     const timer = setTimeout(fetchUsers, 300); // debounce search
@@ -57,7 +71,8 @@ export default function ManageUsers() {
   const handleAddUser = async () => {
     setAddUserLoading(true);
     try {
-      await createUser(addUserForm);
+      const token = getAccessToken() || undefined;
+      await createUser(addUserForm, token);
       setIsAddUserModalOpen(false);
       setAddUserForm({ firstName: "", lastName: "", email: "", role: "customer" });
       fetchUsers();
@@ -72,7 +87,8 @@ export default function ManageUsers() {
     if (!confirm("ต้องการลบผู้ใช้นี้ออกจากระบบหรือไม่?")) return;
     setIsDeleting(userId);
     try {
-      await deleteUser(userId);
+      const token = getAccessToken() || undefined;
+      await deleteUser(userId, token);
       fetchUsers();
     } catch (err: any) {
       alert(`เกิดข้อผิดพลาด: ${err.message}`);

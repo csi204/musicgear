@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { SalesReportCharts } from "./reports/components/sales-report";
+import { getAccessToken, clearSession } from "@/lib/auth";
 
 export default function DashboardOverviewPage() {
+  const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -17,11 +20,22 @@ export default function DashboardOverviewPage() {
       start.setDate(end.getDate() - 30); // Default to 30 days for overview
 
       try {
+        const token = getAccessToken();
         const res = await fetch(`http://localhost:8787/reports/dashboard-summary`, {
           method: 'QUERY',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
           body: JSON.stringify({ start: start.toISOString(), end: end.toISOString() })
         });
+
+        if (res.status === 401) {
+          clearSession();
+          router.push("/");
+          return;
+        }
+
         const json = await res.json();
         setData(json);
       } catch (e) {
@@ -47,7 +61,7 @@ export default function DashboardOverviewPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data ? new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(
+              {data && Array.isArray(data.salesTrend) ? new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(
                 data.salesTrend.reduce((acc: number, cur: any) => acc + Number(cur.totalRevenue), 0)
               ) : "..."}
             </div>
@@ -59,7 +73,7 @@ export default function DashboardOverviewPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data ? data.salesTrend.reduce((acc: number, cur: any) => acc + Number(cur.totalOrders), 0) : "..."}
+              {data && Array.isArray(data.salesTrend) ? data.salesTrend.reduce((acc: number, cur: any) => acc + Number(cur.totalOrders), 0) : "..."}
             </div>
           </CardContent>
         </Card>
