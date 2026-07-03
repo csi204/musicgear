@@ -9,10 +9,16 @@ export class ReportController {
   }
 
   registerRoutes() {
-    // GET /sales?start=2024-01-01&end=2024-12-31
-    this.router.get("/sales", async (c) => {
-      const start = c.req.query("start");
-      const end = c.req.query("end");
+    const salesHandler = async (c) => {
+      let start, end;
+      if (c.req.method === "QUERY") {
+        const body = await c.req.json().catch(() => ({}));
+        start = body.start;
+        end = body.end;
+      } else {
+        start = c.req.query("start");
+        end = c.req.query("end");
+      }
 
       if (!start || !end) {
         return c.json({ error: { code: "VALIDATION_ERROR", message: "Missing start or end date query params" } }, 400);
@@ -35,12 +41,21 @@ export class ReportController {
         console.error("[GET /reports/sales]", err);
         return c.json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
       }
-    });
+    };
+    this.router.get("/sales", salesHandler);
+    this.router.on("QUERY", "/sales", salesHandler);
 
     // GET /audit-logs?type=payment.success&limit=10
-    this.router.get("/audit-logs", async (c) => {
-      const type = c.req.query("type");
-      const limitParam = c.req.query("limit");
+    const auditLogsHandler = async (c) => {
+      let type, limitParam;
+      if (c.req.method === "QUERY") {
+        const body = await c.req.json().catch(() => ({}));
+        type = body.type;
+        limitParam = body.limit;
+      } else {
+        type = c.req.query("type");
+        limitParam = c.req.query("limit");
+      }
       const limit = parseInt(limitParam || "50", 10);
 
       if (isNaN(limit)) {
@@ -57,6 +72,8 @@ export class ReportController {
         console.error("[GET /reports/audit-logs]", err);
         return c.json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
       }
-    });
+    };
+    this.router.get("/audit-logs", auditLogsHandler);
+    this.router.on("QUERY", "/audit-logs", auditLogsHandler);
   }
 }
