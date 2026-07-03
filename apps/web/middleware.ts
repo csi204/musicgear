@@ -10,10 +10,10 @@ function isPublicPath(pathname: string) {
   return pathname.startsWith("/products/");
 }
 
-function buildLoginRedirect(request: NextRequest) {
-  const authBase = process.env.NEXT_PUBLIC_AUTH_URL ?? "http://127.0.0.1:8788";
+function buildLoginRedirect(request: NextRequest, returnTo?: string) {
+  const authBase = process.env.NEXT_PUBLIC_AUTH_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8787";
   const origin = request.nextUrl.origin.replace("0.0.0.0", "127.0.0.1");
-  const redirectUri = `${origin}/auth/callback`;
+  const redirectUri = `${origin}/auth/callback${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`;
   const loginUrl = new URL(`${authBase}/auth/login`);
   loginUrl.searchParams.set("redirect_uri", redirectUri);
   return NextResponse.redirect(loginUrl);
