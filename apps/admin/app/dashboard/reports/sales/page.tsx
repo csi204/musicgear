@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DateRangePicker } from "../../../components/date-range-picker";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { FileDown, X, Eye } from "lucide-react";
 import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
-import { SalesReportPDF } from "../../../components/pdf/sales-report-pdf";
+import { SalesReportPDF } from "@/components/pdf/sales-report-pdf";
 
 export default function SalesReportPage() {
   const [dateRange, setDateRange] = useState({ start: "2024-01-01", end: "2024-12-31" });

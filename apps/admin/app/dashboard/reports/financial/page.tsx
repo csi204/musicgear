@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DateRangePicker } from "../../../components/date-range-picker";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { DollarSign, WalletCards, CreditCard, Banknote } from "lucide-react";
 
 export default function FinancialReportPage() {

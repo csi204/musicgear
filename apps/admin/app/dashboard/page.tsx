@@ -128,7 +128,7 @@ export default function DashboardOverview() {
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dx={-10} tickFormatter={(value) => `฿${value/1000}k`} />
                 <Tooltip 
                   contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                  formatter={(value: number) => [`฿${value.toLocaleString()}`, 'ยอดขาย']}
+                  formatter={(value: any) => [`฿${value.toLocaleString()}`, 'ยอดขาย']}
                 />
                 <Line type="monotone" dataKey="totalRevenue" stroke="hsl(var(--primary))" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
               </LineChart>
@@ -177,7 +177,7 @@ export default function DashboardOverview() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => [`${value}%`, 'สัดส่วน']} />
+                  <Tooltip formatter={(value: any) => [`${value}%`, 'สัดส่วน']} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
