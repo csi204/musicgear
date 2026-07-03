@@ -1,12 +1,21 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { LayoutDashboard, Users, FileBarChart } from "lucide-react";
 import { LoginButton } from "../../components/login-button";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const hasSession = cookieStore.get("mg_session");
+
+  if (!hasSession) {
+    redirect("/");
+  }
+
   return (
     <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
       {/* Sidebar */}
