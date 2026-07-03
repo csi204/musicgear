@@ -25,7 +25,41 @@ app.post("/users/webhooks/kinde", async (c) => {
     const token = await c.req.text();
     const { payload } = await jwtVerify(token, KINDE_JWKS);
 
-    if (payload.type === "user.deleted") {
+    if (payload.type === "user.created") {
+      const userData = payload.data?.user;
+      if (userData && userData.id) {
+        const prisma = getPrismaClient(c);
+
+        const existingUser = await prisma.user.findUnique({ where: { userId: userData.id } }).catch(() => null);
+        if (!existingUser) {
+          const email = userData.email || `${userData.id}@kinde.user`;
+          const firstName = userData.first_name || "MusicGear";
+          const lastName = userData.last_name || "User";
+
+          await prisma.user.create({
+            data: {
+              userId: userData.id,
+              email,
+              passwordHash: "",
+              firstName,
+              lastName,
+              role: "customer", // Default role for self-registered users
+              status: "active",
+            },
+          }).catch((err) => {
+            // Might already exist (race condition) — ignore unique violations
+            if (!err.message?.includes("Unique constraint")) throw err;
+          });
+
+          // Create customer profile record
+          await prisma.customer.create({ data: { customerId: userData.id } }).catch(() => {});
+
+          console.log(`[user-svc] Webhook user.created: created user ${userData.id} (${email})`);
+        } else {
+          console.log(`[user-svc] Webhook user.created: user ${userData.id} already exists, skipping`);
+        }
+      }
+    } else if (payload.type === "user.deleted") {
       const userId = payload.data?.user?.id;
       if (userId) {
         const prisma = getPrismaClient(c);
