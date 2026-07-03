@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { SalesReportCharts } from "./reports/components/sales-report";
-import { getAccessToken, clearSession } from "@/lib/auth";
+import { getAccessToken, clearSession, getApiBaseUrl } from "@/lib/auth";
 
 export default function DashboardOverviewPage() {
   const router = useRouter();
@@ -21,7 +21,8 @@ export default function DashboardOverviewPage() {
 
       try {
         const token = getAccessToken();
-        const res = await fetch(`http://localhost:8787/reports/dashboard-summary`, {
+        const apiBase = getApiBaseUrl();
+        const res = await fetch(`${apiBase}/reports/dashboard-summary`, {
           method: 'QUERY',
           headers: { 
             'Content-Type': 'application/json',
