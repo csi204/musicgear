@@ -30,10 +30,13 @@ export default function DashboardOverviewPage() {
           body: JSON.stringify({ start: start.toISOString(), end: end.toISOString() })
         });
 
-        if (res.status === 401) {
-          clearSession();
-          router.push("/");
-          return;
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            clearSession();
+            router.push("/");
+            return;
+          }
+          throw new Error(`API returned ${res.status}`);
         }
 
         const json = await res.json();

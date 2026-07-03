@@ -52,7 +52,7 @@ export default function ManageUsers() {
       setUsers(res.users);
       setPagination(res.pagination);
     } catch (err: any) {
-      if (err.message.includes("401")) {
+      if (err.message.includes("401") || err.message.includes("403")) {
         clearSession();
         router.push("/");
       } else {

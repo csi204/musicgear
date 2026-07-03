@@ -8,12 +8,12 @@ interface SalesReportChartsProps {
 }
 
 export function SalesReportCharts({ data }: SalesReportChartsProps) {
-  if (!data) return <div className="text-muted-foreground p-8">กำลังโหลดข้อมูล...</div>;
+  if (!data || !data.salesTrend || !data.topProducts) return <div className="text-muted-foreground p-8">ไม่มีข้อมูล หรือข้อมูลผิดพลาด</div>;
 
-  const chartData = data.salesTrend.map((d: any) => ({
+  const chartData = Array.isArray(data.salesTrend) ? data.salesTrend.map((d: any) => ({
     name: new Date(d.reportDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
     totalRevenue: Number(d.totalRevenue),
-  }));
+  })) : [];
 
   return (
     <div className="w-full flex flex-col gap-8 py-4">
