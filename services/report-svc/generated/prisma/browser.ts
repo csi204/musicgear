@@ -37,3 +37,11 @@ export type SystemAuditLog = Prisma.SystemAuditLogModel
  * 
  */
 export type ProductSalesSnapshot = Prisma.ProductSalesSnapshotModel
+<<<<<<< HEAD
+=======
+/**
+ * Model InventorySnapshot
+ * 
+ */
+export type InventorySnapshot = Prisma.InventorySnapshotModel
+>>>>>>> feature/admin-dashboard-reports

@@ -28,21 +28,31 @@ export type AggregateInventorySnapshot = {
 
 export type InventorySnapshotAvgAggregateOutputType = {
   stockLevel: number | null
+<<<<<<< HEAD
   reorderPoint: number | null
+=======
+>>>>>>> feature/admin-dashboard-reports
 }
 
 export type InventorySnapshotSumAggregateOutputType = {
   stockLevel: number | null
+<<<<<<< HEAD
   reorderPoint: number | null
+=======
+>>>>>>> feature/admin-dashboard-reports
 }
 
 export type InventorySnapshotMinAggregateOutputType = {
   id: string | null
   productId: string | null
   productName: string | null
+<<<<<<< HEAD
   category: string | null
   stockLevel: number | null
   reorderPoint: number | null
+=======
+  stockLevel: number | null
+>>>>>>> feature/admin-dashboard-reports
   status: string | null
   updatedAt: Date | null
 }
@@ -51,9 +61,13 @@ export type InventorySnapshotMaxAggregateOutputType = {
   id: string | null
   productId: string | null
   productName: string | null
+<<<<<<< HEAD
   category: string | null
   stockLevel: number | null
   reorderPoint: number | null
+=======
+  stockLevel: number | null
+>>>>>>> feature/admin-dashboard-reports
   status: string | null
   updatedAt: Date | null
 }
@@ -62,9 +76,13 @@ export type InventorySnapshotCountAggregateOutputType = {
   id: number
   productId: number
   productName: number
+<<<<<<< HEAD
   category: number
   stockLevel: number
   reorderPoint: number
+=======
+  stockLevel: number
+>>>>>>> feature/admin-dashboard-reports
   status: number
   updatedAt: number
   _all: number
@@ -73,21 +91,31 @@ export type InventorySnapshotCountAggregateOutputType = {
 
 export type InventorySnapshotAvgAggregateInputType = {
   stockLevel?: true
+<<<<<<< HEAD
   reorderPoint?: true
+=======
+>>>>>>> feature/admin-dashboard-reports
 }
 
 export type InventorySnapshotSumAggregateInputType = {
   stockLevel?: true
+<<<<<<< HEAD
   reorderPoint?: true
+=======
+>>>>>>> feature/admin-dashboard-reports
 }
 
 export type InventorySnapshotMinAggregateInputType = {
   id?: true
   productId?: true
   productName?: true
+<<<<<<< HEAD
   category?: true
   stockLevel?: true
   reorderPoint?: true
+=======
+  stockLevel?: true
+>>>>>>> feature/admin-dashboard-reports
   status?: true
   updatedAt?: true
 }
@@ -96,9 +124,13 @@ export type InventorySnapshotMaxAggregateInputType = {
   id?: true
   productId?: true
   productName?: true
+<<<<<<< HEAD
   category?: true
   stockLevel?: true
   reorderPoint?: true
+=======
+  stockLevel?: true
+>>>>>>> feature/admin-dashboard-reports
   status?: true
   updatedAt?: true
 }
@@ -107,9 +139,13 @@ export type InventorySnapshotCountAggregateInputType = {
   id?: true
   productId?: true
   productName?: true
+<<<<<<< HEAD
   category?: true
   stockLevel?: true
   reorderPoint?: true
+=======
+  stockLevel?: true
+>>>>>>> feature/admin-dashboard-reports
   status?: true
   updatedAt?: true
   _all?: true
@@ -205,9 +241,13 @@ export type InventorySnapshotGroupByOutputType = {
   id: string
   productId: string
   productName: string
+<<<<<<< HEAD
   category: string
   stockLevel: number
   reorderPoint: number
+=======
+  stockLevel: number
+>>>>>>> feature/admin-dashboard-reports
   status: string
   updatedAt: Date
   _count: InventorySnapshotCountAggregateOutputType | null
@@ -239,9 +279,13 @@ export type InventorySnapshotWhereInput = {
   id?: Prisma.UuidFilter<"InventorySnapshot"> | string
   productId?: Prisma.UuidFilter<"InventorySnapshot"> | string
   productName?: Prisma.StringFilter<"InventorySnapshot"> | string
+<<<<<<< HEAD
   category?: Prisma.StringFilter<"InventorySnapshot"> | string
   stockLevel?: Prisma.IntFilter<"InventorySnapshot"> | number
   reorderPoint?: Prisma.IntFilter<"InventorySnapshot"> | number
+=======
+  stockLevel?: Prisma.IntFilter<"InventorySnapshot"> | number
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.StringFilter<"InventorySnapshot"> | string
   updatedAt?: Prisma.DateTimeFilter<"InventorySnapshot"> | Date | string
 }
@@ -250,9 +294,13 @@ export type InventorySnapshotOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   productName?: Prisma.SortOrder
+<<<<<<< HEAD
   category?: Prisma.SortOrder
   stockLevel?: Prisma.SortOrder
   reorderPoint?: Prisma.SortOrder
+=======
+  stockLevel?: Prisma.SortOrder
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -264,9 +312,13 @@ export type InventorySnapshotWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.InventorySnapshotWhereInput[]
   NOT?: Prisma.InventorySnapshotWhereInput | Prisma.InventorySnapshotWhereInput[]
   productName?: Prisma.StringFilter<"InventorySnapshot"> | string
+<<<<<<< HEAD
   category?: Prisma.StringFilter<"InventorySnapshot"> | string
   stockLevel?: Prisma.IntFilter<"InventorySnapshot"> | number
   reorderPoint?: Prisma.IntFilter<"InventorySnapshot"> | number
+=======
+  stockLevel?: Prisma.IntFilter<"InventorySnapshot"> | number
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.StringFilter<"InventorySnapshot"> | string
   updatedAt?: Prisma.DateTimeFilter<"InventorySnapshot"> | Date | string
 }, "id" | "productId">
@@ -275,9 +327,13 @@ export type InventorySnapshotOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   productName?: Prisma.SortOrder
+<<<<<<< HEAD
   category?: Prisma.SortOrder
   stockLevel?: Prisma.SortOrder
   reorderPoint?: Prisma.SortOrder
+=======
+  stockLevel?: Prisma.SortOrder
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.InventorySnapshotCountOrderByAggregateInput
@@ -294,9 +350,13 @@ export type InventorySnapshotScalarWhereWithAggregatesInput = {
   id?: Prisma.UuidWithAggregatesFilter<"InventorySnapshot"> | string
   productId?: Prisma.UuidWithAggregatesFilter<"InventorySnapshot"> | string
   productName?: Prisma.StringWithAggregatesFilter<"InventorySnapshot"> | string
+<<<<<<< HEAD
   category?: Prisma.StringWithAggregatesFilter<"InventorySnapshot"> | string
   stockLevel?: Prisma.IntWithAggregatesFilter<"InventorySnapshot"> | number
   reorderPoint?: Prisma.IntWithAggregatesFilter<"InventorySnapshot"> | number
+=======
+  stockLevel?: Prisma.IntWithAggregatesFilter<"InventorySnapshot"> | number
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.StringWithAggregatesFilter<"InventorySnapshot"> | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"InventorySnapshot"> | Date | string
 }
@@ -305,9 +365,13 @@ export type InventorySnapshotCreateInput = {
   id?: string
   productId: string
   productName: string
+<<<<<<< HEAD
   category?: string
   stockLevel?: number
   reorderPoint?: number
+=======
+  stockLevel?: number
+>>>>>>> feature/admin-dashboard-reports
   status: string
   updatedAt?: Date | string
 }
@@ -316,9 +380,13 @@ export type InventorySnapshotUncheckedCreateInput = {
   id?: string
   productId: string
   productName: string
+<<<<<<< HEAD
   category?: string
   stockLevel?: number
   reorderPoint?: number
+=======
+  stockLevel?: number
+>>>>>>> feature/admin-dashboard-reports
   status: string
   updatedAt?: Date | string
 }
@@ -327,9 +395,13 @@ export type InventorySnapshotUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   productName?: Prisma.StringFieldUpdateOperationsInput | string
+<<<<<<< HEAD
   category?: Prisma.StringFieldUpdateOperationsInput | string
   stockLevel?: Prisma.IntFieldUpdateOperationsInput | number
   reorderPoint?: Prisma.IntFieldUpdateOperationsInput | number
+=======
+  stockLevel?: Prisma.IntFieldUpdateOperationsInput | number
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.StringFieldUpdateOperationsInput | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -338,9 +410,13 @@ export type InventorySnapshotUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   productName?: Prisma.StringFieldUpdateOperationsInput | string
+<<<<<<< HEAD
   category?: Prisma.StringFieldUpdateOperationsInput | string
   stockLevel?: Prisma.IntFieldUpdateOperationsInput | number
   reorderPoint?: Prisma.IntFieldUpdateOperationsInput | number
+=======
+  stockLevel?: Prisma.IntFieldUpdateOperationsInput | number
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.StringFieldUpdateOperationsInput | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -349,9 +425,13 @@ export type InventorySnapshotCreateManyInput = {
   id?: string
   productId: string
   productName: string
+<<<<<<< HEAD
   category?: string
   stockLevel?: number
   reorderPoint?: number
+=======
+  stockLevel?: number
+>>>>>>> feature/admin-dashboard-reports
   status: string
   updatedAt?: Date | string
 }
@@ -360,9 +440,13 @@ export type InventorySnapshotUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   productName?: Prisma.StringFieldUpdateOperationsInput | string
+<<<<<<< HEAD
   category?: Prisma.StringFieldUpdateOperationsInput | string
   stockLevel?: Prisma.IntFieldUpdateOperationsInput | number
   reorderPoint?: Prisma.IntFieldUpdateOperationsInput | number
+=======
+  stockLevel?: Prisma.IntFieldUpdateOperationsInput | number
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.StringFieldUpdateOperationsInput | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -371,9 +455,13 @@ export type InventorySnapshotUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   productName?: Prisma.StringFieldUpdateOperationsInput | string
+<<<<<<< HEAD
   category?: Prisma.StringFieldUpdateOperationsInput | string
   stockLevel?: Prisma.IntFieldUpdateOperationsInput | number
   reorderPoint?: Prisma.IntFieldUpdateOperationsInput | number
+=======
+  stockLevel?: Prisma.IntFieldUpdateOperationsInput | number
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.StringFieldUpdateOperationsInput | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -382,25 +470,36 @@ export type InventorySnapshotCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   productName?: Prisma.SortOrder
+<<<<<<< HEAD
   category?: Prisma.SortOrder
   stockLevel?: Prisma.SortOrder
   reorderPoint?: Prisma.SortOrder
+=======
+  stockLevel?: Prisma.SortOrder
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type InventorySnapshotAvgOrderByAggregateInput = {
   stockLevel?: Prisma.SortOrder
+<<<<<<< HEAD
   reorderPoint?: Prisma.SortOrder
+=======
+>>>>>>> feature/admin-dashboard-reports
 }
 
 export type InventorySnapshotMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   productName?: Prisma.SortOrder
+<<<<<<< HEAD
   category?: Prisma.SortOrder
   stockLevel?: Prisma.SortOrder
   reorderPoint?: Prisma.SortOrder
+=======
+  stockLevel?: Prisma.SortOrder
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -409,16 +508,23 @@ export type InventorySnapshotMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   productName?: Prisma.SortOrder
+<<<<<<< HEAD
   category?: Prisma.SortOrder
   stockLevel?: Prisma.SortOrder
   reorderPoint?: Prisma.SortOrder
+=======
+  stockLevel?: Prisma.SortOrder
+>>>>>>> feature/admin-dashboard-reports
   status?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type InventorySnapshotSumOrderByAggregateInput = {
   stockLevel?: Prisma.SortOrder
+<<<<<<< HEAD
   reorderPoint?: Prisma.SortOrder
+=======
+>>>>>>> feature/admin-dashboard-reports
 }
 
 
@@ -427,9 +533,13 @@ export type InventorySnapshotSelect<ExtArgs extends runtime.Types.Extensions.Int
   id?: boolean
   productId?: boolean
   productName?: boolean
+<<<<<<< HEAD
   category?: boolean
   stockLevel?: boolean
   reorderPoint?: boolean
+=======
+  stockLevel?: boolean
+>>>>>>> feature/admin-dashboard-reports
   status?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["inventorySnapshot"]>
@@ -438,9 +548,13 @@ export type InventorySnapshotSelectCreateManyAndReturn<ExtArgs extends runtime.T
   id?: boolean
   productId?: boolean
   productName?: boolean
+<<<<<<< HEAD
   category?: boolean
   stockLevel?: boolean
   reorderPoint?: boolean
+=======
+  stockLevel?: boolean
+>>>>>>> feature/admin-dashboard-reports
   status?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["inventorySnapshot"]>
@@ -449,9 +563,13 @@ export type InventorySnapshotSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   id?: boolean
   productId?: boolean
   productName?: boolean
+<<<<<<< HEAD
   category?: boolean
   stockLevel?: boolean
   reorderPoint?: boolean
+=======
+  stockLevel?: boolean
+>>>>>>> feature/admin-dashboard-reports
   status?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["inventorySnapshot"]>
@@ -460,14 +578,22 @@ export type InventorySnapshotSelectScalar = {
   id?: boolean
   productId?: boolean
   productName?: boolean
+<<<<<<< HEAD
   category?: boolean
   stockLevel?: boolean
   reorderPoint?: boolean
+=======
+  stockLevel?: boolean
+>>>>>>> feature/admin-dashboard-reports
   status?: boolean
   updatedAt?: boolean
 }
 
+<<<<<<< HEAD
 export type InventorySnapshotOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "productName" | "category" | "stockLevel" | "reorderPoint" | "status" | "updatedAt", ExtArgs["result"]["inventorySnapshot"]>
+=======
+export type InventorySnapshotOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "productName" | "stockLevel" | "status" | "updatedAt", ExtArgs["result"]["inventorySnapshot"]>
+>>>>>>> feature/admin-dashboard-reports
 
 export type $InventorySnapshotPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "InventorySnapshot"
@@ -476,9 +602,13 @@ export type $InventorySnapshotPayload<ExtArgs extends runtime.Types.Extensions.I
     id: string
     productId: string
     productName: string
+<<<<<<< HEAD
     category: string
     stockLevel: number
     reorderPoint: number
+=======
+    stockLevel: number
+>>>>>>> feature/admin-dashboard-reports
     status: string
     updatedAt: Date
   }, ExtArgs["result"]["inventorySnapshot"]>
@@ -907,9 +1037,13 @@ export interface InventorySnapshotFieldRefs {
   readonly id: Prisma.FieldRef<"InventorySnapshot", 'String'>
   readonly productId: Prisma.FieldRef<"InventorySnapshot", 'String'>
   readonly productName: Prisma.FieldRef<"InventorySnapshot", 'String'>
+<<<<<<< HEAD
   readonly category: Prisma.FieldRef<"InventorySnapshot", 'String'>
   readonly stockLevel: Prisma.FieldRef<"InventorySnapshot", 'Int'>
   readonly reorderPoint: Prisma.FieldRef<"InventorySnapshot", 'Int'>
+=======
+  readonly stockLevel: Prisma.FieldRef<"InventorySnapshot", 'Int'>
+>>>>>>> feature/admin-dashboard-reports
   readonly status: Prisma.FieldRef<"InventorySnapshot", 'String'>
   readonly updatedAt: Prisma.FieldRef<"InventorySnapshot", 'DateTime'>
 }

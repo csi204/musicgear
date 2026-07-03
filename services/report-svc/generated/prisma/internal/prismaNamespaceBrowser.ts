@@ -52,9 +52,15 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   DailySalesReport: 'DailySalesReport',
+<<<<<<< HEAD
   InventorySnapshot: 'InventorySnapshot',
   SystemAuditLog: 'SystemAuditLog',
   ProductSalesSnapshot: 'ProductSalesSnapshot'
+=======
+  SystemAuditLog: 'SystemAuditLog',
+  ProductSalesSnapshot: 'ProductSalesSnapshot',
+  InventorySnapshot: 'InventorySnapshot'
+>>>>>>> feature/admin-dashboard-reports
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -123,6 +129,21 @@ export const ProductSalesSnapshotScalarFieldEnum = {
 export type ProductSalesSnapshotScalarFieldEnum = (typeof ProductSalesSnapshotScalarFieldEnum)[keyof typeof ProductSalesSnapshotScalarFieldEnum]
 
 
+<<<<<<< HEAD
+=======
+export const InventorySnapshotScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  productName: 'productName',
+  stockLevel: 'stockLevel',
+  status: 'status',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InventorySnapshotScalarFieldEnum = (typeof InventorySnapshotScalarFieldEnum)[keyof typeof InventorySnapshotScalarFieldEnum]
+
+
+>>>>>>> feature/admin-dashboard-reports
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'

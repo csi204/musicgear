@@ -113,5 +113,33 @@ export class ReportController {
     
     this.router.get("/dashboard-summary", dashboardSummaryHandler);
     this.router.on("QUERY", "/dashboard-summary", dashboardSummaryHandler);
+
+    // GET /inventory-alerts?page=1&limit=10
+    const inventoryAlertsHandler = async (c) => {
+      let pageParam, limitParam;
+      if (c.req.method === "QUERY") {
+        const body = await c.req.json().catch(() => ({}));
+        pageParam = body.page;
+        limitParam = body.limit;
+      } else {
+        pageParam = c.req.query("page");
+        limitParam = c.req.query("limit");
+      }
+      const page = parseInt(pageParam || "1", 10);
+      const limit = parseInt(limitParam || "10", 10);
+
+      const db = createClient(c.env.DATABASE_URL);
+      const reportService = new ReportService(db);
+
+      try {
+        const data = await reportService.getLowStockAlerts(limit, page);
+        return c.json(data, 200);
+      } catch (err) {
+        console.error("[GET /reports/inventory-alerts]", err);
+        return c.json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
+      }
+    };
+    this.router.get("/inventory-alerts", inventoryAlertsHandler);
+    this.router.on("QUERY", "/inventory-alerts", inventoryAlertsHandler);
   }
 }

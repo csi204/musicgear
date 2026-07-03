@@ -49,6 +49,5 @@ model ProductSalesSnapshot {
   quantitySold Int      @default(0)
   revenue      Decimal  @default(0.00) @db.Decimal(10,2)
   updatedAt    DateTime @default(now()) @updatedAt
-
   @@unique([reportDate, productId])
 }
