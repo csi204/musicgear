@@ -73,4 +73,93 @@ export class ReportService {
       take: limit,
     });
   }
+
+  /**
+   * ดึงข้อมูลสำหรับ Admin Dashboard Overview
+   */
+  async getDashboardSummary(startDate, endDate) {
+    // 1. Sales Trend (Line Chart)
+    const salesTrend = await this.db.dailySalesReport.findMany({
+      where: {
+        reportDate: { gte: startDate, lte: endDate },
+      },
+      orderBy: { reportDate: 'asc' },
+    });
+
+    // 2. Top Selling Products & 3. Category Distribution
+    const productSales = await this.db.productSalesSnapshot.findMany({
+      where: {
+        reportDate: { gte: startDate, lte: endDate },
+      },
+    });
+
+    // Aggregate manually since Prisma SQLite/workerd groupBy can be tricky or have limitations
+    const productMap = new Map();
+    const categoryMap = new Map();
+
+    for (const p of productSales) {
+      // Top Products
+      const curr = productMap.get(p.productId) || { productName: p.productName, category: p.category, quantitySold: 0, revenue: 0 };
+      curr.quantitySold += p.quantitySold;
+      curr.revenue += Number(p.revenue || 0);
+      productMap.set(p.productId, curr);
+
+      // Category Dist
+      const c = categoryMap.get(p.category) || 0;
+      categoryMap.set(p.category, c + p.quantitySold);
+    }
+
+    const topProducts = Array.from(productMap.values())
+      .sort((a, b) => b.quantitySold - a.quantitySold)
+      .slice(0, 5); // Top 5
+
+    const categoryDistribution = Array.from(categoryMap.entries()).map(([category, value]) => ({
+      category,
+      value
+    }));
+
+    // 4. Inventory Data
+    const inventory = await this.db.inventorySnapshot.findMany();
+
+    const stockLevelsByCategory = {};
+    const stockHealthDistribution = { 'In Stock': 0, 'Low': 0, 'Critical': 0 };
+    const lowStockAlerts = [];
+
+    for (const item of inventory) {
+      // Stock by category
+      stockLevelsByCategory[item.category] = (stockLevelsByCategory[item.category] || 0) + item.stockLevel;
+      
+      // Stock health
+      if (item.status === 'Critical') stockHealthDistribution['Critical']++;
+      else if (item.status === 'Low') stockHealthDistribution['Low']++;
+      else stockHealthDistribution['In Stock']++;
+
+      // Low stock alerts
+      if (item.status === 'Critical' || item.status === 'Low') {
+        lowStockAlerts.push(item);
+      }
+    }
+
+    const formattedStockHealth = [
+      { name: 'In Stock', value: stockHealthDistribution['In Stock'], color: '#2BBF7A' },
+      { name: 'Low Stock', value: stockHealthDistribution['Low'], color: '#FF8A3D' },
+      { name: 'Critical', value: stockHealthDistribution['Critical'], color: '#E54848' },
+    ];
+
+    const formattedStockByCategory = Object.entries(stockLevelsByCategory).map(([category, stockLevel]) => ({
+      category,
+      stockLevel
+    }));
+
+    return {
+      salesTrend,
+      topProducts,
+      categoryDistribution,
+      inventory: {
+        health: formattedStockHealth,
+        byCategory: formattedStockByCategory,
+        alerts: lowStockAlerts.sort((a, b) => a.stockLevel - b.stockLevel).slice(0, 10) // Top 10 worst
+      }
+    };
+  }
 }

@@ -75,5 +75,43 @@ export class ReportController {
     };
     this.router.get("/audit-logs", auditLogsHandler);
     this.router.on("QUERY", "/audit-logs", auditLogsHandler);
+
+    // GET & QUERY /dashboard-summary
+    const dashboardSummaryHandler = async (c) => {
+      let start, end;
+      if (c.req.method === "QUERY") {
+        const body = await c.req.json().catch(() => ({}));
+        start = body.start;
+        end = body.end;
+      } else {
+        start = c.req.query("start");
+        end = c.req.query("end");
+      }
+
+      if (!start || !end) {
+        return c.json({ error: { code: "VALIDATION_ERROR", message: "Missing start or end date query params" } }, 400);
+      }
+
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return c.json({ error: { code: "VALIDATION_ERROR", message: "Invalid date format" } }, 400);
+      }
+
+      const db = createClient(c.env.DATABASE_URL);
+      const reportService = new ReportService(db);
+
+      try {
+        const data = await reportService.getDashboardSummary(startDate, endDate);
+        return c.json(data, 200);
+      } catch (err) {
+        console.error("[GET /reports/dashboard-summary]", err);
+        return c.json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
+      }
+    };
+    
+    this.router.get("/dashboard-summary", dashboardSummaryHandler);
+    this.router.on("QUERY", "/dashboard-summary", dashboardSummaryHandler);
   }
 }
