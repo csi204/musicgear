@@ -32,9 +32,13 @@ export default function DashboardOverviewPage() {
         });
 
         if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
+          if (res.status === 401) {
             clearSession();
             router.push("/");
+            return;
+          }
+          if (res.status === 403) {
+            setData({ error: "Access Denied: You do not have permission to view this dashboard." });
             return;
           }
           throw new Error(`API returned ${res.status}`);
@@ -57,6 +61,12 @@ export default function DashboardOverviewPage() {
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">ภาพรวมระบบ (Overview)</h2>
       </div>
+
+      {data?.error && (
+        <div className="p-4 bg-red-100 text-red-800 border border-red-300 rounded-md mb-4">
+          {data.error}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
         <Card>

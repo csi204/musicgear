@@ -64,7 +64,11 @@ export function createRoleMiddleware(allowedRoles) {
       return await next();
     }
 
-    const role = (user?.role || "customer").toLowerCase();
+    const roleKey = Array.isArray(user?.roles) ? user?.roles[0]?.key : null;
+    const flatRole = user?.role;
+    const rawRole = roleKey || flatRole || "customer";
+    const role = String(rawRole).toLowerCase();
+    
     if (!normalizedRoles.includes(role)) {
       return c.json({ error: { code: "FORBIDDEN", message: "Insufficient role" } }, 403);
     }

@@ -19,3 +19,5 @@ app.use('/reports/*', createRoleMiddleware(["admin", "staff"])); // Included sta
 app.route('/reports', reportController.router);
 
 export default app
+
+// Trigger rebuild
