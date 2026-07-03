@@ -16,7 +16,7 @@ app.use("*", cors({
     "https://musicgear-admin.thunderwolf2209.workers.dev",
     "https://musicgear-staff.thunderwolf2209.workers.dev",
   ],
-  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "QUERY"],
   allowHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 }));

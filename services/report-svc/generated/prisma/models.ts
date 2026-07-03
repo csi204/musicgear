@@ -12,8 +12,4 @@ export type * from './models/DailySalesReport.ts'
 export type * from './models/InventorySnapshot.ts'
 export type * from './models/SystemAuditLog.ts'
 export type * from './models/ProductSalesSnapshot.ts'
-<<<<<<< HEAD
-=======
-export type * from './models/InventorySnapshot.ts'
->>>>>>> feature/admin-dashboard-reports
 export type * from './commonInputTypes.ts'

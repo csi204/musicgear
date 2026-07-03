@@ -385,15 +385,9 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 export const ModelName = {
   DailySalesReport: 'DailySalesReport',
-<<<<<<< HEAD
   InventorySnapshot: 'InventorySnapshot',
   SystemAuditLog: 'SystemAuditLog',
   ProductSalesSnapshot: 'ProductSalesSnapshot'
-=======
-  SystemAuditLog: 'SystemAuditLog',
-  ProductSalesSnapshot: 'ProductSalesSnapshot',
-  InventorySnapshot: 'InventorySnapshot'
->>>>>>> feature/admin-dashboard-reports
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -409,11 +403,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-<<<<<<< HEAD
     modelProps: "dailySalesReport" | "inventorySnapshot" | "systemAuditLog" | "productSalesSnapshot"
-=======
-    modelProps: "dailySalesReport" | "systemAuditLog" | "productSalesSnapshot" | "inventorySnapshot"
->>>>>>> feature/admin-dashboard-reports
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -713,83 +703,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-<<<<<<< HEAD
-=======
-    InventorySnapshot: {
-      payload: Prisma.$InventorySnapshotPayload<ExtArgs>
-      fields: Prisma.InventorySnapshotFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.InventorySnapshotFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.InventorySnapshotFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
-        }
-        findFirst: {
-          args: Prisma.InventorySnapshotFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.InventorySnapshotFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
-        }
-        findMany: {
-          args: Prisma.InventorySnapshotFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>[]
-        }
-        create: {
-          args: Prisma.InventorySnapshotCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
-        }
-        createMany: {
-          args: Prisma.InventorySnapshotCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.InventorySnapshotCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>[]
-        }
-        delete: {
-          args: Prisma.InventorySnapshotDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
-        }
-        update: {
-          args: Prisma.InventorySnapshotUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
-        }
-        deleteMany: {
-          args: Prisma.InventorySnapshotDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.InventorySnapshotUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.InventorySnapshotUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>[]
-        }
-        upsert: {
-          args: Prisma.InventorySnapshotUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$InventorySnapshotPayload>
-        }
-        aggregate: {
-          args: Prisma.InventorySnapshotAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateInventorySnapshot>
-        }
-        groupBy: {
-          args: Prisma.InventorySnapshotGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.InventorySnapshotGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.InventorySnapshotCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.InventorySnapshotCountAggregateOutputType> | number
-        }
-      }
-    }
->>>>>>> feature/admin-dashboard-reports
   }
 } & {
   other: {
@@ -879,21 +792,6 @@ export const ProductSalesSnapshotScalarFieldEnum = {
 export type ProductSalesSnapshotScalarFieldEnum = (typeof ProductSalesSnapshotScalarFieldEnum)[keyof typeof ProductSalesSnapshotScalarFieldEnum]
 
 
-<<<<<<< HEAD
-=======
-export const InventorySnapshotScalarFieldEnum = {
-  id: 'id',
-  productId: 'productId',
-  productName: 'productName',
-  stockLevel: 'stockLevel',
-  status: 'status',
-  updatedAt: 'updatedAt'
-} as const
-
-export type InventorySnapshotScalarFieldEnum = (typeof InventorySnapshotScalarFieldEnum)[keyof typeof InventorySnapshotScalarFieldEnum]
-
-
->>>>>>> feature/admin-dashboard-reports
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1129,10 +1027,6 @@ export type GlobalOmitConfig = {
   inventorySnapshot?: Prisma.InventorySnapshotOmit
   systemAuditLog?: Prisma.SystemAuditLogOmit
   productSalesSnapshot?: Prisma.ProductSalesSnapshotOmit
-<<<<<<< HEAD
-=======
-  inventorySnapshot?: Prisma.InventorySnapshotOmit
->>>>>>> feature/admin-dashboard-reports
 }
 
 /* Types for Logging */
