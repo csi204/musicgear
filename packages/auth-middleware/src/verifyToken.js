@@ -1,27 +1,27 @@
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { jwtVerify } from "jose";
 
-function normalizeKindeDomain(kindeDomain) {
-  if (!kindeDomain) {
-    throw new Error("kindeDomain is required");
-  }
-
-  return kindeDomain.replace(/^https?:\/\//, "").replace(/\/$/, "");
-}
-
-export function createAuthMiddleware(kindeDomain, options = {}) {
-  const normalizedDomain = normalizeKindeDomain(kindeDomain);
-  const issuer = `https://${normalizedDomain}`;
-  const JWKS = createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks`));
-
+export function createAuthMiddleware(options = {}) {
   return async function verifyToken(c, next) {
     const authHeader = c.req.header("Authorization");
+    const m2mHeader = c.req.header("x-api-key");
+
+    // Support M2M with INTERNAL_API_KEY
+    if (m2mHeader && c.env.INTERNAL_API_KEY && m2mHeader === c.env.INTERNAL_API_KEY) {
+      c.set("user", {
+        userId: "m2m-admin",
+        role: "admin",
+        gty: ["client_credentials"],
+      });
+      return await next();
+    }
+
     if (!authHeader) {
-      return c.json({ error: { code: "UNAUTHORIZED" } }, 401);
+      return c.json({ error: { code: "UNAUTHORIZED", message: "Missing token" } }, 401);
     }
 
     const [scheme, token] = authHeader.trim().split(/\s+/, 2);
     if (!token || scheme.toLowerCase() !== "bearer") {
-      return c.json({ error: { code: "UNAUTHORIZED" } }, 401);
+      return c.json({ error: { code: "UNAUTHORIZED", message: "Invalid format" } }, 401);
     }
 
     // Support local testing with Mock Token
@@ -39,16 +39,12 @@ export function createAuthMiddleware(kindeDomain, options = {}) {
     }
 
     try {
-      const verifyOptions = { issuer };
-      if (options.clientId) {
-        verifyOptions.audience = options.clientId;
-      }
-
-      const { payload } = await jwtVerify(token, JWKS, verifyOptions);
+      const secret = new TextEncoder().encode(c.env.NEXTAUTH_SECRET);
+      const { payload } = await jwtVerify(token, secret);
       c.set("user", payload);
       await next();
-    } catch {
-      return c.json({ error: { code: "UNAUTHORIZED" } }, 401);
+    } catch (err) {
+      return c.json({ error: { code: "UNAUTHORIZED", message: "Invalid or expired token" } }, 401);
     }
   };
 }
@@ -64,7 +60,11 @@ export function createRoleMiddleware(allowedRoles) {
       return await next();
     }
 
-    const role = (user?.role || "customer").toLowerCase();
+    const roleKey = Array.isArray(user?.roles) ? user?.roles[0]?.key : null;
+    const flatRole = user?.role;
+    const rawRole = roleKey || flatRole || "customer";
+    const role = String(rawRole).toLowerCase();
+    
     if (!normalizedRoles.includes(role)) {
       return c.json({ error: { code: "FORBIDDEN", message: "Insufficient role" } }, 403);
     }

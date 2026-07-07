@@ -16,11 +16,18 @@ app.use("*", cors({
     "https://musicgear-admin.thunderwolf2209.workers.dev",
     "https://musicgear-staff.thunderwolf2209.workers.dev",
   ],
-  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "QUERY"],
   allowHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 }));
 
+// Local credentials auth is handled by user-svc
+app.post("/auth/register", (c) => c.env.USER_SVC.fetch(c.req.raw));
+app.post("/auth/verify", (c) => c.env.USER_SVC.fetch(c.req.raw));
+app.post("/auth/forgot-password", (c) => c.env.USER_SVC.fetch(c.req.raw));
+app.post("/auth/reset-password", (c) => c.env.USER_SVC.fetch(c.req.raw));
+
+// All other auth (Kinde OAuth) goes to auth-svc
 app.all("/auth/*", (c) => c.env.AUTH_SVC.fetch(c.req.raw));
 app.all("/users/*", (c) => c.env.USER_SVC.fetch(c.req.raw));
 app.all("/products/*", (c) => c.env.PRODUCT_SVC.fetch(c.req.raw));
