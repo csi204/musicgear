@@ -9,6 +9,7 @@
   "dependencies": {
     "@musicgear/auth-middleware": "workspace:*",
     "@neondatabase/serverless": "^0.10.4",
+    "bcryptjs": "^3.0.3",
     "hono": "^4.12.26",
     "jose": "^6.2.3"
   },

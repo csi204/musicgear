@@ -36,7 +36,7 @@ export default function AuthCallbackClient() {
 
     // Clear hash before navigating
     history.replaceState(null, "", window.location.pathname + window.location.search);
-    router.replace("/");
+    router.replace("/dashboard");
   }, [router, searchParams]);
 
   return (

@@ -127,6 +127,31 @@ export class ReportService {
   }
 
   /**
+   * ดึงข้อมูล Inventory ทั้งหมด (ไม่กรองสถานะ) พร้อม pagination
+   */
+  async getAllInventory(limit = 12, page = 1) {
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.db.inventorySnapshot.findMany({
+        orderBy: [{ status: 'asc' }, { stockLevel: 'asc' }],
+        take: limit,
+        skip,
+      }),
+      this.db.inventorySnapshot.count(),
+    ]);
+
+    return {
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
    * ดึงประวัติ Audit Log 
    */
   async getAuditLogs(eventType, limit = 50) {
@@ -144,20 +169,25 @@ export class ReportService {
    * ดึงข้อมูลสำหรับ Admin Dashboard Overview
    */
   async getDashboardSummary(startDate, endDate) {
-    // 1. Sales Trend (Line Chart)
-    const salesTrend = await this.db.dailySalesReport.findMany({
-      where: {
-        reportDate: { gte: startDate, lte: endDate },
-      },
-      orderBy: { reportDate: 'asc' },
-    });
+    const [salesTrend, productSales, inventory] = await Promise.all([
+      // 1. Sales Trend (Line Chart)
+      this.db.dailySalesReport.findMany({
+        where: {
+          reportDate: { gte: startDate, lte: endDate },
+        },
+        orderBy: { reportDate: 'asc' },
+      }),
+      
+      // 2. Top Selling Products & 3. Category Distribution
+      this.db.productSalesSnapshot.findMany({
+        where: {
+          reportDate: { gte: startDate, lte: endDate },
+        },
+      }),
 
-    // 2. Top Selling Products & 3. Category Distribution
-    const productSales = await this.db.productSalesSnapshot.findMany({
-      where: {
-        reportDate: { gte: startDate, lte: endDate },
-      },
-    });
+      // 4. Inventory Data
+      this.db.inventorySnapshot.findMany()
+    ]);
 
     // Aggregate manually since Prisma SQLite/workerd groupBy can be tricky or have limitations
     const productMap = new Map();
@@ -183,9 +213,6 @@ export class ReportService {
       category,
       value
     }));
-
-    // 4. Inventory Data
-    const inventory = await this.db.inventorySnapshot.findMany();
 
     const stockLevelsByCategory = {};
     const stockHealthDistribution = { 'In Stock': 0, 'Low': 0, 'Critical': 0 };

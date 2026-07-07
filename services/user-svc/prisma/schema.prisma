@@ -32,8 +32,8 @@ enum Gender {
 }
 
 model User {
-  // userId stores Kinde's sub (e.g. "kp_xxx") — NOT a UUID, so no @db.Uuid
-  userId       String     @id
+  // userId stores Kinde's sub (e.g. "kp_xxx") for old users, but defaults to uuid for new users.
+  userId       String     @id @default(uuid())
   email        String     @unique
   passwordHash String
   firstName    String

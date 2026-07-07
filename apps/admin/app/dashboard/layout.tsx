@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { LayoutDashboard, Users, FileBarChart } from "lucide-react";
-import { LoginButton } from "../../components/login-button";
+import { Sidebar } from "./sidebar";
+import { SyncToken } from "./sync-token";
 
 export default async function DashboardLayout({
   children,
@@ -10,45 +8,39 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const cookieStore = await cookies();
-  const hasSession = cookieStore.get("mg_session");
-
-  if (!hasSession) {
-    redirect("/");
-  }
+  const token = cookieStore.get("mg_admin_session")?.value || cookieStore.get("__Secure-mg_admin_session")?.value;
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex h-screen print:h-auto bg-zinc-50 dark:bg-zinc-950 font-sans overflow-hidden print:overflow-visible selection:bg-blue-500/30">
+      {token && <SyncToken token={token} />}
+
+      {/* Mobile Sidebar Toggle */}
+      <input type="checkbox" id="mobile-sidebar-toggle" className="peer hidden" />
+
+      {/* Mobile Overlay */}
+      <label htmlFor="mobile-sidebar-toggle" className="print:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm opacity-0 pointer-events-none peer-checked:opacity-100 peer-checked:pointer-events-auto transition-opacity md:hidden cursor-pointer" />
+
       {/* Sidebar */}
-      <div className="w-64 border-r bg-white dark:bg-zinc-900 flex flex-col">
-        <div className="h-16 border-b flex items-center px-6">
-          <h1 className="text-xl font-bold text-blue-600 dark:text-blue-400">MUSICGEAR</h1>
-        </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-            <LayoutDashboard className="w-4 h-4" />
-            ภาพรวมระบบ
-          </Link>
-          <Link href="/dashboard/users" className="flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-            <Users className="w-4 h-4" />
-            จัดการผู้ใช้
-          </Link>
-          <Link href="/dashboard/reports" className="flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-            <FileBarChart className="w-4 h-4" />
-            รายงานเชิงลึก
-          </Link>
-        </nav>
-        <div className="p-4 border-t">
-          <LoginButton />
-        </div>
+      <div className="print:hidden fixed md:static inset-y-0 left-0 z-50 transform -translate-x-full md:translate-x-0 peer-checked:translate-x-0 transition-transform duration-300 ease-in-out h-full">
+        <Sidebar />
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="h-16 border-b bg-white dark:bg-zinc-900 flex items-center justify-between px-8">
-          <h2 className="text-sm font-medium text-zinc-500">Admin Portal</h2>
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:overflow-visible relative w-full md:w-auto">
+        {/* Mobile header bar */}
+        <div className="md:hidden print:hidden flex items-center px-4 h-14 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-10">
+          <label htmlFor="mobile-sidebar-toggle" className="p-2 -ml-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </label>
+          <span className="ml-3 font-bold text-zinc-900 dark:text-white text-sm">MusicGear</span>
         </div>
-        <main className="p-8">
-          {children}
+
+        <main className="flex-1 overflow-y-auto print:overflow-visible p-4 md:p-8 relative z-0">
+          <div className="max-w-[1600px] mx-auto w-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

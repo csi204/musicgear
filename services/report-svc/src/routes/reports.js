@@ -141,5 +141,26 @@ export class ReportController {
     };
     this.router.get("/inventory-alerts", inventoryAlertsHandler);
     this.router.on("QUERY", "/inventory-alerts", inventoryAlertsHandler);
+
+    // GET /inventory?page=1&limit=12  — ดึงสินค้าทั้งหมดในคลัง (ไม่กรองสถานะ)
+    const allInventoryHandler = async (c) => {
+      const pageParam = c.req.query("page");
+      const limitParam = c.req.query("limit");
+      const page = parseInt(pageParam || "1", 10);
+      const limit = parseInt(limitParam || "12", 10);
+
+      const db = createClient(c.env.DATABASE_URL);
+      const reportService = new ReportService(db);
+
+      try {
+        const data = await reportService.getAllInventory(limit, page);
+        return c.json(data, 200);
+      } catch (err) {
+        console.error("[GET /reports/inventory]", err);
+        return c.json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
+      }
+    };
+    this.router.get("/inventory", allInventoryHandler);
   }
 }
+

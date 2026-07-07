@@ -88,7 +88,7 @@ export async function deleteUser(userId: string, token?: string): Promise<{ stat
 /** PATCH /users/:userId — admin update user profile */
 export async function updateUser(
   userId: string,
-  data: { firstName?: string; lastName?: string; phone?: string },
+  data: { firstName?: string; lastName?: string; phone?: string; email?: string; role?: UserRole; password?: string },
   token?: string
 ): Promise<{ status: string; user: UserRecord }> {
   return apiFetch(`/users/${userId}`, { method: "PATCH", body: JSON.stringify(data), token });

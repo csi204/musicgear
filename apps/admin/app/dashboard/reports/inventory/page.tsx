@@ -1,98 +1,207 @@
 "use client";
 
-import { useState } from "react";
-import { Package, AlertTriangle, AlertCircle } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { ExportReportButton } from "@/components/export-report-button";
+import { getAccessToken, getApiBaseUrl, clearSession } from "@/lib/auth";
+import { useRouter } from "next/navigation";
+import { cn } from "@workspace/ui/lib/utils";
+
+const NUM = (n: number) => new Intl.NumberFormat("th-TH").format(n);
+const PAGE_SIZE = 12;
 
 export default function InventoryReportPage() {
-  const [showAll, setShowAll] = useState(false);
+  const router = useRouter();
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // Mock Low Stock Data
-  const lowStockItems = [
-    { id: 1, name: "Korg Minilogue XD", stock: 1, status: "Critical", threshold: 5 },
-    { id: 2, name: "Gibson Les Paul Standard", stock: 2, status: "Critical", threshold: 3 },
-    { id: 3, name: "Ableton Push 3", stock: 4, status: "Critical", threshold: 10 },
-    { id: 4, name: "Akai MPK Mini Mk3", stock: 5, status: "Low", threshold: 15 },
-    { id: 5, name: "Audio-Technica ATH-M50x", stock: 8, status: "Low", threshold: 20 },
-    { id: 6, name: "Yamaha Pacifica 112V", stock: 9, status: "Low", threshold: 15 },
-    { id: 7, name: "Rode NT1-A", stock: 12, status: "Low", threshold: 20 },
-    { id: 8, name: "Fender Player Telecaster", stock: 14, status: "Low", threshold: 20 },
-    { id: 9, name: "Focusrite Clarett", stock: 3, status: "Critical", threshold: 5 },
-    { id: 10, name: "Shure SM58", stock: 6, status: "Low", threshold: 50 },
-  ];
+  const fetchData = useCallback(async (p: number) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = getAccessToken();
+      const apiBase = getApiBaseUrl();
 
-  const visibleItems = showAll ? lowStockItems.slice(0, 10) : lowStockItems.slice(0, 5);
+      // Fetch ALL inventory (paginated)
+      const res = await fetch(`${apiBase}/reports/inventory?page=${p}&limit=${PAGE_SIZE}`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (res.status === 401) { clearSession(); router.push("/"); return; }
+      if (!res.ok) throw new Error(`ข้อผิดพลาด ${res.status}`);
+      const json = await res.json();
+
+      // Also fetch dashboard summary for KPIs (inventory health)
+      const res2 = await fetch(`${apiBase}/reports/dashboard-summary`, {
+        method: "QUERY",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ start: new Date("2020-01-01").toISOString(), end: new Date().toISOString() }),
+      });
+      const summaryJson = res2.ok ? await res2.json() : null;
+
+      setData({ items: json.items, alerts: json.items, pagination: json.pagination, inventory: summaryJson?.inventory });
+      setTotalPages(json.pagination?.totalPages ?? 1);
+    } catch (e: any) {
+      setError(e.message ?? "ไม่สามารถโหลดข้อมูลได้");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [router]);
+
+  useEffect(() => { fetchData(page); }, [page, fetchData]);
+
+  const health = data?.inventory?.health ?? [];
+  const critical = health.find((h: any) => h.name === "Critical")?.value ?? 0;
+  const low = health.find((h: any) => h.name === "Low Stock")?.value ?? 0;
+  const ok = health.find((h: any) => h.name === "In Stock")?.value ?? 0;
+
+  const items = data?.items ?? [];
 
   return (
-    <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">รายงานคลังสินค้า (Inventory)</h2>
-        <p className="text-muted-foreground mt-1">ตรวจสอบสินค้าคงคลัง และการแจ้งเตือนสินค้าใกล้หมด</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 className="text-xl font-bold text-zinc-900 dark:text-white">รายงานสินค้าคงคลัง</h3>
+          <p className="text-sm text-zinc-500 mt-0.5">ข้อมูลสินค้าทั้งหมดจากตาราง InventorySnapshot ในฐานข้อมูลจริง</p>
+        </div>
+        <ExportReportButton reportType="inventory" data={data} />
       </div>
 
-      <div className="bg-background rounded-xl border shadow-sm overflow-hidden flex flex-col">
-        <div className="p-6 border-b flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-amber-500/10 text-amber-500 rounded-md">
-              <Package className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-semibold">สินค้าใกล้หมดสต็อก (Low Stock Alerts)</h3>
-          </div>
-          {!showAll && (
-            <button 
-              onClick={() => setShowAll(true)}
-              className="text-sm font-medium text-primary hover:underline"
-            >
-              ดูทั้งหมด (View all)
-            </button>
-          )}
+      {error && (
+        <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 rounded-xl px-4 py-3 text-sm">
+          {error}
         </div>
+      )}
 
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {[
+          { label: "สินค้าปกติ (In Stock)", value: ok, color: "text-emerald-600" },
+          { label: "สต็อกต่ำ (Low Stock)", value: low, color: "text-amber-600" },
+          { label: "วิกฤต / หมดสต็อก", value: critical, color: "text-rose-600" },
+        ].map((kpi) => (
+          <div key={kpi.label} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+            <p className="text-sm font-medium text-zinc-500">{kpi.label}</p>
+            <h4 className={cn("text-3xl font-bold mt-2", kpi.color, isLoading ? "animate-pulse opacity-40" : "")}>
+              {isLoading ? "..." : NUM(kpi.value)} <span className="text-sm font-normal text-zinc-500">รายการ</span>
+            </h4>
+          </div>
+        ))}
+      </div>
+
+      {/* All Items Table */}
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+          <h4 className="text-sm font-bold text-zinc-900 dark:text-white">รายการสินค้าคงคลัง</h4>
+          <p className="text-xs text-zinc-500">
+            {isLoading ? "กำลังโหลด..." : `แสดงหน้า ${page}/${totalPages} (ข้อมูลทั้งหมด ${data?.pagination?.total ?? 0} รายการ)`}
+          </p>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-muted/50 text-muted-foreground font-medium border-b">
+            <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-zinc-500 text-xs uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800">
               <tr>
-                <th className="px-6 py-4">ชื่อสินค้า</th>
-                <th className="px-6 py-4 text-right">จำนวนคงเหลือ</th>
-                <th className="px-6 py-4 text-right">จุดสั่งซื้อ (Threshold)</th>
-                <th className="px-6 py-4">สถานะ</th>
+                <th className="px-6 py-3">ชื่อสินค้า</th>
+                <th className="px-6 py-3">รหัสสินค้า (SKU)</th>
+                <th className="px-6 py-3 text-right">จำนวนคงเหลือ</th>
+                <th className="px-6 py-3 text-right">จุดสั่งซื้อ</th>
+                <th className="px-6 py-3 text-center">สถานะ</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
-              {visibleItems.map((item) => (
-                <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-6 py-4 font-medium text-foreground">{item.name}</td>
-                  <td className="px-6 py-4 text-right font-bold">{item.stock}</td>
-                  <td className="px-6 py-4 text-right text-muted-foreground">{item.threshold}</td>
-                  <td className="px-6 py-4">
-                    {item.status === "Critical" ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border bg-red-500/10 text-red-600 border-red-200 dark:border-red-900/50">
-                        <AlertTriangle className="w-3 h-3" />
-                        วิกฤต (Critical)
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-900/50">
-                        <AlertCircle className="w-3 h-3" />
-                        เหลือน้อย (Low)
-                      </span>
-                    )}
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {isLoading && (
+                [...Array(5)].map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="px-6 py-3"><div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded w-48" /></td>
+                    <td className="px-6 py-3"><div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded w-24" /></td>
+                    <td className="px-6 py-3"><div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded w-12 ml-auto" /></td>
+                    <td className="px-6 py-3"><div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded w-12 ml-auto" /></td>
+                    <td className="px-6 py-3"><div className="h-6 bg-zinc-100 dark:bg-zinc-800 rounded w-16 mx-auto" /></td>
+                  </tr>
+                ))
+              )}
+              {!isLoading && items.map((item: any, i: number) => (
+                <tr key={item.id ?? i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                  <td className="px-6 py-3 font-medium text-zinc-900 dark:text-white">{item.productName}</td>
+                  <td className="px-6 py-3 text-zinc-500 font-mono text-xs">{item.sku}</td>
+                  <td className="px-6 py-3 text-right font-bold text-zinc-900 dark:text-white">{NUM(item.stockLevel)}</td>
+                  <td className="px-6 py-3 text-right text-zinc-500">{NUM(item.reorderPoint)}</td>
+                  <td className="px-6 py-3 text-center">
+                    <span className={cn(
+                      "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold",
+                      item.status === "Critical" ? "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400"
+                      : item.status === "Low" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
+                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                    )}>
+                      {item.status === "Critical" ? "วิกฤต" : item.status === "Low" ? "ต่ำ" : "ปกติ"}
+                    </span>
                   </td>
                 </tr>
               ))}
+              {!isLoading && items.length === 0 && (
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-zinc-400">ไม่มีข้อมูลสินค้าในระบบ</td></tr>
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination like other pages */}
-        {showAll && (
-          <div className="flex items-center justify-between p-4 border-t text-sm text-muted-foreground">
-            <div>แสดงผล 1 ถึง 10 จาก 42 รายการ</div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+            <span className="text-xs text-zinc-500">หน้า {page} จาก {totalPages} ({data?.pagination?.total ?? 0} รายการ)</span>
             <div className="flex items-center gap-1">
-              <button className="px-3 py-1 border rounded hover:bg-muted disabled:opacity-50" disabled>ก่อนหน้า</button>
-              <button className="px-3 py-1 border rounded bg-primary text-primary-foreground">1</button>
-              <button className="px-3 py-1 border rounded hover:bg-muted">2</button>
-              <button className="px-3 py-1 border rounded hover:bg-muted">3</button>
-              <span className="px-2">...</span>
-              <button className="px-3 py-1 border rounded hover:bg-muted">ถัดไป</button>
+              <button
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+                className="px-2.5 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg disabled:opacity-30 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              >
+                «
+              </button>
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg disabled:opacity-30 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              >
+                ก่อนหน้า
+              </button>
+
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let p: number;
+                if (totalPages <= 5) p = i + 1;
+                else if (page <= 3) p = i + 1;
+                else if (page >= totalPages - 2) p = totalPages - 4 + i;
+                else p = page - 2 + i;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`w-8 h-7 text-xs rounded-lg transition-colors ${
+                      p === page
+                        ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold"
+                        : "border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg disabled:opacity-30 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              >
+                ถัดไป
+              </button>
+              <button
+                onClick={() => setPage(totalPages)}
+                disabled={page === totalPages}
+                className="px-2.5 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 rounded-lg disabled:opacity-30 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              >
+                »
+              </button>
             </div>
           </div>
         )}

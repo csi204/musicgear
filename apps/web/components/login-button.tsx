@@ -1,29 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 import { Button } from "@workspace/ui/components/button";
-import {
-  buildLoginUrl,
-  buildLogoutUrl,
-  buildRegisterUrl,
-  clearSession,
-  fetchCurrentUser,
-  isAuthenticated,
-  getStoredSession,
-  getApiBaseUrl,
-} from "../lib/auth";
-
-type AuthUser = {
-  // DB format (from /users/me)
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  role?: string;
-  // JWT format fallback (from /auth/me)
-  given_name?: string;
-  family_name?: string;
-  roles?: { key: string }[];
-};
+import Link from "next/link";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "แอดมิน",
@@ -32,69 +11,18 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export function LoginButton() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: session, status } = useSession();
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadUser() {
-      if (!isAuthenticated()) {
-        if (active) {
-          setUser(null);
-          setLoading(false);
-        }
-        return;
-      }
-
-      const currentUser = await fetchCurrentUser();
-      if (active) {
-        setUser(currentUser);
-        setLoading(false);
-      }
-    }
-
-    loadUser();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  if (loading) {
+  if (status === "loading") {
     return <p className="text-muted-foreground text-sm">กำลังตรวจสอบสถานะ...</p>;
   }
 
-  if (user) {
-    // Support both DB format (firstName/lastName) and JWT format (given_name/family_name)
+  if (session?.user) {
+    const user = session.user as any;
     const displayName =
-      [user.firstName ?? user.given_name, user.lastName ?? user.family_name]
-        .filter(Boolean)
-        .join(" ") || user.email || "ผู้ใช้";
+      [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || user.name || "ผู้ใช้";
 
-    // Role from DB (flat string) or JWT (roles array)
-    const rawRole = user.role ?? user.roles?.[0]?.key ?? null;
-    const roleLabel = rawRole ? (ROLE_LABELS[rawRole] ?? rawRole) : null;
-
-    const goToAccountManagement = async () => {
-      try {
-        const session = getStoredSession();
-        if (!session?.access_token) return;
-
-        const response = await fetch(`${getApiBaseUrl()}/auth/portal`, {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-
-        const data = await response.json();
-        if (data.url) {
-          window.location.href = data.url;
-        }
-      } catch (error) {
-        console.error("Failed to fetch portal link:", error);
-      }
-    };
+    const roleLabel = user.role ? (ROLE_LABELS[user.role] ?? user.role) : null;
 
     return (
       <div className="flex flex-col gap-2">
@@ -103,19 +31,17 @@ export function LoginButton() {
           {roleLabel ? ` (${roleLabel})` : null}
         </p>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="w-fit"
-            onClick={goToAccountManagement}
-          >
-            จัดการบัญชี
+          <Button variant="outline" className="w-fit" asChild>
+            <Link href="/account">จัดการบัญชี</Link>
           </Button>
           <Button
             variant="outline"
             className="w-fit"
-            onClick={() => {
-              clearSession();
-              window.location.href = buildLogoutUrl("/");
+            onClick={async () => {
+              // 1. Clear NextAuth session
+              await signOut({ redirect: false });
+              // 2. Clear Kinde SSO session so user can pick account next time
+              window.location.href = "https://musicgear.kinde.com/logout?redirect=http://localhost:8800/";
             }}
           >
             ออกจากระบบ
@@ -127,22 +53,11 @@ export function LoginButton() {
 
   return (
     <div className="flex gap-2">
-      <Button
-        className="w-fit"
-        onClick={() => {
-          window.location.href = buildLoginUrl("/auth/callback");
-        }}
-      >
-        เข้าสู่ระบบ
+      <Button className="w-fit" asChild>
+        <Link href="/login">เข้าสู่ระบบ</Link>
       </Button>
-      <Button
-        variant="outline"
-        className="w-fit"
-        onClick={() => {
-          window.location.href = buildRegisterUrl("/auth/callback");
-        }}
-      >
-        สมัครสมาชิก
+      <Button variant="outline" className="w-fit" asChild>
+        <Link href="/register">สมัครสมาชิก</Link>
       </Button>
     </div>
   );

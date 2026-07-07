@@ -1,27 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import { auth } from "./auth";
 
-function buildLoginRedirect(request: NextRequest) {
-  const authBase = process.env.NEXT_PUBLIC_AUTH_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8788";
-  const origin = request.nextUrl.origin.replace("0.0.0.0", "127.0.0.1");
-  const redirectUri = `${origin}/auth/callback`;
-  const loginUrl = new URL(`${authBase}/auth/login`);
-  loginUrl.searchParams.set("redirect_uri", redirectUri);
-  return NextResponse.redirect(loginUrl);
-}
+export default auth((req) => {
+  const isLoggedIn = !!req.auth;
+  const isAuthPage = req.nextUrl.pathname.startsWith("/login");
 
-export function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/auth/callback")) {
-    return NextResponse.next();
+  if (!isLoggedIn && !isAuthPage) {
+    return Response.redirect(new URL("/login", req.nextUrl));
   }
-
-  const hasSession = request.cookies.get("mg_session")?.value === "1";
-  if (hasSession) {
-    return NextResponse.next();
+  
+  if (isLoggedIn && isAuthPage) {
+    return Response.redirect(new URL("/dashboard", req.nextUrl));
   }
-
-  return buildLoginRedirect(request);
-}
+});
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
