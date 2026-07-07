@@ -52,8 +52,6 @@ export class OrderService {
       throw new Error(`INVALID_STATUS_TRANSITION: Cannot transition from ${currentStatus} to ${newStatus}`);
     }
 
-    // If transitioned to "shipped" or others, we might want to also create/update shipment
-    // In Phase 1 we just update the Order status.
     const updatedOrder = await prisma.order.update({
       where: { orderId },
       data: { status: newStatus },
@@ -63,8 +61,6 @@ export class OrderService {
       },
     });
 
-    // ⚠️ TODO: publish QStash event `order.status_changed` (in Phase 3 / Integration)
-    
     return updatedOrder;
   }
 
@@ -79,5 +75,108 @@ export class OrderService {
       refunded: [],
     };
     return VALID_TRANSITIONS[currentStatus] || [];
+  }
+
+  /**
+   * สร้างออเดอร์และทำระบบ Checkout Flow
+   * @param {import("../../generated/prisma").PrismaClient} prisma
+   * @param {object} env Cloudflare bindings
+   * @param {string} customerId
+   * @param {object} checkoutData
+   * @param {string} authHeader JWT Auth header from requester
+   */
+  static async createOrder(prisma, env, customerId, { cartId, addressId, remark, shippingAddressSnapshot }, authHeader = "") {
+    // 1. ดึงข้อมูลตะกร้าสินค้าจาก cart-svc
+    const cartRes = await env.CART_SVC.fetch(`http://cart-svc/carts/${cartId}`);
+    if (!cartRes.ok) {
+      throw new Error("CART_NOT_FOUND");
+    }
+    const cart = await cartRes.json();
+    if (!cart.items || cart.items.length === 0) {
+      throw new Error("CART_EMPTY");
+    }
+
+    // 2. ตรวจสอบสต็อกกับ inventory-svc
+    const checkItems = cart.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+    }));
+    const stockRes = await env.INVENTORY_SVC.fetch("http://inventory-svc/stock/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: checkItems }),
+    });
+
+    if (!stockRes.ok) {
+      if (stockRes.status === 409) {
+        throw new Error("OUT_OF_STOCK");
+      }
+      throw new Error("STOCK_CHECK_FAILED");
+    }
+
+    // 3. บันทึกออเดอร์พร้อมทำ Snapshot ราคาและที่อยู่ลง Postgres
+    const totalAmount = cart.items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
+    const shippingFee = 0;
+    const discountAmount = 0;
+    const grandTotal = totalAmount + shippingFee - discountAmount;
+
+    let order;
+    try {
+      order = await prisma.order.create({
+        data: {
+          customerId,
+          addressId,
+          shippingAddressSnapshot: shippingAddressSnapshot, // บันทึกเป็น JSON snapshot
+          totalAmount,
+          shippingFee,
+          discountAmount,
+          grandTotal,
+          status: "pending",
+          remark: remark || null,
+          items: {
+            create: cart.items.map((item) => {
+              const price = Number(item.price);
+              return {
+                productId: item.productId,
+                quantity: item.quantity,
+                unitPrice: price,
+                totalPrice: price * item.quantity,
+              };
+            }),
+          },
+        },
+        include: {
+          items: true,
+        },
+      });
+    } catch (err) {
+      console.error("[OrderService] Failed to write order to DB:", err);
+      throw new Error("ORDER_WRITE_FAILED");
+    }
+
+    // 5. สั่งจองสต็อกกับ inventory-svc
+    const reserveRes = await env.INVENTORY_SVC.fetch("http://inventory-svc/stock/reserve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orderId: order.orderId,
+        items: checkItems,
+      }),
+    });
+
+    if (!reserveRes.ok) {
+      // หากจองสต็อกล้มเหลว ทำการลบออเดอร์ที่สร้างขึ้นเพื่อ Rollback
+      await prisma.order.delete({
+        where: { orderId: order.orderId },
+      });
+      throw new Error("STOCK_RESERVATION_FAILED");
+    }
+
+    // 6. ล้างสินค้าในตะกร้าจาก cart-svc
+    await env.CART_SVC.fetch(`http://cart-svc/carts/${cartId}`, {
+      method: "DELETE",
+    });
+
+    return order;
   }
 }

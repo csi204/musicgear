@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ShoppingCart, User, Menu } from "lucide-react";
+import { Search, ShoppingCart, User, Menu, ClipboardList } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { LoginButton } from "./login-button";
 import { useState, useEffect } from "react";
@@ -95,6 +95,15 @@ export function Navbar() {
             <LoginButton />
           </div>
 
+          {/* My Orders Link */}
+          <Link
+            href="/orders"
+            className="relative hidden sm:flex h-10 w-10 items-center justify-center rounded-full border border-[#DEDCD4] bg-white text-neutral-800 transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300"
+            title="ประวัติการสั่งซื้อ"
+          >
+            <ClipboardList className="h-5 w-5" />
+          </Link>
+
           {/* Cart Icon Button (Triggers Drawer) */}
           <button
             onClick={() => setIsCartOpen(true)}
@@ -163,6 +172,13 @@ export function Navbar() {
               className="text-sm font-medium text-slate-gray hover:text-neutral-900"
             >
               แบรนด์
+            </Link>
+            <Link
+              href="/orders"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-sm font-medium text-slate-gray hover:text-neutral-900"
+            >
+              ประวัติการสั่งซื้อ
             </Link>
             <div className="pt-2 border-t border-[#E5E2DA] sm:hidden">
               <LoginButton />

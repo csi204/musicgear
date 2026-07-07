@@ -16,10 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 import { getProductById, Product } from "../../../lib/products-data";
-
-// TODO: [product-svc] Replace getProductById() with API call:
-//   GET {API_GATEWAY}/products/by-slug/:slug  (product-svc via api-gateway)
-// TODO: [r2] Product imageUrl/imagesGallery will be Cloudflare R2 URLs
+import { getApiBaseUrl } from "../../../lib/auth";
 import { useCart } from "../../../hooks/useCart";
 
 interface ProductDetailClientProps {
@@ -28,19 +25,74 @@ interface ProductDetailClientProps {
 }
 
 export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
-  // TODO: [product-svc] Replace with: const product = await productService.getBySlug(productSlug)
-  const product = getProductById(productSlug);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
   const { addItem, addMultipleItems } = useCart();
 
+  useEffect(() => {
+    async function loadProduct() {
+      try {
+        setLoading(true);
+        const res = await fetch(`${getApiBaseUrl()}/products/by-slug/${productSlug}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === "ok" && data.product) {
+            const p = data.product;
+            setProduct({
+              id: p.slug, // URL slug
+              productId: p.productId, // DB UUID
+              brand: p.brand?.name || "GENERIC",
+              title: p.name,
+              price: Number(p.price),
+              originalPrice: Number(p.price) * 1.15, // mock original price
+              imageUrl: p.images && p.images.length > 0 
+                ? `${getApiBaseUrl()}/products/images/${p.images.find((img: any) => img.isPrimary)?.imageUrl || p.images[0].imageUrl}`
+                : "https://images.unsplash.com/photo-1550985616-10810253b84d?auto=format&fit=crop&w=600&q=80",
+              colors: [
+                { name: "Standard", hex: "#4B5563" }
+              ],
+              rating: 4.8,
+              reviewsCount: 15,
+              stockStatus: p.status === "active" ? "In Stock" : "Out of Stock",
+              descriptionLong: p.description || "สินค้าแบรนด์ดังคุณภาพระดับพรีเมียมจาก MusicGear",
+              specifications: [
+                { label: "SKU", value: p.sku },
+                { label: "Level", value: p.skillLevel || "All Levels" }
+              ],
+              imagesGallery: p.images && p.images.length > 0
+                ? p.images.map((img: any) => `${getApiBaseUrl()}/products/images/${img.imageUrl}`)
+                : [],
+              accessories: [],
+              comparisons: []
+            } as any);
+          } else {
+            const fallback = getProductById(productSlug);
+            if (fallback) setProduct(fallback);
+          }
+        } else {
+          const fallback = getProductById(productSlug);
+          if (fallback) setProduct(fallback);
+        }
+      } catch (err) {
+        console.error("Failed to fetch product by slug:", err);
+        const fallback = getProductById(productSlug);
+        if (fallback) setProduct(fallback);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProduct();
+  }, [productSlug]);
+
   // Selected Options States
-  const [selectedColor, setSelectedColor] = useState(product?.colors[0]?.name || "");
+  const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [activeImage, setActiveImage] = useState(product?.imageUrl || "");
+  const [activeImage, setActiveImage] = useState("");
   const [activeTab, setActiveTab] = useState<"description" | "specifications" | "reviews">("description");
   
   // Bundle Selection States
   const [includeMain, setIncludeMain] = useState(true);
-  const [selectedAccessories, setSelectedAccessories] = useState<string[]>(product?.accessories?.map(acc => acc.id) || []);
+  const [selectedAccessories, setSelectedAccessories] = useState<string[]>([]);
   const [bundleAdded, setBundleAdded] = useState(false);
   const [itemAdded, setItemAdded] = useState(false);
 
@@ -66,6 +118,14 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
       setActiveImage(product.imagesByColor[colorName]);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-7xl px-6 py-24 text-center text-slate-gray font-medium">
+        กำลังโหลดรายละเอียดสินค้า...
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -99,7 +159,7 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
   // Add single item to cart
   const handleAddToCart = () => {
     addItem({
-      productId: product.id,
+      productId: product.productId || product.id,
       title: product.title,
       price: product.price,
       quantity: quantity,
@@ -117,7 +177,7 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
     
     if (includeMain) {
       itemsToAdd.push({
-        productId: product.id,
+        productId: product.productId || product.id,
         title: product.title,
         price: product.price,
         quantity: 1,

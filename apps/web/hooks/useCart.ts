@@ -1,132 +1,302 @@
 /**
  * ============================================================
- * MOCK CART — UX/UI Development Phase
+ * REAL REDIS CART INTEGRATION — Phase 2
  * ============================================================
- * ใช้ localStorage เก็บ cart state ชั่วคราวเพื่อพัฒนา UX/UI
- * ตาม frontend/skill.md ข้อ 7: cart จริงต้องเก็บใน cart-svc
+ * ดึงและจัดการข้อมูลตะกร้าสินค้าจริงผ่าน cart-svc API บน API Gateway
+ * รองรับการซิงค์ข้อมูลผู้ใช้จริงจาก Kinde และการผสานตะกร้า Guest
  *
- * TODO: [cart-svc] Replace localStorage operations with cart-svc API via api-gateway:
+ * endpoints:
  *   addItem()        → POST   {API_GATEWAY}/carts/:cartId/items
  *   updateQuantity() → PATCH  {API_GATEWAY}/carts/:cartId/items/:itemId
  *   removeItem()     → DELETE {API_GATEWAY}/carts/:cartId/items/:itemId
  *   clearCart()      → DELETE {API_GATEWAY}/carts/:cartId
- *   (init cart)      → POST   {API_GATEWAY}/carts   (guest: sessionId, user: customerId)
- *
- * TODO: [cart-svc] Cart badge count (totalItems) should come from GET /carts/:cartId
- * TODO: [auth-svc] After login → POST /carts/merge (guestCartId + customerId)
- * TODO: [cart-svc] CartItem.color/title/brand are display fields not in cart-svc schema —
- *   decide: store variantId in CartItem OR fetch display data from product-svc on load
+ *   (init cart)      → POST   {API_GATEWAY}/carts
  * ============================================================
  */
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { getApiBaseUrl, getAccessToken, fetchCurrentUser } from "../lib/auth";
 
 export interface CartItem {
-  /** Local composite key: `${productId}-${color}`. In production: cartItemId (UUID from cart-svc) */
+  /** In Redis production: cartItemId (UUID from cart-svc) */
   id: string;
-  /** In production: UUID matching product-svc product ID */
+  /** UUID matching product-svc product ID */
   productId: string;
   title: string;
   price: number;
   quantity: number;
-  /** Selected color variant — not stored in cart-svc schema yet. TODO: add variantId to CartItem schema */
+  /** Selected color variant */
   color: string;
-  /** TODO: [r2] Will be Cloudflare R2 URL from product-svc */
   imageUrl: string;
   brand: string;
 }
 
+const getHeaders = () => {
+  const token = getAccessToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
+const cartApi = {
+  async getCart(cartId: string) {
+    const res = await fetch(`${getApiBaseUrl()}/carts/${cartId}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to get cart");
+    return res.json();
+  },
+  async getCustomerCart(customerId: string) {
+    const res = await fetch(`${getApiBaseUrl()}/carts/customer/${customerId}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      throw new Error("Failed to get customer cart");
+    }
+    return res.json();
+  },
+  async createCart(customerId?: string | null) {
+    const res = await fetch(`${getApiBaseUrl()}/carts`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({ customerId: customerId || null }),
+    });
+    if (!res.ok) throw new Error("Failed to create cart");
+    return res.json();
+  },
+  async addItem(cartId: string, item: { productId: string; quantity: number; price: number; color?: string; title?: string; imageUrl?: string; brand?: string }) {
+    const res = await fetch(`${getApiBaseUrl()}/carts/${cartId}/items`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(item),
+    });
+    if (!res.ok) throw new Error("Failed to add item");
+    return res.json();
+  },
+  async updateItem(cartId: string, itemId: string, quantity: number) {
+    const res = await fetch(`${getApiBaseUrl()}/carts/${cartId}/items/${itemId}`, {
+      method: "PATCH",
+      headers: getHeaders(),
+      body: JSON.stringify({ quantity }),
+    });
+    if (!res.ok) throw new Error("Failed to update item");
+    return res.json();
+  },
+  async removeItem(cartId: string, itemId: string) {
+    const res = await fetch(`${getApiBaseUrl()}/carts/${cartId}/items/${itemId}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to remove item");
+  },
+  async clearCart(cartId: string) {
+    const res = await fetch(`${getApiBaseUrl()}/carts/${cartId}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to clear cart");
+  },
+  async mergeCarts(guestCartId: string, customerId: string) {
+    const res = await fetch(`${getApiBaseUrl()}/carts/merge`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({ guestCartId, customerId }),
+    });
+    if (!res.ok) throw new Error("Failed to merge carts");
+    return res.json();
+  }
+};
 
 export function useCart() {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [cartId, setCartId] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Load items from localStorage
-  const loadCart = () => {
+  const syncCart = useCallback(async () => {
     try {
-      const stored = localStorage.getItem("mg_cart_items");
-      if (stored) {
-        setItems(JSON.parse(stored));
+      const token = getAccessToken();
+      let activeCart = null;
+
+      if (token) {
+        // User logged in
+        const user = await fetchCurrentUser();
+        if (user) {
+          // 1. Try fetching existing customer cart
+          activeCart = await cartApi.getCustomerCart(user.id);
+          
+          // 2. If not found, check if we have a local guest cart to merge
+          if (!activeCart) {
+            const guestCartId = localStorage.getItem("mg_cart_id");
+            if (guestCartId) {
+              try {
+                activeCart = await cartApi.mergeCarts(guestCartId, user.id);
+                localStorage.removeItem("mg_cart_id"); // clear guest cart reference
+              } catch {
+                // If merge fails, fall through
+              }
+            }
+          }
+
+          // 3. If still no cart, create one for the user
+          if (!activeCart) {
+            activeCart = await cartApi.createCart(user.id);
+          }
+        }
       } else {
-        setItems([]);
+        // Guest user
+        const guestCartId = localStorage.getItem("mg_cart_id");
+        if (guestCartId) {
+          try {
+            activeCart = await cartApi.getCart(guestCartId);
+          } catch {
+            // guest cart expired in Redis, fall through to create
+          }
+        }
+
+        if (!activeCart) {
+          activeCart = await cartApi.createCart(null);
+        }
+      }
+
+      if (activeCart) {
+        setCartId(activeCart.cartId);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mappedItems: CartItem[] = activeCart.items.map((i: any) => ({
+          id: i.cartItemId,
+          productId: i.productId,
+          title: i.title || "สินค้า",
+          price: Number(i.price),
+          quantity: i.quantity,
+          color: i.color || "",
+          imageUrl: i.imageUrl || "",
+          brand: i.brand || "",
+        }));
+
+        setItems(mappedItems);
+        localStorage.setItem("mg_cart_id", activeCart.cartId);
       }
     } catch (e) {
-      console.error("Failed to load cart items", e);
+      console.error("Failed to sync cart", e);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadCart();
+    syncCart();
 
     const handleUpdate = () => {
-      loadCart();
+      syncCart();
     };
 
     window.addEventListener("mg_cart_updated", handleUpdate);
     return () => window.removeEventListener("mg_cart_updated", handleUpdate);
-  }, []);
+  }, [syncCart]);
 
-  const saveCart = (newItems: CartItem[]) => {
+  const triggerUpdate = () => {
+    window.dispatchEvent(new Event("mg_cart_updated"));
+  };
+
+  const addItem = async (item: Omit<CartItem, "id">) => {
+    let currentCartId = cartId;
+    if (!currentCartId) {
+      // Fallback: load guest cart id from localStorage if hook state not initialized yet
+      currentCartId = localStorage.getItem("mg_cart_id");
+    }
+    if (!currentCartId) return;
+
     try {
-      localStorage.setItem("mg_cart_items", JSON.stringify(newItems));
-      setItems(newItems);
-      // Dispatch custom event to notify other instances of useCart
-      window.dispatchEvent(new Event("mg_cart_updated"));
+      await cartApi.addItem(currentCartId, {
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+        color: item.color,
+        title: item.title,
+        imageUrl: item.imageUrl,
+        brand: item.brand,
+      });
+      triggerUpdate();
     } catch (e) {
-      console.error("Failed to save cart items", e);
+      console.error("Failed to add item to cart", e);
     }
   };
 
-  const addItem = (item: Omit<CartItem, "id">) => {
-    const id = `${item.productId}-${item.color}`;
-    const existingIndex = items.findIndex((i) => i.id === id);
-    let newItems = [...items];
-
-    if (existingIndex > -1) {
-      const existingItem = newItems[existingIndex];
-      if (existingItem) {
-        existingItem.quantity += item.quantity;
-      }
-    } else {
-      newItems.push({ ...item, id });
+  const addMultipleItems = async (itemsToAdd: Omit<CartItem, "id">[]) => {
+    let currentCartId = cartId;
+    if (!currentCartId) {
+      currentCartId = localStorage.getItem("mg_cart_id");
     }
-    saveCart(newItems);
-  };
+    if (!currentCartId) return;
 
-  const addMultipleItems = (itemsToAdd: Omit<CartItem, "id">[]) => {
-    let newItems = [...items];
-    itemsToAdd.forEach((item) => {
-      const id = `${item.productId}-${item.color}`;
-      const existingIndex = newItems.findIndex((i) => i.id === id);
-      if (existingIndex > -1) {
-        const existingItem = newItems[existingIndex];
-        if (existingItem) {
-          existingItem.quantity += item.quantity;
-        }
-      } else {
-        newItems.push({ ...item, id });
+    try {
+      for (const item of itemsToAdd) {
+        await cartApi.addItem(currentCartId, {
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          color: item.color,
+          title: item.title,
+          imageUrl: item.imageUrl,
+          brand: item.brand,
+        });
       }
-    });
-    saveCart(newItems);
+      triggerUpdate();
+    } catch (e) {
+      console.error("Failed to add multiple items", e);
+    }
   };
 
-  const removeItem = (id: string) => {
-    const newItems = items.filter((i) => i.id !== id);
-    saveCart(newItems);
+  const removeItem = async (id: string) => {
+    let currentCartId = cartId;
+    if (!currentCartId) {
+      currentCartId = localStorage.getItem("mg_cart_id");
+    }
+    if (!currentCartId) return;
+
+    try {
+      await cartApi.removeItem(currentCartId, id);
+      triggerUpdate();
+    } catch (e) {
+      console.error("Failed to remove item", e);
+    }
   };
 
-  const updateQuantity = (id: string, quantity: number) => {
+  const updateQuantity = async (id: string, quantity: number) => {
+    let currentCartId = cartId;
+    if (!currentCartId) {
+      currentCartId = localStorage.getItem("mg_cart_id");
+    }
+    if (!currentCartId) return;
+
     if (quantity <= 0) {
-      removeItem(id);
+      await removeItem(id);
       return;
     }
-    const newItems = items.map((i) => (i.id === id ? { ...i, quantity } : i));
-    saveCart(newItems);
+    try {
+      await cartApi.updateItem(currentCartId, id, quantity);
+      triggerUpdate();
+    } catch (e) {
+      console.error("Failed to update item quantity", e);
+    }
   };
 
-  const clearCart = () => {
-    saveCart([]);
+  const clearCart = async () => {
+    let currentCartId = cartId;
+    if (!currentCartId) {
+      currentCartId = localStorage.getItem("mg_cart_id");
+    }
+    if (!currentCartId) return;
+
+    try {
+      await cartApi.clearCart(currentCartId);
+      triggerUpdate();
+    } catch (e) {
+      console.error("Failed to clear cart", e);
+    }
   };
 
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
@@ -134,6 +304,8 @@ export function useCart() {
 
   return {
     items,
+    loading,
+    cartId,
     addItem,
     addMultipleItems,
     removeItem,

@@ -9,7 +9,7 @@ datasource db {
 
 model Cart {
   cartId     String   @id @default(uuid()) @db.Uuid
-  customerId String?  @db.Uuid // Soft ref to user-svc
+  customerId String?  // Soft ref to user-svc (string Kinde ID)
   sessionId  String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now()) @updatedAt
@@ -23,6 +23,10 @@ model CartItem {
   productId  String  @db.Uuid // Soft ref to product-svc
   quantity   Int
   price      Decimal @db.Decimal(10,2)
+  color      String?
+  title      String?
+  imageUrl   String?
+  brand      String?
 
   cart Cart @relation(fields: [cartId], references: [cartId])
 }

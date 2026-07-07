@@ -9,7 +9,9 @@
   "dependencies": {
     "hono": "^4.12.26",
     "@musicgear/auth-middleware": "workspace:*",
-    "@neondatabase/serverless": "^0.10.4"
+    "@neondatabase/serverless": "^0.10.4",
+    "types": "workspace:*",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "wrangler": "^4.4.0",

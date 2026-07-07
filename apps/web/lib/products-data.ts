@@ -18,6 +18,8 @@
 export interface Product {
   /** In production: UUID from product-svc */
   id: string;
+  /** Real UUID primary key from product-svc DB (used for cart/order APIs) */
+  productId?: string;
   brand: string;
   title: string;
   price: number;

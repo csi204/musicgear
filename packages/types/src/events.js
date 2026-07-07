@@ -99,9 +99,35 @@ export const productCreatedEvent = z.object({
   productId: uuidSchema,
 });
 
+export const addressCreatedEvent = z.object({
+  event: z.literal("address.created"),
+  addressId: uuidSchema,
+  customerId: z.string(),
+  receiverName: z.string(),
+  phone: z.string(),
+  addressLine1: z.string(),
+  addressLine2: z.string().nullable().optional(),
+  province: z.string(),
+  city: z.string(),
+  postalCode: z.string(),
+});
+
+export const addressUpdatedEvent = z.object({
+  event: z.literal("address.updated"),
+  addressId: uuidSchema,
+  customerId: z.string(),
+  receiverName: z.string(),
+  phone: z.string(),
+  addressLine1: z.string(),
+  addressLine2: z.string().nullable().optional(),
+  province: z.string(),
+  city: z.string(),
+  postalCode: z.string(),
+});
+
 // ---------------------------------------------------------------------------
 // QStash Webhook Payload (ใช้ใน notification-svc และ inventory-svc)
-// รวม 4 event types: 2 จากบุญ + 2 จากเดียร์ (discriminated union)
+// รวม 6 event types: 2 จากบุญ + 2 จากเดียร์ + 2 จากเขต (discriminated union)
 // ---------------------------------------------------------------------------
 export const qstashWebhookSchema = z.discriminatedUnion("event", [
   orderStatusChangedEvent,
@@ -110,4 +136,6 @@ export const qstashWebhookSchema = z.discriminatedUnion("event", [
   addressCreatedEvent,
   addressUpdatedEvent,
   productCreatedEvent,
+  addressCreatedEvent,
+  addressUpdatedEvent,
 ]);

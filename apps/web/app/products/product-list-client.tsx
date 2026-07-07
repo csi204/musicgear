@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SlidersHorizontal, ChevronDown, Home } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
+import { getApiBaseUrl } from "../../lib/auth";
 import {
   Product,
   guitarProducts,
@@ -19,6 +20,28 @@ interface ProductListClientProps {
 
 export function ProductListClient({ initialCategory, initialBrand }: ProductListClientProps) {
   const [selectedColors, setSelectedColors] = useState<{ [productId: string]: string }>({});
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        setLoading(true);
+        const res = await fetch(`${getApiBaseUrl()}/products?limit=100&status=active`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === "ok" && data.products) {
+            setProducts(data.products);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch products:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProducts();
+  }, []);
 
   const handleColorClick = (productId: string, colorName: string) => {
     setSelectedColors((prev) => ({
@@ -40,38 +63,92 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
     let title = "สินค้าทั้งหมด";
     let bannerUrl = "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80";
     let breadcrumb = "สินค้าทั้งหมด";
-    let products = [
-      ...guitarProducts,
-      ...keyboardProducts,
-      ...drumProducts,
-      ...proAudioProducts,
-    ];
+    
+    let displayProducts: Product[] = [];
+
+    if (products.length > 0) {
+      displayProducts = products.map((p: any) => ({
+        id: p.slug, // URL slug
+        productId: p.productId, // DB UUID
+        brand: p.brand?.name || "GENERIC",
+        title: p.name,
+        price: Number(p.price),
+        originalPrice: Number(p.price) * 1.15, // mock original price
+        imageUrl: p.images && p.images.length > 0 
+          ? `${getApiBaseUrl()}/products/images/${p.images.find((img: any) => img.isPrimary)?.imageUrl || p.images[0].imageUrl}`
+          : "https://images.unsplash.com/photo-1550985616-10810253b84d?auto=format&fit=crop&w=600&q=80",
+        colors: [
+          { name: "Standard", hex: "#4B5563" }
+        ],
+        rating: 4.8,
+        reviewsCount: 15,
+        stockStatus: p.status === "active" ? "In Stock" : "Out of Stock",
+        descriptionLong: p.description || "สินค้าแบรนด์ดังคุณภาพระดับพรีเมียมจาก MusicGear",
+        specifications: [
+          { label: "SKU", value: p.sku },
+          { label: "Level", value: p.skillLevel || "All Levels" }
+        ],
+        imagesGallery: p.images && p.images.length > 0
+          ? p.images.map((img: any) => `${getApiBaseUrl()}/products/images/${img.imageUrl}`)
+          : [],
+        accessories: [],
+        comparisons: []
+      }));
+    } else {
+      displayProducts = [
+        ...guitarProducts,
+        ...keyboardProducts,
+        ...drumProducts,
+        ...proAudioProducts,
+      ];
+    }
 
     if (initialCategory) {
-      switch (initialCategory) {
+      const catLower = initialCategory.toLowerCase();
+      switch (catLower) {
         case "keyboards":
           title = "คีย์บอร์ดทั้งหมด";
           bannerUrl = "/hero/hero_keyboard.png";
           breadcrumb = "คีย์บอร์ด";
-          products = keyboardProducts;
+          displayProducts = products.length > 0
+            ? displayProducts.filter(p => {
+                const orig = products.find(o => o.slug === p.id);
+                return orig?.category?.name?.toLowerCase().includes("keyboard");
+              })
+            : keyboardProducts;
           break;
         case "drums":
           title = "กลองทั้งหมด";
           bannerUrl = "/catagory/drum.jpg";
           breadcrumb = "กลอง";
-          products = drumProducts;
+          displayProducts = products.length > 0
+            ? displayProducts.filter(p => {
+                const orig = products.find(o => o.slug === p.id);
+                return orig?.category?.name?.toLowerCase().includes("drum");
+              })
+            : drumProducts;
           break;
         case "pro-audio":
           title = "เครื่องเสียงโปรทั้งหมด";
           bannerUrl = "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80";
           breadcrumb = "เครื่องเสียงโปร";
-          products = proAudioProducts;
+          displayProducts = products.length > 0
+            ? displayProducts.filter(p => {
+                const orig = products.find(o => o.slug === p.id);
+                return orig?.category?.name?.toLowerCase().match(/audio|sound|speaker/);
+              })
+            : proAudioProducts;
           break;
         case "guitars":
           title = "กีต้าร์ทั้งหมด";
           bannerUrl = "/catagory/guitar.jpg";
           breadcrumb = "กีต้าร์";
-          products = guitarProducts;
+          displayProducts = products.length > 0
+            ? displayProducts.filter(p => {
+                const orig = products.find(o => o.slug === p.id);
+                return orig?.category?.name?.toLowerCase().includes("guitar");
+              })
+            : guitarProducts;
           break;
         default:
           break;
@@ -80,11 +157,10 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
 
     if (initialBrand) {
       const brandUpper = initialBrand.toUpperCase();
-      products = products.filter((p) => p.brand.toUpperCase() === brandUpper);
+      displayProducts = displayProducts.filter((p) => p.brand.toUpperCase() === brandUpper);
       title = `${brandUpper} Collection`;
       breadcrumb = initialCategory ? `${breadcrumb} / ${brandUpper}` : brandUpper;
       
-      // Select a nice fallback banner if not categorized
       if (!initialCategory) {
         bannerUrl = "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=1200&q=80";
       }
@@ -94,7 +170,7 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
       title,
       bannerUrl,
       breadcrumb,
-      products,
+      products: displayProducts,
     };
   };
 

@@ -133,7 +133,11 @@ exports.Prisma.CartItemScalarFieldEnum = {
   cartId: 'cartId',
   productId: 'productId',
   quantity: 'quantity',
-  price: 'price'
+  price: 'price',
+  color: 'color',
+  title: 'title',
+  imageUrl: 'imageUrl',
+  brand: 'brand'
 };
 
 exports.Prisma.SortOrder = {
