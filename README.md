@@ -843,21 +843,6 @@ sequenceDiagram
 
 ### 2. Staff
 
-
-    %% Manage Product — Create
-    S->>GW: POST /products  {productData + imageFile}
-    GW->>PS: createProduct(data)
-    PS->>R2: uploadImage(file)
-    R2-->>PS: imageUrl
-    PS-->>GW: Product created
-    GW-->>S: สร้างสินค้าใหม่สำเร็จ
-
-    %% Manage Product — Edit
-    S->>GW: PUT /products/:productId  {price, skillLevel, ...}
-    GW->>PS: updateProduct(id, data)
-    PS-->>GW: Product updated
-    GW-->>S: อัปเดตข้อมูลสินค้าสำเร็จ
-
 ```mermaid
 sequenceDiagram
     autonumber
