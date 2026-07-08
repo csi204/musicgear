@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { createAuthMiddleware } from "@musicgear/auth-middleware";
 
 const app = new Hono();
-const authMiddleware = createAuthMiddleware("musicgear.kinde.com");
+const authMiddleware = createAuthMiddleware();
 
 const STATE_TTL_MS = 10 * 60 * 1000;
 const usedNonces = new Map();

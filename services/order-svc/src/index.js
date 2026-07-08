@@ -3,7 +3,7 @@ import { createAuthMiddleware } from "@musicgear/auth-middleware";
 import ordersRouter from "./routes/orders.js";
 
 const app = new Hono()
-const authMiddleware = createAuthMiddleware("https://musicgear.kinde.com");
+const authMiddleware = createAuthMiddleware();
 
 app.get('/', (c) => c.json({ status: 'ok', service: 'order-svc' }));
 

@@ -142,3 +142,102 @@ stockRoutes.post(
     }
   }
 );
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /stock — ดูสถานะสต็อกสินค้าทั้งหมด
+// ──────────────────────────────────────────────────────────────────────────────
+stockRoutes.get("/", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    const inventories = await db.inventory.findMany();
+    return c.json({ status: "ok", inventories }, 200);
+  } catch (err) {
+    console.error("[GET /stock]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: err.message, stack: err.stack } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /stock/:productId — ดูสถานะสต็อกปัจจุบัน (quantity, reorderPoint, status)
+// ──────────────────────────────────────────────────────────────────────────────
+stockRoutes.get("/:productId", async (c) => {
+  const productId = c.req.param("productId");
+  const db = createClient(c.env.DATABASE_URL);
+
+  try {
+    const inv = await db.inventory.findUnique({ where: { productId } });
+    if (!inv) {
+      return c.json({ error: { code: "NOT_FOUND", message: "Inventory record not found" } }, 404);
+    }
+
+    const available = inv.quantity - inv.reservedQuantity;
+    const status = available === 0 ? "Critical"
+      : available <= inv.reorderPoint ? "Low"
+      : "In Stock";
+
+    return c.json({
+      productId: inv.productId,
+      quantity: inv.quantity,
+      reservedQuantity: inv.reservedQuantity,
+      available,
+      reorderPoint: inv.reorderPoint,
+      status,
+    }, 200);
+  } catch (err) {
+    console.error("[GET /stock/:productId]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PATCH /stock/:productId/reorder-point — Staff/Admin ตั้งค่าจุด reorder
+// เมื่อสต็อกลงถึง reorderPoint จะถูก mark เป็น "Low" → trigger แจ้งเตือน
+// ──────────────────────────────────────────────────────────────────────────────
+import { z } from "zod";
+
+const setReorderPointSchema = z.object({
+  reorderPoint: z.number().int().min(0),
+});
+
+stockRoutes.patch(
+  "/:productId/reorder-point",
+  createRoleMiddleware(["staff", "admin"]),
+  async (c) => {
+    const productId = c.req.param("productId");
+    let body;
+
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: { code: "INVALID_JSON", message: "Request body must be valid JSON" } }, 400);
+    }
+
+    const parsed = setReorderPointSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: parsed.error.message } }, 400);
+    }
+
+    const { reorderPoint } = parsed.data;
+    const db = createClient(c.env.DATABASE_URL);
+
+    try {
+      const inv = await db.inventory.update({
+        where: { productId },
+        data: { reorderPoint },
+      });
+
+      return c.json({
+        productId: inv.productId,
+        reorderPoint: inv.reorderPoint,
+        message: "Reorder point updated successfully",
+      }, 200);
+    } catch (err) {
+      // Prisma P2025 = record not found
+      if (err?.code === "P2025") {
+        return c.json({ error: { code: "NOT_FOUND", message: "Inventory record not found" } }, 404);
+      }
+      console.error("[PATCH /stock/:productId/reorder-point]", err);
+      return c.json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
+    }
+  }
+);

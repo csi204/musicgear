@@ -87,6 +87,7 @@ export const adminCreateUserSchema = z
     email: z.string().email(),
     firstName: z.string().trim().min(1).max(100),
     lastName: z.string().trim().min(1).max(100),
+    password: z.string().min(8).optional(),
     role: z.enum(["customer", "staff", "admin"]).default("customer"),
     position: z.string().trim().min(1).max(120).optional(),
   })
@@ -100,3 +101,39 @@ export const adminCreateUserSchema = z
       });
     }
   });
+
+export const authRegisterSchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(6),
+    firstName: z.string().trim().min(1).max(100),
+    lastName: z.string().trim().min(1).max(100),
+  })
+  .strict();
+
+export const authVerifySchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string(),
+  })
+  .strict();
+export const forgotPasswordSchema = z
+  .object({
+    email: z.string().email(),
+  })
+  .strict();
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1),
+    password: z.string().min(6),
+  })
+  .strict();
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(6),
+  })
+  .strict();
+

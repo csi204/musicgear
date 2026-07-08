@@ -63,6 +63,9 @@ export function LoginButton() {
   }
 
   if (user) {
+    if (typeof window !== "undefined" && window.location.pathname === "/") {
+      window.location.href = "/dashboard";
+    }
     const displayName =
       [user.firstName ?? user.given_name, user.lastName ?? user.family_name]
         .filter(Boolean)
@@ -74,19 +77,27 @@ export function LoginButton() {
     return (
       <div className="flex flex-col gap-2">
         <p className="text-sm">
-          เข้าสู่ระบบแล้ว: <span className="font-medium">{displayName}</span>
-          {roleLabel ? ` (${roleLabel})` : null}
+          กำลังเปลี่ยนหน้าไปยัง Dashboard...
         </p>
-        <Button
-          variant="outline"
-          className="w-fit"
-          onClick={() => {
-            clearSession();
-            window.location.href = buildLogoutUrl("/");
-          }}
-        >
-          ออกจากระบบ
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => {
+              window.location.href = "/dashboard";
+            }}
+          >
+            เข้าสู่ Dashboard
+          </Button>
+          <Button
+            variant="outline"
+            className="w-fit"
+            onClick={() => {
+              clearSession();
+              window.location.href = buildLogoutUrl("/");
+            }}
+          >
+            ออกจากระบบ
+          </Button>
+        </div>
       </div>
     );
   }

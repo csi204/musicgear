@@ -4,7 +4,7 @@ import { WebhookController } from './routes/webhooks.js';
 import { ReportController } from './routes/reports.js';
 
 const app = new Hono()
-const authMiddleware = createAuthMiddleware("https://musicgear.kinde.com");
+const authMiddleware = createAuthMiddleware();
 
 app.get('/', (c) => c.json({ status: 'ok', service: 'report' }))
 
@@ -19,3 +19,5 @@ app.use('/reports/*', createRoleMiddleware(["admin", "staff"])); // Included sta
 app.route('/reports', reportController.router);
 
 export default app
+
+// Trigger rebuild

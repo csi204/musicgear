@@ -44,7 +44,7 @@ productRoutes.get("/", async (c) => {
     return c.json({ status: "ok", ...result });
   } catch (err) {
     console.error("[GET /products]", err);
-    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch products" } }, 500);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: err.message, stack: err.stack } }, 500);
   }
 });
 
@@ -98,6 +98,160 @@ productRoutes.get("/images/:key", async (c) => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// GET /products/bundles — ดึงข้อมูล bundle sets ทั้งหมดพร้อมสินค้าข้างใน
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.get("/bundles", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    const bundles = await db.bundle.findMany({
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                productId: true,
+                name: true,
+                sku: true,
+                price: true,
+              }
+            }
+          }
+        }
+      }
+    });
+    return c.json({ status: "ok", bundles }, 200);
+  } catch (err) {
+    console.error("[GET /products/bundles]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch bundles" } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /products/bundles — สร้าง Bundle ใหม่
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.post("/bundles", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    const body = await c.req.json().catch(() => null);
+    if (!body) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "Request body is required" } }, 400);
+    }
+
+    const { name, description, discountType, discountValue, items } = body;
+
+    if (!name || !discountType || discountValue === undefined || discountValue === null) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "name, discountType, and discountValue are required" } }, 400);
+    }
+
+    if (!["percentage", "fixed_amount"].includes(discountType)) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "discountType must be 'percentage' or 'fixed_amount'" } }, 400);
+    }
+
+    const parsedDiscount = parseFloat(discountValue);
+    if (isNaN(parsedDiscount) || parsedDiscount < 0) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "discountValue must be a non-negative number" } }, 400);
+    }
+
+    const bundle = await db.bundle.create({
+      data: {
+        name,
+        description: description || null,
+        discountType,
+        discountValue: parsedDiscount,
+      }
+    });
+
+    const createdItems = [];
+    if (Array.isArray(items) && items.length > 0) {
+      for (const item of items) {
+        if (!item.productId || !item.quantity) continue;
+        const bundleItem = await db.bundleItem.create({
+          data: {
+            bundleId: bundle.bundleId,
+            productId: item.productId,
+            quantity: parseInt(item.quantity, 10) || 1,
+          }
+        });
+        createdItems.push(bundleItem);
+      }
+    }
+
+    return c.json({ status: "ok", bundle: { ...bundle, items: createdItems } }, 201);
+  } catch (err) {
+    console.error("[POST /products/bundles]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to create bundle" } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PUT /products/bundles/:bundleId — แก้ไข/อัปเดต Bundle และรายการสินค้าในตัว
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.put("/bundles/:bundleId", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  const bundleId = c.req.param("bundleId");
+  try {
+    const body = await c.req.json().catch(() => null);
+    if (!body) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "Request body is required" } }, 400);
+    }
+
+    const { name, description, discountType, discountValue, items } = body;
+
+    if (!name || !discountType || discountValue === undefined || discountValue === null) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "name, discountType, and discountValue are required" } }, 400);
+    }
+
+    if (!["percentage", "fixed_amount"].includes(discountType)) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "discountType must be 'percentage' or 'fixed_amount'" } }, 400);
+    }
+
+    const parsedDiscount = parseFloat(discountValue);
+    if (isNaN(parsedDiscount) || parsedDiscount < 0) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "discountValue must be a non-negative number" } }, 400);
+    }
+
+    // Update main bundle info
+    const updatedBundle = await db.bundle.update({
+      where: { bundleId },
+      data: {
+        name,
+        description: description || null,
+        discountType,
+        discountValue: parsedDiscount,
+      }
+    });
+
+    // Delete existing items
+    await db.bundleItem.deleteMany({
+      where: { bundleId }
+    });
+
+    // Re-create items sequentially
+    const createdItems = [];
+    if (Array.isArray(items) && items.length > 0) {
+      for (const item of items) {
+        if (!item.productId || !item.quantity) continue;
+        const bundleItem = await db.bundleItem.create({
+          data: {
+            bundleId,
+            productId: item.productId,
+            quantity: parseInt(item.quantity, 10) || 1,
+          }
+        });
+        createdItems.push(bundleItem);
+      }
+    }
+
+    return c.json({ status: "ok", bundle: { ...updatedBundle, items: createdItems } }, 200);
+  } catch (err) {
+    console.error("[PUT /products/bundles/:bundleId]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to update bundle" } }, 500);
+  }
+});
+
+
+
+// ──────────────────────────────────────────────────────────────────────────────
 // GET /products/:productId — ดึงข้อมูลสินค้าพร้อมรูปภาพด้วย UUID
 // ──────────────────────────────────────────────────────────────────────────────
 productRoutes.get("/:productId", async (c) => {
@@ -149,11 +303,30 @@ productRoutes.post("/", async (c) => {
   const db = createClient(c.env.DATABASE_URL);
 
   try {
-    const body = await c.req.parseBody({ all: true });
+    let body;
+    const contentType = c.req.header("content-type") || "";
+    if (contentType.includes("application/json")) {
+      body = await c.req.json().catch(() => ({}));
+    } else {
+      body = await c.req.parseBody({ all: true });
+    }
+
     const { name, price, sku, brandId, categoryId } = body;
+
+    let finalBrandId = brandId || undefined;
+    let finalCategoryId = categoryId || undefined;
+
+    if (!finalBrandId) {
+      const firstBrand = await db.brand.findFirst();
+      if (firstBrand) finalBrandId = firstBrand.brandId;
+    }
+    if (!finalCategoryId) {
+      const firstCategory = await db.category.findFirst();
+      if (firstCategory) finalCategoryId = firstCategory.categoryId;
+    }
     
-    if (!name || !price || !sku || !brandId || !categoryId) {
-      return c.json({ error: { code: "VALIDATION_ERROR", message: "Missing required fields" } }, 400);
+    if (!name || price === undefined || price === null || !sku || !finalBrandId || !finalCategoryId) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "Missing required fields: name, price, sku, brandId and categoryId are required" } }, 400);
     }
 
     const parsedPrice = parseFloat(price);
@@ -207,8 +380,8 @@ productRoutes.post("/", async (c) => {
       sku,
       status: body.status || "active",
       skillLevel: body.skillLevel || null,
-      brandId,
-      categoryId,
+      brandId: finalBrandId,
+      categoryId: finalCategoryId,
       description: body.description || null
     };
 
