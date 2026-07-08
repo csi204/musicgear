@@ -367,8 +367,6 @@ flowchart LR
         UC_SalesReport(("Sales Report"))
         UC_InventoryReport(("Inventory Report"))
         UC_FinancialReport(("Financial Report"))
-        UC_UploadImage(("Upload Product Image"))
-        UC_SetSkillLevel(("Set Skill Level / Tag"))
     end
 
     Admin --- UC_AdminDashboard
@@ -380,8 +378,6 @@ flowchart LR
     Admin --- UC_InventoryReport
     Admin --- UC_FinancialReport
 
-    UC_UploadImage  -.->|"<<include>>"| UC_ManageProduct
-    UC_SetSkillLevel -.->|"<<include>>"| UC_ManageProduct
     UC_SalesReport  -.->|"<<include>>"| UC_AdminDashboard
     UC_InventoryReport -.->|"<<include>>"| UC_AdminDashboard
     UC_FinancialReport -.->|"<<include>>"| UC_AdminDashboard
