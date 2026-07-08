@@ -1020,7 +1020,7 @@ flowchart TB
         APIGW(("🌐 API Gateway"))
     end
 
-    subgraph Microservices["Microservice Layer (Hono · Cloudflare Workers + Prisma)"] 
+    subgraph Microservices["Microservice Layer (Hono · Cloudflare Workers + Prisma)"]
         AuthSvc["🔑 auth-svc\n/auth/*"]
         UserSvc["👤 user-svc\n/users/*"]
         ProductSvc["📦 product-svc\n/products/*"]
