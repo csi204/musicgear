@@ -267,6 +267,8 @@ flowchart LR
     User --- UC_UpdateProfile
     User --- UC_ChangePassword
 
+    UC_ChangePassword -.->|"<<extend>>"| UC_UpdateProfile
+
     %% ── Guest Use Cases ──
     subgraph GuestUC["Guest"]
         direction TB
@@ -280,8 +282,10 @@ flowchart LR
     Guest --- UC_GBrowse
     Guest --- UC_GSearch
     Guest --- UC_GAddCart
-    UC_GBrowse -.->|"<<extend>>"| UC_GFilter
-    UC_GSearch -.->|"<<extend>>"| UC_GFilter
+    UC_GFilter -.->|"<<extend>>"| UC_GBrowse
+    UC_GFilter -.->|"<<extend>>"| UC_GSearch
+    UC_GViewDetail -.->|"<<extend>>"| UC_GBrowse
+    UC_GViewDetail -.->|"<<extend>>"| UC_GSearch
     UC_GAddCart -.->|"<<include>>"| UC_GViewDetail
 
     %% ── Customer Use Cases ──
@@ -312,13 +316,16 @@ flowchart LR
     Customer --- UC_OrderHistory
     Customer --- UC_Notification
 
-    UC_Browse -.->|"<<extend>>"| UC_Filter
-    UC_Search -.->|"<<extend>>"| UC_Filter
+    UC_Filter -.->|"<<extend>>"| UC_Browse
+    UC_Filter -.->|"<<extend>>"| UC_Search
+    UC_ViewDetail -.->|"<<extend>>"| UC_Browse
+    UC_ViewDetail -.->|"<<extend>>"| UC_Search
     UC_AddCart -.->|"<<include>>"| UC_ViewDetail
     UC_ManageCart -.->|"<<include>>"| UC_AddCart
     UC_Checkout -.->|"<<include>>"| UC_ManageAddress
     UC_Pay -.->|"<<include>>"| UC_SelectPayMethod
     UC_Pay -.->|"<<include>>"| UC_Checkout
+    UC_TrackOrder -.->|"<<extend>>"| UC_OrderHistory
 
     %% ── Staff Use Cases ──
     subgraph StaffUC["Staff"]
@@ -375,6 +382,7 @@ flowchart LR
     Admin --- UC_InventoryReport
     Admin --- UC_FinancialReport
 
+    UC_ManageUser -.->|"<<include>>"| UC_AdminDashboard
     UC_SalesReport  -.->|"<<include>>"| UC_AdminDashboard
     UC_InventoryReport -.->|"<<include>>"| UC_AdminDashboard
     UC_FinancialReport -.->|"<<include>>"| UC_AdminDashboard
