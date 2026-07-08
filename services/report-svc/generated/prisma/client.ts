@@ -10,12 +10,9 @@
  * 🟢 You can import this file directly.
  */
 
-import * as process from 'node:process'
-import * as path from 'node:path'
-import { fileURLToPath } from 'node:url'
-globalThis['__dirname'] = (typeof import.meta !== 'undefined' && import.meta.url) ? path.dirname(fileURLToPath(import.meta.url)) : '/'
+globalThis['__dirname'] = '/'
 
-import * as runtime from "@prisma/client/runtime/client"
+import * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import * as $Enums from "./enums.ts"
 import * as $Class from "./internal/class.ts"
 import * as Prisma from "./internal/prismaNamespace.ts"
@@ -47,7 +44,17 @@ export { Prisma }
  */
 export type DailySalesReport = Prisma.DailySalesReportModel
 /**
+ * Model InventorySnapshot
+ * 
+ */
+export type InventorySnapshot = Prisma.InventorySnapshotModel
+/**
  * Model SystemAuditLog
  * 
  */
 export type SystemAuditLog = Prisma.SystemAuditLogModel
+/**
+ * Model ProductSalesSnapshot
+ * 
+ */
+export type ProductSalesSnapshot = Prisma.ProductSalesSnapshotModel

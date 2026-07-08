@@ -1,7 +1,8 @@
 import { Hono } from "hono";
+import bcrypt from "bcryptjs";
 import { createAuthMiddleware, createRoleMiddleware } from "@musicgear/auth-middleware";
 import { createPrismaClient } from "./createClient.js";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 import {
   addressCreateSchema,
   addressUpdateSchema,
@@ -11,10 +12,15 @@ import {
   userListQuerySchema,
   userStatusUpdateSchema,
   adminCreateUserSchema,
+  authRegisterSchema,
+  authVerifySchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  changePasswordSchema,
 } from "../../../packages/types/src/user.js";
 
 const app = new Hono();
-const authMiddleware = createAuthMiddleware("musicgear.kinde.com");
+const authMiddleware = createAuthMiddleware();
 const adminMiddleware = createRoleMiddleware(["admin"]);
 const requireStaffOrAdmin = createRoleMiddleware(["staff", "admin"]);
 
@@ -25,7 +31,41 @@ app.post("/users/webhooks/kinde", async (c) => {
     const token = await c.req.text();
     const { payload } = await jwtVerify(token, KINDE_JWKS);
 
-    if (payload.type === "user.deleted") {
+    if (payload.type === "user.created") {
+      const userData = payload.data?.user;
+      if (userData && userData.id) {
+        const prisma = getPrismaClient(c);
+
+        const existingUser = await prisma.user.findUnique({ where: { userId: userData.id } }).catch(() => null);
+        if (!existingUser) {
+          const email = userData.email || `${userData.id}@kinde.user`;
+          const firstName = userData.first_name || "MusicGear";
+          const lastName = userData.last_name || "User";
+
+          await prisma.user.create({
+            data: {
+              userId: userData.id,
+              email,
+              passwordHash: "",
+              firstName,
+              lastName,
+              role: "customer", // Default role for self-registered users
+              status: "active",
+            },
+          }).catch((err) => {
+            // Might already exist (race condition) — ignore unique violations
+            if (!err.message?.includes("Unique constraint")) throw err;
+          });
+
+          // Create customer profile record
+          await prisma.customer.create({ data: { customerId: userData.id } }).catch(() => {});
+
+          console.log(`[user-svc] Webhook user.created: created user ${userData.id} (${email})`);
+        } else {
+          console.log(`[user-svc] Webhook user.created: user ${userData.id} already exists, skipping`);
+        }
+      }
+    } else if (payload.type === "user.deleted") {
       const userId = payload.data?.user?.id;
       if (userId) {
         const prisma = getPrismaClient(c);
@@ -284,8 +324,17 @@ async function parseValidatedJson(c, schema) {
   return { ok: true, data: result.data };
 }
 
-function parseValidatedQuery(c, schema) {
-  const query = Object.fromEntries(new URL(c.req.url).searchParams.entries());
+async function parseValidatedQuery(c, schema) {
+  let query;
+  if (c.req.method === "QUERY") {
+    try {
+      query = await c.req.json();
+    } catch {
+      query = {};
+    }
+  } else {
+    query = Object.fromEntries(new URL(c.req.url).searchParams.entries());
+  }
   const result = schema.safeParse(query);
 
   if (!result.success) {
@@ -386,6 +435,132 @@ app.onError((err, c) => {
 
 app.get("/health", (c) => c.json({ status: "ok", service: "user-svc" }));
 
+app.post("/auth/register", async (c) => {
+  const prisma = getPrismaClient(c);
+  const validation = await parseValidatedJson(c, authRegisterSchema);
+  if (!validation.ok) return validation.response;
+
+  const { email, password, firstName, lastName } = validation.data;
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    return c.json({ error: { code: "CONFLICT", message: "Email already in use" } }, 409);
+  }
+
+  const salt = bcrypt.genSaltSync(10);
+  const passwordHash = bcrypt.hashSync(password, salt);
+
+  const user = await prisma.user.create({
+    data: {
+      email,
+      passwordHash,
+      firstName,
+      lastName,
+      role: "customer",
+      status: "active",
+    },
+  });
+
+  await prisma.customer.create({ data: { customerId: user.userId } });
+
+  return c.json({ status: "ok", user: sanitizeUser(user) });
+});
+
+app.post("/auth/verify", async (c) => {
+  const prisma = getPrismaClient(c);
+  const validation = await parseValidatedJson(c, authVerifySchema);
+  if (!validation.ok) return validation.response;
+
+  const { email, password } = validation.data;
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !user.passwordHash) {
+    return c.json({ error: { code: "UNAUTHORIZED", message: "Invalid email or password" } }, 401);
+  }
+  
+  // Optional: check if account is active/banned
+  if (user.status !== "active") {
+    return c.json({ error: { code: "FORBIDDEN", message: "Account is disabled" } }, 403);
+  }
+
+  const isValid = bcrypt.compareSync(password, user.passwordHash);
+  if (!isValid) {
+    return c.json({ error: { code: "UNAUTHORIZED", message: "Invalid email or password" } }, 401);
+  }
+
+  return c.json({ status: "ok", user: sanitizeUser(user) });
+});
+
+app.post("/auth/forgot-password", async (c) => {
+  const prisma = getPrismaClient(c);
+  const validation = await parseValidatedJson(c, forgotPasswordSchema);
+  if (!validation.ok) return validation.response;
+
+  const { email } = validation.data;
+  const user = await prisma.user.findUnique({ where: { email } });
+  
+  if (user) {
+    const secret = new TextEncoder().encode(c.env.NEXTAUTH_SECRET);
+    const resetToken = await new SignJWT({ email: user.email, purpose: "reset-password" })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("15m")
+      .sign(secret);
+
+    const resetLink = `http://localhost:8800/reset-password?token=${resetToken}`;
+
+    if (c.env.RESEND_API_KEY) {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${c.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: "MusicGear <onboarding@resend.dev>",
+          to: email,
+          subject: "รีเซ็ตรหัสผ่าน MusicGear",
+          html: `
+            <h2>ลืมรหัสผ่านใช่ไหม?</h2>
+            <p>คลิกที่ลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์นี้จะหมดอายุภายใน 15 นาที):</p>
+            <p><a href="${resetLink}" style="padding: 10px 20px; background-color: #000; color: #fff; text-decoration: none; border-radius: 5px;">รีเซ็ตรหัสผ่าน</a></p>
+            <p>ถ้าคุณไม่ได้เป็นคนขอรีเซ็ตรหัสผ่าน สามารถละเว้นอีเมลฉบับนี้ได้เลยครับ</p>
+          `
+        })
+      }).catch(err => console.error("Failed to send reset email:", err));
+    }
+  }
+
+  // Always return ok to prevent email enumeration
+  return c.json({ status: "ok", message: "If an account with that email exists, we sent a password reset link." });
+});
+
+app.post("/auth/reset-password", async (c) => {
+  const prisma = getPrismaClient(c);
+  const validation = await parseValidatedJson(c, resetPasswordSchema);
+  if (!validation.ok) return validation.response;
+
+  const { token, password } = validation.data;
+  const secret = new TextEncoder().encode(c.env.NEXTAUTH_SECRET);
+
+  try {
+    const { payload } = await jwtVerify(token, secret);
+    if (payload.purpose !== "reset-password" || !payload.email) {
+      return c.json({ error: { code: "UNAUTHORIZED", message: "Invalid or expired token" } }, 401);
+    }
+
+    const salt = bcrypt.genSaltSync(10);
+    const passwordHash = bcrypt.hashSync(password, salt);
+
+    await prisma.user.update({
+      where: { email: payload.email },
+      data: { passwordHash }
+    });
+
+    return c.json({ status: "ok", message: "Password has been reset successfully" });
+  } catch (error) {
+    return c.json({ error: { code: "UNAUTHORIZED", message: "Invalid or expired token" } }, 401);
+  }
+});
+
 app.use("/users/*", authMiddleware);
 
 app.get("/users/staff", adminMiddleware, async (c) => {
@@ -434,9 +609,9 @@ app.patch("/users/staff/:staffId", adminMiddleware, async (c) => {
   });
 });
 
-app.get("/users", adminMiddleware, async (c) => {
+const userListHandler = async (c) => {
   const prisma = getPrismaClient(c);
-  const validation = parseValidatedQuery(c, userListQuerySchema);
+  const validation = await parseValidatedQuery(c, userListQuerySchema);
   if (!validation.ok) {
     return validation.response;
   }
@@ -479,7 +654,9 @@ app.get("/users", adminMiddleware, async (c) => {
       totalPages: Math.ceil(total / limit),
     },
   });
-});
+};
+app.get("/users", adminMiddleware, userListHandler);
+app.on("QUERY", "/users", adminMiddleware, userListHandler);
 
 app.get("/users/me", async (c) => {
   try {
@@ -518,6 +695,8 @@ async function getKindeM2MToken(c) {
   body.append("client_id", c.env.KINDE_M2M_CLIENT_ID);
   body.append("client_secret", c.env.KINDE_M2M_CLIENT_SECRET);
   body.append("audience", `${c.env.KINDE_DOMAIN}/api`);
+  // Explicitly request all needed scopes just in case Kinde doesn't grant them by default
+  body.append("scope", "create:users update:users delete:users read:users");
 
   const res = await fetch(tokenUrl, {
     method: "POST",
@@ -568,6 +747,41 @@ async function createKindeUser(c, { email, firstName, lastName }) {
 
   const data = await res.json();
   return data.id; // Usually returns the kp_... id
+}
+
+async function hashPasswordSha256(password) {
+  const msgBuffer = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function setKindeUserPassword(c, userId, password) {
+  const token = await getKindeM2MToken(c);
+  if (!token) throw new Error("Failed to authenticate with Kinde M2M");
+
+  const url = `${c.env.KINDE_DOMAIN}/api/v1/users/${userId}/password`;
+  const hashedPassword = await hashPasswordSha256(password);
+  
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({
+      password: hashedPassword,
+      hashing_method: "SHA256",
+      is_temporary_password: true
+    }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`[user-svc] Failed to set password for ${userId}:`, errorText);
+    throw new Error(`Failed to set password: ${res.statusText}`);
+  }
 }
 
 async function deleteKindeUser(c, userId) {
@@ -692,27 +906,39 @@ app.post("/users", adminMiddleware, async (c) => {
       return validation.response;
     }
 
-    const { email, firstName, lastName, role, position } = validation.data;
+    const { email, firstName, lastName, role, position, password } = validation.data;
 
-    // 1. Create Kinde user via M2M
-    const kindeUserId = await createKindeUser(c, { email, firstName, lastName });
+    // Check if email already exists
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return c.json({ error: { code: "CONFLICT", message: "User with this email already exists" } }, 409);
+    }
 
-    // 2. Create Neon DB user
+    let passwordHash = "";
+    if (password) {
+      const salt = bcrypt.genSaltSync(10);
+      passwordHash = bcrypt.hashSync(password, salt);
+    } else {
+      // Default password if not provided
+      const salt = bcrypt.genSaltSync(10);
+      passwordHash = bcrypt.hashSync("password123", salt);
+    }
+
+    // Create Neon DB user
     const user = await prisma.user.create({
       data: {
-        userId: kindeUserId,
         email,
-        passwordHash: "", // Placeholder since Kinde manages auth
+        passwordHash,
         firstName,
         lastName,
         role,
       },
     });
 
-    // 3. Assign specific roles if needed
-    await assignRoleSequentially(prisma, kindeUserId, role, position);
+    // Assign specific roles if needed
+    await assignRoleSequentially(prisma, user.userId, role, position);
 
-    const loadedUser = await loadUser(prisma, kindeUserId);
+    const loadedUser = await loadUser(prisma, user.userId);
     return c.json({ status: "ok", user: sanitizeUser(loadedUser) }, 201);
   } catch (error) {
     return handleRouteError(c, error);
@@ -724,12 +950,12 @@ app.patch("/users/:userId", adminMiddleware, async (c) => {
     const prisma = getPrismaClient(c);
     const userId = c.req.param("userId");
     
-    const validation = await parseValidatedJson(c, profileUpdateSchema);
-    if (!validation.ok) {
-      return validation.response;
+    let updates;
+    try {
+      updates = await c.req.json();
+    } catch {
+      return c.json({ error: { code: "BAD_REQUEST", message: "Invalid JSON" } }, 400);
     }
-
-    const updates = validation.data;
     
     // Check if user exists
     const existingUser = await prisma.user.findUnique({ where: { userId } });
@@ -741,16 +967,28 @@ app.patch("/users/:userId", adminMiddleware, async (c) => {
     if (updates.firstName !== undefined) userData.firstName = updates.firstName;
     if (updates.lastName !== undefined) userData.lastName = updates.lastName;
     if (updates.phone !== undefined) userData.phone = updates.phone;
+    
+    if (updates.email !== undefined) {
+      const emailExist = await prisma.user.findUnique({ where: { email: updates.email } });
+      if (emailExist && emailExist.userId !== userId) {
+        return c.json({ error: { code: "CONFLICT", message: "Email already in use" } }, 409);
+      }
+      userData.email = updates.email;
+    }
+    
+    if (updates.role !== undefined) userData.role = updates.role;
+    
+    if (updates.password) {
+      const salt = bcrypt.genSaltSync(10);
+      userData.passwordHash = bcrypt.hashSync(updates.password, salt);
+    }
 
     if (Object.keys(userData).length > 0) {
       await prisma.user.update({ where: { userId }, data: userData });
-      
-      // Sync to Kinde if name changed
-      if (updates.firstName !== undefined || updates.lastName !== undefined) {
-        c.executionCtx.waitUntil(
-          syncNameToKinde(c, userId, updates.firstName, updates.lastName)
-        );
-      }
+    }
+
+    if (updates.role !== undefined && updates.role !== existingUser.role) {
+      await assignRoleSequentially(prisma, userId, updates.role, updates.position);
     }
 
     const updatedUser = await loadUser(prisma, userId);
@@ -771,11 +1009,7 @@ app.delete("/users/:userId", adminMiddleware, async (c) => {
       return c.json({ error: { code: "NOT_FOUND", message: "User not found" } }, 404);
     }
 
-    // 1. Delete from Kinde via M2M
-    // We wait for this to succeed before deleting locally to prevent desync
-    await deleteKindeUser(c, userId);
-
-    // 2. Delete locally
+    // Delete locally (Cascade will handle Customer/Staff/Admin relations)
     await prisma.user.delete({ where: { userId } });
 
     return c.json({ status: "ok", message: "User deleted successfully" });
@@ -1029,4 +1263,42 @@ app.post("/users/me/addresses/:addressId/default", async (c) => {
   }
 });
 
+app.patch("/users/me/password", async (c) => {
+  try {
+    const prisma = getPrismaClient(c);
+    const authUser = getAuthUser(c);
+    
+    const validation = await parseValidatedJson(c, changePasswordSchema);
+    if (!validation.ok) {
+      return validation.response;
+    }
+
+    const { currentPassword, newPassword } = validation.data;
+    
+    const user = await prisma.user.findUnique({ where: { userId: authUser.userId } });
+    if (!user || !user.passwordHash) {
+      return c.json({ error: { code: "UNAUTHORIZED", message: "Account cannot be modified this way" } }, 401);
+    }
+
+    const isValid = bcrypt.compareSync(currentPassword, user.passwordHash);
+    if (!isValid) {
+      return c.json({ error: { code: "UNAUTHORIZED", message: "รหัสผ่านปัจจุบันไม่ถูกต้อง" } }, 401);
+    }
+
+    const salt = bcrypt.genSaltSync(10);
+    const passwordHash = bcrypt.hashSync(newPassword, salt);
+
+    await prisma.user.update({
+      where: { userId: user.userId },
+      data: { passwordHash }
+    });
+
+    return c.json({ status: "ok", message: "เปลี่ยนรหัสผ่านสำเร็จ" });
+  } catch (error) {
+    return handleRouteError(c, error);
+  }
+});
+
 export default app;
+
+// Trigger rebuild

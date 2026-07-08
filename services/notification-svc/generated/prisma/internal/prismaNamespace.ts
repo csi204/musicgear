@@ -15,7 +15,7 @@
  * model files in the `model` directory!
  */
 
-import * as runtime from "@prisma/client/runtime/client"
+import * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import type * as Prisma from "../models.ts"
 import { type PrismaClient } from "./class.ts"
 
@@ -520,12 +520,14 @@ export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof
 export const NotificationScalarFieldEnum = {
   notificationId: 'notificationId',
   customerId: 'customerId',
+  orderId: 'orderId',
   productId: 'productId',
   title: 'title',
   message: 'message',
   type: 'type',
   status: 'status',
   isRead: 'isRead',
+  isStaffAlert: 'isStaffAlert',
   createdAt: 'createdAt'
 } as const
 

@@ -8,7 +8,7 @@
  *
  * 🟢 You can import this file directly.
  */
-import type * as runtime from "@prisma/client/runtime/client"
+import type * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import type * as $Enums from "../enums.ts"
 import type * as Prisma from "../internal/prismaNamespace.ts"
 
@@ -29,11 +29,13 @@ export type AggregateInventory = {
 export type InventoryAvgAggregateOutputType = {
   quantity: number | null
   reservedQuantity: number | null
+  reorderPoint: number | null
 }
 
 export type InventorySumAggregateOutputType = {
   quantity: number | null
   reservedQuantity: number | null
+  reorderPoint: number | null
 }
 
 export type InventoryMinAggregateOutputType = {
@@ -41,6 +43,7 @@ export type InventoryMinAggregateOutputType = {
   productId: string | null
   quantity: number | null
   reservedQuantity: number | null
+  reorderPoint: number | null
   updatedAt: Date | null
 }
 
@@ -49,6 +52,7 @@ export type InventoryMaxAggregateOutputType = {
   productId: string | null
   quantity: number | null
   reservedQuantity: number | null
+  reorderPoint: number | null
   updatedAt: Date | null
 }
 
@@ -57,6 +61,7 @@ export type InventoryCountAggregateOutputType = {
   productId: number
   quantity: number
   reservedQuantity: number
+  reorderPoint: number
   updatedAt: number
   _all: number
 }
@@ -65,11 +70,13 @@ export type InventoryCountAggregateOutputType = {
 export type InventoryAvgAggregateInputType = {
   quantity?: true
   reservedQuantity?: true
+  reorderPoint?: true
 }
 
 export type InventorySumAggregateInputType = {
   quantity?: true
   reservedQuantity?: true
+  reorderPoint?: true
 }
 
 export type InventoryMinAggregateInputType = {
@@ -77,6 +84,7 @@ export type InventoryMinAggregateInputType = {
   productId?: true
   quantity?: true
   reservedQuantity?: true
+  reorderPoint?: true
   updatedAt?: true
 }
 
@@ -85,6 +93,7 @@ export type InventoryMaxAggregateInputType = {
   productId?: true
   quantity?: true
   reservedQuantity?: true
+  reorderPoint?: true
   updatedAt?: true
 }
 
@@ -93,6 +102,7 @@ export type InventoryCountAggregateInputType = {
   productId?: true
   quantity?: true
   reservedQuantity?: true
+  reorderPoint?: true
   updatedAt?: true
   _all?: true
 }
@@ -188,6 +198,7 @@ export type InventoryGroupByOutputType = {
   productId: string
   quantity: number
   reservedQuantity: number
+  reorderPoint: number
   updatedAt: Date
   _count: InventoryCountAggregateOutputType | null
   _avg: InventoryAvgAggregateOutputType | null
@@ -219,6 +230,7 @@ export type InventoryWhereInput = {
   productId?: Prisma.UuidFilter<"Inventory"> | string
   quantity?: Prisma.IntFilter<"Inventory"> | number
   reservedQuantity?: Prisma.IntFilter<"Inventory"> | number
+  reorderPoint?: Prisma.IntFilter<"Inventory"> | number
   updatedAt?: Prisma.DateTimeFilter<"Inventory"> | Date | string
 }
 
@@ -227,6 +239,7 @@ export type InventoryOrderByWithRelationInput = {
   productId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   reservedQuantity?: Prisma.SortOrder
+  reorderPoint?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
@@ -238,6 +251,7 @@ export type InventoryWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.InventoryWhereInput | Prisma.InventoryWhereInput[]
   quantity?: Prisma.IntFilter<"Inventory"> | number
   reservedQuantity?: Prisma.IntFilter<"Inventory"> | number
+  reorderPoint?: Prisma.IntFilter<"Inventory"> | number
   updatedAt?: Prisma.DateTimeFilter<"Inventory"> | Date | string
 }, "inventoryId" | "productId">
 
@@ -246,6 +260,7 @@ export type InventoryOrderByWithAggregationInput = {
   productId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   reservedQuantity?: Prisma.SortOrder
+  reorderPoint?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.InventoryCountOrderByAggregateInput
   _avg?: Prisma.InventoryAvgOrderByAggregateInput
@@ -262,6 +277,7 @@ export type InventoryScalarWhereWithAggregatesInput = {
   productId?: Prisma.UuidWithAggregatesFilter<"Inventory"> | string
   quantity?: Prisma.IntWithAggregatesFilter<"Inventory"> | number
   reservedQuantity?: Prisma.IntWithAggregatesFilter<"Inventory"> | number
+  reorderPoint?: Prisma.IntWithAggregatesFilter<"Inventory"> | number
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Inventory"> | Date | string
 }
 
@@ -270,6 +286,7 @@ export type InventoryCreateInput = {
   productId: string
   quantity?: number
   reservedQuantity?: number
+  reorderPoint?: number
   updatedAt?: Date | string
 }
 
@@ -278,6 +295,7 @@ export type InventoryUncheckedCreateInput = {
   productId: string
   quantity?: number
   reservedQuantity?: number
+  reorderPoint?: number
   updatedAt?: Date | string
 }
 
@@ -286,6 +304,7 @@ export type InventoryUpdateInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   reservedQuantity?: Prisma.IntFieldUpdateOperationsInput | number
+  reorderPoint?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -294,6 +313,7 @@ export type InventoryUncheckedUpdateInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   reservedQuantity?: Prisma.IntFieldUpdateOperationsInput | number
+  reorderPoint?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -302,6 +322,7 @@ export type InventoryCreateManyInput = {
   productId: string
   quantity?: number
   reservedQuantity?: number
+  reorderPoint?: number
   updatedAt?: Date | string
 }
 
@@ -310,6 +331,7 @@ export type InventoryUpdateManyMutationInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   reservedQuantity?: Prisma.IntFieldUpdateOperationsInput | number
+  reorderPoint?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -318,6 +340,7 @@ export type InventoryUncheckedUpdateManyInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   reservedQuantity?: Prisma.IntFieldUpdateOperationsInput | number
+  reorderPoint?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -326,12 +349,14 @@ export type InventoryCountOrderByAggregateInput = {
   productId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   reservedQuantity?: Prisma.SortOrder
+  reorderPoint?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type InventoryAvgOrderByAggregateInput = {
   quantity?: Prisma.SortOrder
   reservedQuantity?: Prisma.SortOrder
+  reorderPoint?: Prisma.SortOrder
 }
 
 export type InventoryMaxOrderByAggregateInput = {
@@ -339,6 +364,7 @@ export type InventoryMaxOrderByAggregateInput = {
   productId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   reservedQuantity?: Prisma.SortOrder
+  reorderPoint?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
@@ -347,12 +373,14 @@ export type InventoryMinOrderByAggregateInput = {
   productId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   reservedQuantity?: Prisma.SortOrder
+  reorderPoint?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type InventorySumOrderByAggregateInput = {
   quantity?: Prisma.SortOrder
   reservedQuantity?: Prisma.SortOrder
+  reorderPoint?: Prisma.SortOrder
 }
 
 export type StringFieldUpdateOperationsInput = {
@@ -378,6 +406,7 @@ export type InventorySelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   productId?: boolean
   quantity?: boolean
   reservedQuantity?: boolean
+  reorderPoint?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["inventory"]>
 
@@ -386,6 +415,7 @@ export type InventorySelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   productId?: boolean
   quantity?: boolean
   reservedQuantity?: boolean
+  reorderPoint?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["inventory"]>
 
@@ -394,6 +424,7 @@ export type InventorySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   productId?: boolean
   quantity?: boolean
   reservedQuantity?: boolean
+  reorderPoint?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["inventory"]>
 
@@ -402,10 +433,11 @@ export type InventorySelectScalar = {
   productId?: boolean
   quantity?: boolean
   reservedQuantity?: boolean
+  reorderPoint?: boolean
   updatedAt?: boolean
 }
 
-export type InventoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"inventoryId" | "productId" | "quantity" | "reservedQuantity" | "updatedAt", ExtArgs["result"]["inventory"]>
+export type InventoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"inventoryId" | "productId" | "quantity" | "reservedQuantity" | "reorderPoint" | "updatedAt", ExtArgs["result"]["inventory"]>
 
 export type $InventoryPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Inventory"
@@ -415,6 +447,7 @@ export type $InventoryPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     productId: string
     quantity: number
     reservedQuantity: number
+    reorderPoint: number
     updatedAt: Date
   }, ExtArgs["result"]["inventory"]>
   composites: {}
@@ -843,6 +876,7 @@ export interface InventoryFieldRefs {
   readonly productId: Prisma.FieldRef<"Inventory", 'String'>
   readonly quantity: Prisma.FieldRef<"Inventory", 'Int'>
   readonly reservedQuantity: Prisma.FieldRef<"Inventory", 'Int'>
+  readonly reorderPoint: Prisma.FieldRef<"Inventory", 'Int'>
   readonly updatedAt: Prisma.FieldRef<"Inventory", 'DateTime'>
 }
     

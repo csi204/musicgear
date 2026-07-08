@@ -1,23 +1,55 @@
 import { z } from "zod";
 
+// Zod v4 .uuid() validate เฉพาะ RFC 4122 strict format
+// ใช้ regex ที่ยืดหยุ่นกว่าเพื่อ interop กับ service อื่น
+const uuidSchema = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    "Invalid UUID format"
+  );
+
+
 export const stockUpdatedEvent = z.object({
   event: z.literal("stock.updated"),
-  productId: z.string().uuid(),
+  productId: uuidSchema,
   beforeQty: z.number().int(),
   afterQty: z.number().int(),
+  // Snapshot fields — เพิ่มมาเพื่อให้ report-svc อัปเดต InventorySnapshot ได้เลย
+  // โดยไม่ต้องย้อนไป query product-svc อีกรอบ (ลด coupling ระหว่าง service)
+  productName: z.string(),
+  category: z.string(),
+  stockLevel: z.number().int(),
+  reorderPoint: z.number().int(),
+  status: z.enum(["In Stock", "Low", "Critical"]),
 });
 
 export const orderStatusChangedEvent = z.object({
   event: z.literal("order.status_changed"),
-  orderId: z.string().uuid(),
-  customerId: z.string().uuid(),
+  orderId: uuidSchema,
+  customerId: uuidSchema,
   status: z.enum(["pending", "confirmed", "packed", "shipped", "delivered", "cancelled", "refunded"]),
 });
 
 export const paymentSuccessEvent = z.object({
   event: z.literal("payment.success"),
-  orderId: z.string().uuid(),
-  customerId: z.string().uuid(),
+  orderId: uuidSchema,
+  customerId: uuidSchema,
+  amount: z.number(),
+});
+
+export const addressCreatedEvent = z.object({
+  event: z.literal("address.created"),
+  addressId: uuidSchema,
+  customerId: uuidSchema,
+  addressData: z.any(), // Add specific fields if needed
+});
+
+export const addressUpdatedEvent = z.object({
+  event: z.literal("address.updated"),
+  addressId: uuidSchema,
+  customerId: uuidSchema,
+  addressData: z.any(),
 });
 
 // subscriber ทั้งสองตัวที่ต้องฟัง event ชุดนี้ (QStash Topic fan-out)
@@ -25,3 +57,64 @@ export const QSTASH_SUBSCRIBERS = {
   notificationSvc: "/webhooks/qstash", // services/notification-svc
   reportSvc: "/webhooks/qstash",       // services/report-svc — เขตเขียนทีหลังได้ ไม่ block ใคร
 };
+
+// ---------------------------------------------------------------------------
+// Inventory Request Schemas (ใช้ใน inventory-svc เท่านั้น)
+// ---------------------------------------------------------------------------
+
+const stockItemSchema = z.object({
+  productId: uuidSchema,
+  quantity: z.number().int().positive(),
+});
+
+/** POST /stock/check */
+export const checkStockSchema = z.object({
+  items: z.array(stockItemSchema).min(1),
+});
+
+/** POST /stock/reserve */
+export const reserveStockSchema = z.object({
+  orderId: uuidSchema,
+  items: z.array(stockItemSchema).min(1),
+});
+
+/** POST /stock/release */
+export const releaseStockSchema = z.object({
+  orderId: uuidSchema,
+});
+
+/** POST /stock/sale-deduct */
+export const saleDeductSchema = z.object({
+  orderId: uuidSchema,
+});
+
+/**
+ * POST /stock/adjust — Staff/Admin ปรับสต็อกด้วยมือ
+ *
+ * action: "receive" (รับของเข้า) | "adjust" (แก้ไขค่าผิดพลาด)
+ * เฉพาะ receive และ adjust เท่านั้น — reserve/release/sale_deduct ไม่ใช้ endpoint นี้
+ */
+export const adjustStockSchema = z.object({
+  productId: uuidSchema,
+  changeQty: z.number().int().refine((v) => v !== 0, "changeQty must not be 0"),
+  action: z.enum(["receive", "adjust"]),
+  staffId: uuidSchema.optional(),
+});
+
+export const productCreatedEvent = z.object({
+  event: z.literal("product.created"),
+  productId: uuidSchema,
+});
+
+// ---------------------------------------------------------------------------
+// QStash Webhook Payload (ใช้ใน notification-svc และ inventory-svc)
+// รวม 4 event types: 2 จากบุญ + 2 จากเดียร์ (discriminated union)
+// ---------------------------------------------------------------------------
+export const qstashWebhookSchema = z.discriminatedUnion("event", [
+  orderStatusChangedEvent,
+  paymentSuccessEvent,
+  stockUpdatedEvent,
+  addressCreatedEvent,
+  addressUpdatedEvent,
+  productCreatedEvent,
+]);

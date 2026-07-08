@@ -17,8 +17,10 @@
   },
   "dependencies": {
     "@workspace/ui": "workspace:*",
+    "jose": "^6.2.3",
     "lucide-react": "^1.21.0",
     "next": "16.2.6",
+    "next-auth": "5.0.0-beta.31",
     "next-themes": "^0.4.6",
     "react": "19.2.7",
     "react-dom": "19.2.7"

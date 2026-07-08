@@ -206,17 +206,17 @@ Requirement หลักของระบบ (ตามเกณฑ์ - คร
 ---
 
 ### 🔧 Persona 2 — Staff: "นอท"
-**อายุ:** 23 ปี | พนักงานดูแลคลังและจัดเตรียมสินค้า | **เป้าหมาย:** จัดเตรียมและแพ็กสินค้าให้ถูกต้อง รวดเร็ว
+**อายุ:** 23 ปี | พนักงานดูแลคลังและจัดเตรียมสินค้า | **เป้าหมาย:** จัดเตรียมสินค้าตามออเดอร์และหยิบแพ็กสินค้าส่งออกได้ถูกต้อง รวดเร็ว 100%
 
 > *"ลูกค้าขอถามและสั่งซื้อสินค้าหลายชิ้นพร้อมกันเพราะกลัวต้องใช้ด้วยกันไม่ได้ แต่ในระบบคลังเราแยกเช็กทีละชิ้น ถ้าสินค้าชิ้นใดชิ้นหนึ่งหรือใครเข้าไปไม่ชัดเจน ระบบเวลาหยิบของมาจะวุ่นวายมาก"*
 
 **🩹 Pain Points**
-- จัดการความเข้าใจของสินค้าในสต็อกได้ไม่ตรงกัน เมื่อลูกค้าสั่งซื้อชุดสินค้าหรือจับคู่สินค้ามา Staff ต้องเสียเวลาตรวจสอบหน้างานตอนแพ็ก อุปกรณ์ขึ้นนี้สายกีตาร์ แอมป์ มันตรงรุ่นและเข้ากันได้จริงตามที่ลูกค้าต้องการหรือไม่ เมื่อจากข้อมูลในคลังไม่ได้พูดความเข้าใจไว้ชัดเจน
-- ปัญหาการตัดสต็อกสินค้าที่สัมพันธ์กัน: หากสินค้าชิ้นใดชิ้นหนึ่งในเซ็ตหมด แต่ระบบไม่แสดงหรือแจ้งเตือนสินค้าที่สอดคคล้องล่วงหน้าว่าหมดแล้ว เสียเวลาต้องประสานงานหรือเปลี่ยนสินค้า
+- การตรวจสอบความถูกต้องหน้างาน: เมื่อลูกค้าสั่งสินค้าจัดเซ็ต (Bundle) พนักงานต้องเสียเวลาไปเปิดดูสินค้าทีละตัวเพื่อเช็กว่า อุปกรณ์ชิ้นนี้ (เช่น สายกีตาร์ แอมป์ ขาตั้ง) มีชิ้นส่วนครบถ้วนและเข้ากันได้จริงหรือไม่ เนื่องจากข้อมูลในคลังเดิมไม่ได้เชื่อมโยงความสัมพันธ์ของชิ้นส่วนประกอบไว้
+- ปัญหาการตัดสต็อกสินค้าสัมพันธ์: หากวัตถุดิบหรือสินค้าตัวใดตัวหนึ่งในเซ็ต Bundle หมด แต่ระบบไม่แจ้งเตือนสถานะความพร้อมของวัตถุดิบล่วงหน้า ทำให้ต้องไปเสียเวลาเช็กของหน้าชั้นวางเมื่อออเดอร์เข้ามาแล้ว
 
 **🎯 Needs & Motivations**
-- ระบบแจ้งข้อมูลความสัมพันธ์ของสินค้าหรือเซ็ตสต็อกสินค้าให้เข้ากันได้ ในหน้าที่สั่งซื้อชัดเจน เพื่อให้หยิบและแพ็กของได้ถูกต้อง ไม่ต้องเดาเอง
-- หน้า Dashboard แสดงสถานะสต็อกของและกลุ่มสินค้าแนะนำสำหรับมือใหม่ เพื่อเตรียมแพ็กได้ล่วงหน้า
+- ต้องการระบบที่แสดงสินค้าส่วนประกอบ (Bundle Items) ภายใต้เซ็ตสินค้าในใบสั่งซื้อและแสดงใบพิมพ์จัดเตรียมสินค้า (Packing Slip) เพื่อให้หยิบและบรรจุสินค้าลงกล่องได้รวดเร็วโดยไม่ต้องเดาเอง
+- หน้าสรุปคลังสินค้าที่แสดงสถานะความพร้อมของเซ็ตสินค้า (พร้อมประกอบ / วัตถุดิบไม่พอ) และหน้า Dashboard ที่สรุปสถานะการเตือนภัยสต็อกต่ำ (Low Stock Alert) เพื่อเตรียมเบิกสั่งของล่วงหน้า
 
 ---
 
@@ -767,74 +767,87 @@ sequenceDiagram
     autonumber
     actor C as Customer
     participant GW as API Gateway
-    participant Auth as Auth Service (Kinde)
-    participant US as User Service
-    participant PS as Product Service
-    participant CS as Cart Service
-    participant Redis as Redis (Cart DB)
-    participant OS as Order Service
-    participant Inv as Inventory
-    participant Pay as Payment Service
+    participant US as user-svc
+    participant PS as product-svc
+    participant CS as cart-svc
+    participant CartDB as Cart DB (Postgres)
+    participant OS as order-svc
+    participant InvS as inventory-svc
+    participant Pay as payment-svc
     participant Omise as Omise
-    participant Notif as Notification Service
+    participant Notif as notification-svc
     participant Resend as Resend
 
-    %% Register / Login
-    C->>GW: POST /register หรือ /login
-    GW->>Auth: Authenticate(email, password)
-    Auth->>US: Verify / Create User
-    US-->>Auth: User Info
-    Auth-->>GW: JWT Token
-    GW-->>C: Login Success (Token)
+    %% Register / Login (local credentials)
+    C->>GW: POST /auth/register  หรือ  POST /auth/verify
+    GW->>US: createUser / verifyCredentials
+    US-->>GW: User record + JWT
+    GW-->>C: Login สำเร็จ
 
-    %% Browse & Search
-    C->>GW: GET /products?search=&brand=&type=
-    GW->>PS: searchProduct(keyword, filter)
-    PS-->>GW: Product List
+    %% Browse & Filter Products
+    C->>GW: GET /products?search=&category=&brand=&skillLevel=
+    GW->>PS: getAllProducts(filters)
+    PS-->>GW: Product list (พร้อม skillLevel, images, bundle info)
     GW-->>C: แสดงรายการสินค้า
 
+    %% View Product Detail (includes accessories / compare)
+    C->>GW: GET /products/:slug
+    GW->>PS: getProductBySlug(slug)
+    PS-->>GW: Product detail + accessories + reviews
+    GW-->>C: แสดงหน้ารายละเอียดสินค้า
+
     %% Add to Cart
-    C->>GW: POST /cart/add (productId, qty)
-    GW->>CS: addToCart(customerId, productId, qty)
-    CS->>Redis: Save CartItem
-    Redis-->>CS: OK
-    CS-->>GW: Cart Updated
+    C->>GW: POST /carts/:cartId/items  {productId, quantity, price}
+    GW->>CS: addItem(cartId, productId, qty, price)
+    CS->>CartDB: INSERT / UPDATE cart_items
+    CartDB-->>CS: OK
+    CS-->>GW: Cart updated
     GW-->>C: ตะกร้าอัปเดตแล้ว
 
-    %% Checkout / Place Order
-    C->>GW: POST /order/checkout (addressId)
-    GW->>OS: createOrder(cart, address)
-    OS->>Inv: checkStock(productId, qty)
-    Inv-->>OS: Stock Available
-    OS->>OS: คำนวณ total, shippingFee, grandTotal
-    OS-->>GW: Order Created (pending payment)
-    GW-->>C: สรุปคำสั่งซื้อ
+    %% Checkout → Create Order
+    C->>GW: POST /orders  {cartId, addressId}
+    GW->>OS: createOrder(cart, addressId)
+    OS->>GW: GET /inventory/stock-check  {items[]}
+    GW->>InvS: checkStock(productIds)
+    InvS-->>GW: stock available
+    GW-->>OS: stock OK
+    OS->>GW: POST /inventory/reserve  {items[]}
+    GW->>InvS: reserveStock(items)
+    InvS-->>GW: reserved
+    OS-->>GW: Order created (status=pending)
+    GW-->>C: สรุปคำสั่งซื้อ + orderId
 
-    %% Payment
-    C->>GW: POST /payment (orderId, method)
-    GW->>Pay: processPayment(orderId, amount)
-    Pay->>Omise: chargePayment(amount, token)
-    Omise-->>Pay: Payment Result
-    Pay->>OS: updateOrderStatus(paid)
-    Pay-->>GW: Payment Success
-    GW-->>C: ยืนยันการชำระเงิน
-
-    %% Notification
-    OS->>Notif: sendOrderConfirmation(customerId, orderId)
-    Notif->>Resend: sendEmail(customer)
-    Resend-->>Notif: Email Sent
-    Notif-->>C: Push Notification (Order Confirmed)
+    %% Payment (Omise Sandbox)
+    C->>GW: POST /payments  {orderId, paymentMethod, token}
+    GW->>Pay: processPayment(orderId, amount, token)
+    Pay->>Omise: charge(amount, token)
+    Omise-->>Pay: charge result
+    alt charge สำเร็จ
+        Pay->>GW: PUT /orders/:orderId  {status: confirmed}
+        GW->>OS: updateStatus(confirmed)
+        Pay->>GW: POST /inventory/sale-deduct  {items[]}
+        GW->>InvS: saleDeductStock(items)
+        Pay-->>GW: Payment success
+        GW-->>C: ยืนยันการชำระเงิน
+        Pay->>Notif: sendOrderConfirmEmail(customerId, orderId)
+        Notif->>Resend: sendEmail()
+    else charge ล้มเหลว
+        Pay->>GW: POST /inventory/release  {items[]}
+        GW->>InvS: releaseStock(items)
+        Pay-->>GW: Payment failed
+        GW-->>C: แจ้งการชำระเงินไม่สำเร็จ
+    end
 
     %% Track Order
-    C->>GW: GET /order/{orderId}/status
-    GW->>OS: getOrderStatus(orderId)
-    OS-->>GW: Order Status
+    C->>GW: GET /orders/:orderId
+    GW->>OS: getOrder(orderId)
+    OS-->>GW: Order + Shipment status
     GW-->>C: แสดงสถานะ Tracking
 
-    %% Review
-    C->>GW: POST /review (productId, rating, comment)
-    GW->>PS: addReview(customerId, productId, rating, comment)
-    PS-->>GW: Review Saved
+    %% Write Review
+    C->>GW: POST /products/:productId/reviews  {rating, comment}
+    GW->>PS: createReview(customerId, productId, rating, comment)
+    PS-->>GW: Review saved
     GW-->>C: รีวิวถูกบันทึกแล้ว
 ```
 
@@ -845,70 +858,74 @@ sequenceDiagram
     autonumber
     actor S as Staff
     participant GW as API Gateway
-    participant Auth as Auth Service
-    participant OS as Order Service
-    participant Inv as Inventory
-    participant PS as Product Service
-    participant Notif as Notification Service
-    participant Rep as Report Service
+    participant OS as order-svc
+    participant InvS as inventory-svc
+    participant PS as product-svc
+    participant Notif as notification-svc
+    participant Rep as report-svc
 
     %% Login
-    S->>GW: POST /login
-    GW->>Auth: Authenticate(email, password)
-    Auth-->>GW: JWT Token
-    GW-->>S: Login Success
+    S->>GW: POST /auth/verify  {email, password}
+    GW->>GW: user-svc verifyCredentials → JWT
+    GW-->>S: Login สำเร็จ (role=staff)
 
-    %% View Order List
-    S->>GW: GET /orders
-    GW->>OS: getAllOrders()
-    OS-->>GW: Order List
+    %% View Orders
+    S->>GW: GET /orders  (+ filter status)
+    GW->>OS: getAllOrders(filters)
+    OS-->>GW: Order list
     GW-->>S: แสดงรายการคำสั่งซื้อ
 
     %% Confirm Order
-    S->>GW: PUT /order/{id}/confirm
-    GW->>OS: reviewAndConfirmOrder(orderId)
-    OS-->>GW: Order Confirmed
+    S->>GW: PUT /orders/:orderId  {status: confirmed}
+    GW->>OS: updateOrderStatus(orderId, confirmed)
+    OS-->>GW: Order confirmed
     GW-->>S: สถานะอัปเดต
 
-    %% Prepare / Pack Product
-    S->>GW: PUT /order/{id}/prepare
-    GW->>OS: prepareProduct(orderId)
-    OS->>Inv: reserveStock(productId, qty)
-    Inv-->>OS: Stock Reserved
-    OS-->>GW: Product Packed
+    %% Prepare & Pack → reserve stock
+    S->>GW: PUT /orders/:orderId  {status: packed}
+    GW->>OS: updateOrderStatus(orderId, packed)
+    OS->>GW: POST /inventory/reserve  {items[]}
+    GW->>InvS: reserveStock(items)
+    InvS-->>GW: Stock reserved (reservedQuantity เพิ่ม)
+    OS-->>GW: Packed
     GW-->>S: สถานะ: Packed
 
-    %% Update Order Status -> Shipment
-    S->>GW: PUT /order/{id}/status (shipped)
-    GW->>OS: updateOrderStatus(orderId, shipped)
-    OS->>Notif: notifyCustomer(orderId, shipped)
-    Notif-->>OS: Notification Sent
-    OS-->>GW: Status Updated
+    %% Ship → notify customer
+    S->>GW: PUT /orders/:orderId  {status: shipped, trackingNumber}
+    GW->>OS: updateOrderStatus + createShipment
+    OS->>Notif: notifyCustomer(customerId, orderId, shipped)
+    Notif-->>OS: sent
+    OS-->>GW: Shipped
     GW-->>S: ยืนยันแล้ว
 
-    %% Receiving Product / Manage Stock
-    S->>GW: POST /inventory/receive (productId, qty)
-    GW->>Inv: receivingProduct(productId, qty)
-    Inv->>Inv: updateStock(quantity)
-    Inv-->>GW: Stock Updated
+    %% Receive Product (เติมสต็อก)
+    S->>GW: POST /inventory/receive  {productId, expectedQty, receivedQty, staffId}
+    GW->>InvS: receiveStock(productId, receivedQty, staffId)
+    InvS->>InvS: updateInventory + createInventoryLog(action=receive)
+    InvS-->>GW: Stock updated + InventoryLog created
     GW-->>S: สต็อกอัปเดตแล้ว
 
-    %% Check Stock
-    S->>GW: GET /inventory/check?productId=
-    GW->>Inv: checkStock(productId)
-    Inv-->>GW: Current Stock Level
-    GW-->>S: แสดงข้อมูลสต็อก
+    %% Check Stock / Low Stock
+    S->>GW: GET /inventory/stock
+    GW->>InvS: getAllStock()
+    InvS-->>GW: Inventory list (quantity, reservedQuantity, reorderPoint)
+    GW-->>S: แสดงข้อมูลสต็อก + แจ้งเตือน Low / Critical
 
     %% Manage Bundle Set
-    S->>GW: POST /product/bundle (bundleItems)
-    GW->>PS: manageBundleSet(bundleData)
-    PS-->>GW: Bundle Created
+    S->>GW: POST /products/bundles  {name, items[], discountType, discountValue}
+    GW->>PS: createBundle(bundleData)
+    PS-->>GW: Bundle created
     GW-->>S: บันทึกชุดสินค้าแล้ว
 
-    %% Dashboard Report
-    S->>GW: GET /dashboard/report
-    GW->>Rep: getDashboardReport()
-    Rep-->>GW: Report Data
+    S->>GW: PUT /products/bundles/:bundleId  {updatedData}
+    GW->>PS: updateBundle(bundleId, data)
+    PS-->>GW: Bundle updated
+    GW-->>S: แก้ไขชุดสินค้าแล้ว
+
+    %% Staff Dashboard
+    S->>GW: GET /reports/dashboard
+    GW->>Rep: getDashboardSummary()
+    Rep-->>GW: totalOrders, lowStockAlerts, pendingOrders
     GW-->>S: แสดง Dashboard
 ```
 
@@ -919,80 +936,71 @@ sequenceDiagram
     autonumber
     actor A as Admin
     participant GW as API Gateway
-    participant Auth as Auth Service
-    participant US as User Service
-    participant PS as Product Service
-    participant OS as Order Service
-    participant Inv as Inventory
-    participant Pay as Payment Service
-    participant Rep as Report Service
-    participant R2 as R2 Image Storage
+    participant US as user-svc
+    participant PS as product-svc
+    participant InvS as inventory-svc
+    participant Rep as report-svc
+    participant R2 as Cloudflare R2
 
     %% Login
-    A->>GW: POST /login
-    GW->>Auth: Authenticate(email, password)
-    Auth-->>GW: JWT Token
-    GW-->>A: Login Success
+    A->>GW: POST /auth/verify  {email, password}
+    GW->>US: verifyCredentials → JWT (role=admin)
+    GW-->>A: Login สำเร็จ
 
-    %% View Dashboard
-    A->>GW: GET /admin/dashboard
+    %% Admin Dashboard
+    A->>GW: GET /reports/dashboard
     GW->>Rep: getDashboardSummary()
-    Rep-->>GW: Summary Data (sales, users, orders)
-    GW-->>A: แสดง Dashboard
+    Rep-->>GW: totalOrders, totalRevenue, topProducts
+    GW-->>A: แสดง Dashboard สรุปภาพรวม
 
-    %% Manage Category
-    A->>GW: POST /category (name, description)
-    GW->>PS: createCategory(data)
-    PS-->>GW: Category Created
-    GW-->>A: บันทึกหมวดหมู่แล้ว
-
-    %% Manage Product
-    A->>GW: POST /product (productData, images)
-    GW->>PS: createProduct(productData)
-    PS->>R2: uploadImage(images)
-    R2-->>PS: Image URL
-    PS-->>GW: Product Created
+    %% Manage Product — Create
+    A->>GW: POST /products  {productData + imageFile}
+    GW->>PS: createProduct(data)
+    PS->>R2: uploadImage(file)
+    R2-->>PS: imageUrl
+    PS-->>GW: Product created
     GW-->>A: บันทึกสินค้าแล้ว
 
-    A->>GW: PUT /product/{id} (update)
+    %% Manage Product — Edit (รวม skillLevel)
+    A->>GW: PUT /products/:productId  {price, skillLevel, ...}
     GW->>PS: updateProduct(productId, data)
-    PS-->>GW: Product Updated
+    PS-->>GW: Product updated
     GW-->>A: อัปเดตแล้ว
 
-    %% Manage User
-    A->>GW: GET /admin/users
+    %% Manage Category / Brand
+    A->>GW: POST /products/categories  {name}
+    GW->>PS: createCategory(data)
+    PS-->>GW: Category created
+    GW-->>A: บันทึกหมวดหมู่แล้ว
+
+    %% Manage Users
+    A->>GW: GET /users
     GW->>US: getAllUsers()
-    US-->>GW: User List
+    US-->>GW: User list (all roles)
     GW-->>A: แสดงรายชื่อผู้ใช้
 
-    A->>GW: PUT /admin/user/{id} (status)
-    GW->>US: manageUser(userId, status)
-    US-->>GW: User Updated
+    A->>GW: PUT /users/:userId  {status: banned}
+    GW->>US: updateUserStatus(userId, banned)
+    US-->>GW: Updated
     GW-->>A: ยืนยันแล้ว
 
-    %% Inventory Report
-    A->>GW: GET /report/inventory
-    GW->>Rep: getInventoryReport()
-    Rep->>Inv: fetchStockData()
-    Inv-->>Rep: Stock Data
-    Rep-->>GW: Inventory Report
-    GW-->>A: แสดงรายงานสต็อก
-
     %% Sales Report
-    A->>GW: GET /report/sales
-    GW->>Rep: getSalesReport()
-    Rep->>OS: fetchOrderData()
-    OS-->>Rep: Order Data
-    Rep-->>GW: Sales Report
+    A->>GW: GET /reports/sales?start=&end=
+    GW->>Rep: getSalesReport(dateRange)
+    Rep-->>GW: DailySalesReport + ProductSalesSnapshot
     GW-->>A: แสดงรายงานยอดขาย
 
-    %% Financial Results Report
-    A->>GW: GET /report/financial
+    %% Inventory Report
+    A->>GW: GET /reports/inventory
+    GW->>Rep: getInventoryReport()
+    Rep-->>GW: InventorySnapshot (stockLevel, status)
+    GW-->>A: แสดงรายงานสต็อก
+
+    %% Financial Report
+    A->>GW: GET /reports/financial
     GW->>Rep: getFinancialReport()
-    Rep->>Pay: fetchPaymentData()
-    Pay-->>Rep: Payment Data
-    Rep-->>GW: Financial Report
-    GW-->>A: แสดงรายงานผลลัพธ์ทางการเงิน
+    Rep-->>GW: Revenue summary (จาก DailySalesReport)
+    GW-->>A: แสดงรายงานการเงิน
 ```
 
 ---
@@ -1001,55 +1009,53 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
- 
+
     subgraph ClientLayer["Client Layer"]
-        WebApp["💻 Customer Web App"]
-        AdminPortal["📋 Admin Portal"]
-        StaffPortal["📋 Staff Portal"]
+        WebApp["💻 Customer Web App\n(Next.js — apps/web)"]
+        StaffPortal["🔧 Staff Portal\n(Next.js — apps/staff)"]
+        AdminPortal["📋 Admin Portal\n(Next.js — apps/admin)"]
     end
- 
-    subgraph GatewayLayer["API Gateway"]
+
+    subgraph GatewayLayer["API Gateway (Hono · Cloudflare Workers)"]
         APIGW(("🌐 API Gateway"))
     end
- 
-    subgraph Microservices["Microservice Layer"]
-        UserSvc["👤 User Service"]
-        ProductSvc["📦 Product Service (catalog only)"]
-        InventorySvc["🧮 Inventory Service"]
-        OrderSvc["📋 Order Service"]
-        CartSvc["🛒 Cart Service"]
-        PaymentSvc["💳 Payment Service"]
-        NotifSvc["🔔 Notification Service"]
-        ReportSvc["📊 Report Service"]
-        AuthSvc["🔑 Auth Service"]
+
+    subgraph Microservices["Microservice Layer (Hono · Cloudflare Workers + Prisma)"] 
+        AuthSvc["🔑 auth-svc\n/auth/*"]
+        UserSvc["👤 user-svc\n/users/*"]
+        ProductSvc["📦 product-svc\n/products/*"]
+        InventorySvc["🧮 inventory-svc\n/inventory/*"]
+        OrderSvc["📋 order-svc\n/orders/*"]
+        CartSvc["🛒 cart-svc\n/carts/*"]
+        PaymentSvc["💳 payment-svc\n/payments/*"]
+        NotifSvc["🔔 notification-svc\n/notifications/*"]
+        ReportSvc["📊 report-svc\n/reports/*"]
     end
- 
-    subgraph EventLayer["Event Queue"]
-        QStash(("📨 Upstash QStash"))
+
+    subgraph DataLayer["Data Layer (Neon Postgres — แยก DB ต่อ Service)"]
+        UserDB[("user_db\nUser · Customer\nStaff · Admin · Address")]
+        ProductDB[("product_db\nProduct · Brand · Category\nProductImage · Bundle\nBundleItem · Review")]
+        InventoryDB[("inventory_db\nInventory · InventoryLog")]
+        OrderDB[("order_db\nOrder · OrderItem · Shipment")]
+        CartDB[("cart_db\nCart · CartItem")]
+        PaymentDB[("payment_db\nPayment")]
+        NotifDB[("notification_db\nNotification")]
+        ReportDB[("report_db\nDailySalesReport\nInventorySnapshot\nProductSalesSnapshot\nSystemAuditLog")]
     end
- 
-    subgraph DataLayer["Data Layer"]
-        UserDB[("User DB")]
-        ProductDB[("Product DB")]
-        InventoryDB[("Inventory DB + inventory_logs")]
-        OrderDB[("Order DB")]
-        RedisCart[("Redis (Cart) - Upstash")]
-        PaymentDB[("Payment DB")]
-        NotifDB[("Notification DB")]
-        ReportDB[("Report DB")]
-        R2Storage[("R2 Images Storage")]
-    end
- 
+
     subgraph ExternalServices["External Services"]
-        Omise["💳 Omise"]
-        Resend["✉️ Resend"]
-        Kinde["🔑 Kinde"]
+        Kinde["🔑 Kinde OAuth"]
+        Omise["💳 Omise\n(Payment Sandbox)"]
+        Resend["✉️ Resend\n(Email — Reset Password)"]
+        R2["🗂️ Cloudflare R2\n(Image Storage)"]
     end
- 
+
+    %% Client → Gateway
     WebApp --> APIGW
-    AdminPortal --> APIGW
     StaffPortal --> APIGW
- 
+    AdminPortal --> APIGW
+
+    %% Gateway → Services
     APIGW --> AuthSvc
     APIGW --> UserSvc
     APIGW --> ProductSvc
@@ -1059,41 +1065,29 @@ flowchart TB
     APIGW --> PaymentSvc
     APIGW --> NotifSvc
     APIGW --> ReportSvc
- 
-    %% Synchronous Inter-service Communication (REST ต้องวิ่งผ่าน API Gateway ห้ามคุยตรง!)
-    CartSvc -- "Checkout (Sync)" --> APIGW
-    OrderSvc -- "check / reserve / release stock (Sync)" --> APIGW
-    ProductSvc -- "validate stock ตอนสร้าง bundle (Sync)" --> APIGW
-    PaymentSvc -- "Process / stock event (Sync)" --> APIGW
-    
-    AuthSvc -. "auth" .-> Kinde
-    PaymentSvc -. "charge" .-> Omise
- 
-    %% External Webhooks (Syncing data back from 3rd Party)
-    Kinde -- "webhook POST (sync user info)" --> UserSvc
-    Omise -- "webhook POST (payment result)" --> PaymentSvc
- 
-    %% Asynchronous Event Publishing (Upstash QStash)
-    InventorySvc -- "publish stock.updated" --> QStash
-    OrderSvc -- "publish order.status_changed" --> QStash
-    PaymentSvc -- "publish payment.success" --> QStash
-    ProductSvc -- "publish product.updated" --> QStash
-    UserSvc -- "publish user.created" --> QStash
- 
-    %% Webhook Subscribers (Internal Async)
-    QStash -- "webhook POST (fan-out)\n(ส่งอีเมล/แจ้งเตือน)" --> NotifSvc
-    QStash -- "webhook POST (fan-out)\n(อัปเดตยอด Report และ SystemAuditLog)" --> ReportSvc
- 
-    %% Data Layer Connections
+
+    %% Cross-service calls (routed back through Gateway)
+    OrderSvc -. "reserve / release / sale_deduct stock" .-> APIGW
+    PaymentSvc -. "update order status after payment" .-> APIGW
+    NotifSvc -. "send email (forgot-password)" .-> APIGW
+
+    %% External integrations
+    AuthSvc -. "OAuth login" .-> Kinde
+    Kinde -- "webhook (sync user)" --> UserSvc
+    PaymentSvc -. "charge / refund" .-> Omise
+    Omise -- "webhook (payment result)" --> PaymentSvc
+    UserSvc -. "send reset-password email" .-> Resend
+    ProductSvc -. "upload product image" .-> R2
+
+    %% Service → DB
     UserSvc --> UserDB
     ProductSvc --> ProductDB
     InventorySvc --> InventoryDB
     OrderSvc --> OrderDB
-    CartSvc --> RedisCart
+    CartSvc --> CartDB
     PaymentSvc --> PaymentDB
     NotifSvc --> NotifDB
     ReportSvc --> ReportDB
-    ProductSvc --> R2Storage
 ```
 
 ---
@@ -1102,12 +1096,15 @@ flowchart TB
 [![Design System](https://raw.githubusercontent.com/csi204/musicgear/main/images/Prototype.png)](https://www.figma.com/design/RSQ1FfYVF5qJZzgem9ntBt/Untitled?node-id=0-1&t=H5nnEYQtm8Cw6YVe-1)
 
 # Data Schema (JSON)
+
+> **หมายเหตุ:** แต่ละ microservice มีฐานข้อมูล PostgreSQL (Neon) แยกกันคนละ DB ตามหลัก Database-per-Service โดย soft reference (ไม่มี FK ข้าม service)
+
 ```json
 {
-  "users": {
-    "description": "ตารางหลักของผู้ใช้ทุก role (Customer / Staff / Admin) — ใช้ single base table + extension table แบบ table-per-subtype ตาม inheritance ใน class diagram",
+  "[user_db] users": {
+    "description": "ตารางหลักของผู้ใช้ทุก role — Single base table + extension table (table-per-subtype). userId ใช้ UUID ปกติ (อาจเป็น Kinde sub สำหรับ OAuth login)",
     "fields": {
-      "userId":       { "type": "UUID", "primaryKey": true },
+      "userId":       { "type": "string", "primaryKey": true, "default": "uuid()", "note": "Kinde sub หรือ UUID" },
       "email":        { "type": "string", "unique": true, "required": true },
       "passwordHash": { "type": "string", "required": true },
       "firstName":    { "type": "string", "required": true },
@@ -1119,41 +1116,41 @@ flowchart TB
       "updatedAt":    { "type": "datetime", "default": "now()" }
     }
   },
- 
-  "customers": {
-    "description": "Extension table ของ users เฉพาะ role customer",
+
+  "[user_db] customers": {
+    "description": "Extension table ของ users เฉพาะ role=customer",
     "fields": {
-      "customerId":   { "type": "UUID", "primaryKey": true, "references": "users.userId" },
+      "customerId":   { "type": "string", "primaryKey": true, "references": "users.userId", "onDelete": "Cascade" },
       "dateOfBirth":  { "type": "date", "required": false },
       "gender":       { "type": "enum", "values": ["male", "female", "other", "prefer_not_to_say"], "required": false },
       "createdAt":    { "type": "datetime", "default": "now()" },
       "updatedAt":    { "type": "datetime", "default": "now()" }
     }
   },
- 
-  "staff": {
-    "description": "Extension table ของ users เฉพาะ role staff",
+
+  "[user_db] staff": {
+    "description": "Extension table ของ users เฉพาะ role=staff",
     "fields": {
-      "staffId":      { "type": "UUID", "primaryKey": true, "references": "users.userId" },
+      "staffId":      { "type": "string", "primaryKey": true, "references": "users.userId", "onDelete": "Cascade" },
       "position":     { "type": "string", "required": true, "example": "Warehouse / Packing" },
       "createdAt":    { "type": "datetime", "default": "now()" },
       "updatedAt":    { "type": "datetime", "default": "now()" }
     }
   },
- 
-  "admins": {
-    "description": "Extension table ของ users เฉพาะ role admin",
+
+  "[user_db] admins": {
+    "description": "Extension table ของ users เฉพาะ role=admin",
     "fields": {
-      "adminId":      { "type": "UUID", "primaryKey": true, "references": "users.userId" },
+      "adminId":      { "type": "string", "primaryKey": true, "references": "users.userId", "onDelete": "Cascade" },
       "createdAt":    { "type": "datetime", "default": "now()" },
       "updatedAt":    { "type": "datetime", "default": "now()" }
     }
   },
- 
-  "addresses": {
+
+  "[user_db] addresses": {
     "fields": {
       "addressId":    { "type": "UUID", "primaryKey": true },
-      "customerId":   { "type": "UUID", "references": "customers.customerId", "required": true },
+      "customerId":   { "type": "string", "references": "customers.customerId", "onDelete": "Cascade", "required": true },
       "receiverName": { "type": "string", "required": true },
       "phone":        { "type": "string", "required": true },
       "addressLine1": { "type": "string", "required": true },
@@ -1166,89 +1163,65 @@ flowchart TB
       "updatedAt":    { "type": "datetime", "default": "now()" }
     }
   },
- 
-  "brands": {
+
+  "[product_db] brands": {
     "fields": {
       "brandId":      { "type": "UUID", "primaryKey": true },
       "name":         { "type": "string", "unique": true, "required": true },
       "description":  { "type": "text", "required": false }
     }
   },
- 
-  "categories": {
+
+  "[product_db] categories": {
     "fields": {
       "categoryId":   { "type": "UUID", "primaryKey": true },
       "name":         { "type": "string", "unique": true, "required": true },
       "description":  { "type": "text", "required": false }
     }
   },
- 
-  "products": {
+
+  "[product_db] products": {
     "fields": {
       "productId":    { "type": "UUID", "primaryKey": true },
       "name":         { "type": "string", "required": true },
-      "slug":         { "type": "string", "unique": true, "required": true, "note": "PATCH: generate จาก name เช่น 'Yamaha F310 Acoustic Guitar' -> 'yamaha-f310-acoustic-guitar' ใช้ทำ URL /product/{slug} แทน UUID เพื่อ SEO" },
+      "slug":         { "type": "string", "unique": true, "required": true, "note": "generate จาก name เช่น 'Yamaha F310' → 'yamaha-f310' ใช้เป็น URL /products/:slug" },
       "description":  { "type": "text", "required": false },
       "price":        { "type": "decimal(10,2)", "required": true, "min": 0 },
       "sku":          { "type": "string", "unique": true, "required": true },
       "status":       { "type": "enum", "values": ["active", "inactive", "discontinued", "out_of_stock"], "default": "active" },
-      "skillLevel":   { "type": "enum", "values": ["beginner", "intermediate", "advanced"], "required": false, "note": "ใช้สำหรับ Beginner Recommendation feature" },
+      "skillLevel":   { "type": "enum", "values": ["beginner", "intermediate", "advanced"], "required": false, "note": "ใช้สำหรับ Beginner Recommendation (Req 10)" },
       "brandId":      { "type": "UUID", "references": "brands.brandId", "required": true },
       "categoryId":   { "type": "UUID", "references": "categories.categoryId", "required": true },
       "createdAt":    { "type": "datetime", "default": "now()" },
       "updatedAt":    { "type": "datetime", "default": "now()" }
     }
   },
- 
-  "product_images": {
+
+  "[product_db] product_images": {
     "fields": {
       "imageId":      { "type": "UUID", "primaryKey": true },
       "productId":    { "type": "UUID", "references": "products.productId", "required": true },
       "imageUrl":     { "type": "string", "required": true, "note": "URL ไปยัง Cloudflare R2" },
       "isPrimary":    { "type": "boolean", "default": false },
-      "sortOrder":    { "type": "integer", "default": 0, "note": "PATCH: 0 = รูปปก (cover), เรียงจากน้อยไปมาก เช่น 0=ปก, 1=ด้านข้าง, 2=ด้านหลัง" },
+      "sortOrder":    { "type": "integer", "default": 0, "note": "0 = รูปปก, เรียงน้อย→มาก" },
       "createdAt":    { "type": "datetime", "default": "now()" }
     }
   },
- 
-  "inventory": {
+
+  "[product_db] bundles": {
+    "description": "เซ็ตสินค้า Bundle Set ที่ Staff สร้างเพื่อจำหน่ายเป็นชุด (Req 11)",
     "fields": {
-      "inventoryId":      { "type": "UUID", "primaryKey": true },
-      "productId":        { "type": "UUID", "references": "products.productId", "unique": true, "required": true },
-      "quantity":         { "type": "integer", "default": 0, "min": 0 },
-      "reservedQuantity": { "type": "integer", "default": 0, "min": 0, "note": "ตัดจองตอนลูกค้า checkout ก่อน payment confirm" },
-      "updatedAt":        { "type": "datetime", "default": "now()" }
+      "bundleId":      { "type": "UUID", "primaryKey": true },
+      "name":          { "type": "string", "required": true },
+      "description":   { "type": "text", "required": false },
+      "discountType":  { "type": "enum", "values": ["percentage", "fixed_amount"], "required": true },
+      "discountValue": { "type": "decimal(10,2)", "required": true, "min": 0 },
+      "createdAt":     { "type": "datetime", "default": "now()" },
+      "updatedAt":     { "type": "datetime", "default": "now()" }
     }
   },
- 
-  "inventory_logs": {
-    "description": "PATCH (ใหม่): เก็บประวัติทุกครั้งที่สต็อกถูกแก้ไข ใช้ตรวจสอบย้อนหลังว่า staff คนไหนทำอะไรกับสต็อกเมื่อไหร่ และเป็นจุด trigger event stock.updated ไปยัง Upstash QStash",
-    "fields": {
-      "id":          { "type": "UUID", "primaryKey": true },
-      "productId":   { "type": "UUID", "references": "products.productId", "required": true },
-      "beforeQty":   { "type": "integer", "required": true },
-      "afterQty":    { "type": "integer", "required": true },
-      "changeQty":   { "type": "integer", "required": true, "note": "afterQty - beforeQty เก็บแยกไว้ query เร็วกว่าคำนวณทุกครั้ง" },
-      "action":      { "type": "enum", "values": ["receive", "adjust", "reserve", "release", "sale_deduct"], "required": true,
-                       "note": "receive=รับของเข้า, adjust=แก้ไขด้วยมือ, reserve=จองตอน checkout, release=คืนสต็อกตอน payment fail, sale_deduct=ตัดสต็อกตอนขายสำเร็จ" },
-      "staffId":     { "type": "UUID", "references": "staff.staffId", "required": false, "note": "null ได้ถ้า action เกิดจากระบบอัตโนมัติ เช่น reserve/release ตอน checkout" },
-      "createdAt":   { "type": "datetime", "default": "now()" }
-    }
-  },
- 
-  "bundles": {
-    "fields": {
-      "bundleId":     { "type": "UUID", "primaryKey": true },
-      "name":         { "type": "string", "required": true },
-      "description":  { "type": "text", "required": false },
-      "discountType": { "type": "enum", "values": ["percentage", "fixed_amount"], "required": true },
-      "discountValue":{ "type": "decimal(10,2)", "required": true, "min": 0 },
-      "createdAt":    { "type": "datetime", "default": "now()" },
-      "updatedAt":    { "type": "datetime", "default": "now()" }
-    }
-  },
- 
-  "bundle_items": {
+
+  "[product_db] bundle_items": {
     "fields": {
       "bundleItemId": { "type": "UUID", "primaryKey": true },
       "bundleId":     { "type": "UUID", "references": "bundles.bundleId", "required": true },
@@ -1256,58 +1229,110 @@ flowchart TB
       "quantity":     { "type": "integer", "required": true, "min": 1 }
     }
   },
- 
-  "carts": {
+
+  "[product_db] reviews": {
     "fields": {
-      "cartId":       { "type": "UUID", "primaryKey": true },
-      "customerId":   { "type": "UUID", "references": "customers.customerId", "required": false, "note": "null = guest cart" },
-      "sessionId":    { "type": "string", "required": false, "note": "ใช้กรณี Guest ที่ยังไม่ login" },
-      "createdAt":    { "type": "datetime", "default": "now()" },
-      "updatedAt":    { "type": "datetime", "default": "now()" }
+      "reviewId":   { "type": "UUID", "primaryKey": true },
+      "customerId": { "type": "UUID", "required": true, "note": "Soft ref → user-svc" },
+      "productId":  { "type": "UUID", "references": "products.productId", "required": true },
+      "rating":     { "type": "integer", "min": 1, "max": 5, "required": true },
+      "comment":    { "type": "text", "required": false },
+      "createdAt":  { "type": "datetime", "default": "now()" }
     }
   },
- 
-  "cart_items": {
+
+  "[inventory_db] inventory": {
     "fields": {
-      "cartItemId":   { "type": "UUID", "primaryKey": true },
-      "cartId":       { "type": "UUID", "references": "carts.cartId", "required": true },
-      "productId":    { "type": "UUID", "references": "products.productId", "required": true },
-      "quantity":     { "type": "integer", "required": true, "min": 1 },
-      "price":        { "type": "decimal(10,2)", "required": true, "note": "snapshot ราคา ณ ตอนเพิ่มลงตะกร้า" }
+      "inventoryId":      { "type": "UUID", "primaryKey": true },
+      "productId":        { "type": "UUID", "unique": true, "required": true, "note": "Soft ref → product-svc" },
+      "quantity":         { "type": "integer", "default": 0, "min": 0 },
+      "reservedQuantity": { "type": "integer", "default": 0, "min": 0, "note": "จองตอน checkout ก่อน payment confirm" },
+      "reorderPoint":     { "type": "integer", "default": 0, "note": "จุด threshold สำหรับ Low/Critical Stock Alert ใน Staff Dashboard" },
+      "updatedAt":        { "type": "datetime (timestamptz)", "default": "now()" }
     }
   },
- 
-  "orders": {
+
+  "[inventory_db] inventory_logs": {
+    "description": "เก็บประวัติทุกครั้งที่สต็อกถูกแก้ไข (รับของ/จอง/คืน/ตัดขาย)",
     "fields": {
-      "orderId":                  { "type": "UUID", "primaryKey": true },
-      "customerId":               { "type": "UUID", "references": "customers.customerId", "required": true },
-      "addressId":                { "type": "UUID", "references": "addresses.addressId", "required": true, "note": "PATCH: เพิ่มไว้ join/query ว่าลูกค้าสั่งไปที่อยู่ไหนบ่อยสุด ส่วน shippingAddressSnapshot ยังเก็บไว้คู่กันเพื่อ freeze ข้อมูล ณ วันที่สั่งซื้อ" },
-      "orderDate":                { "type": "datetime", "default": "now()" },
-      "shippingAddressSnapshot":  { "type": "json", "required": true, "note": "snapshot ที่อยู่ ณ ตอนสั่งซื้อ กันที่อยู่ลูกค้าถูกแก้/ลบทีหลัง" },
-      "totalAmount":              { "type": "decimal(10,2)", "required": true },
-      "shippingFee":              { "type": "decimal(10,2)", "default": 0 },
-      "discountAmount":           { "type": "decimal(10,2)", "default": 0 },
-      "grandTotal":               { "type": "decimal(10,2)", "required": true },
-      "status":                   { "type": "enum", "values": ["pending", "confirmed", "packed", "shipped", "delivered", "cancelled", "refunded"], "default": "pending" },
-      "remark":                   { "type": "text", "required": false }
+      "id":        { "type": "UUID", "primaryKey": true },
+      "productId": { "type": "UUID", "required": true, "note": "Soft ref → product-svc" },
+      "orderId":   { "type": "UUID", "required": false, "note": "Soft ref → order-svc (ใช้ตอน reserve/release/sale_deduct)" },
+      "beforeQty": { "type": "integer", "required": true },
+      "afterQty":  { "type": "integer", "required": true },
+      "changeQty": { "type": "integer", "required": true, "note": "afterQty - beforeQty" },
+      "action":    { "type": "enum", "values": ["receive", "adjust", "reserve", "release", "sale_deduct"],
+                     "note": "receive=รับของเข้า, adjust=แก้มือ, reserve=จอง, release=คืนตอน payment fail, sale_deduct=ตัดขายสำเร็จ" },
+      "staffId":   { "type": "UUID", "required": false, "note": "Soft ref → user-svc / null ถ้า action จากระบบอัตโนมัติ" },
+      "createdAt": { "type": "datetime (timestamptz)", "default": "now()" },
+      "__indexes": ["productId", "orderId", "staffId", "createdAt"]
     }
   },
- 
-  "order_items": {
+
+  "[cart_db] carts": {
+    "description": "Cart เก็บใน PostgreSQL (Neon) ไม่ใช่ Redis — รองรับทั้ง logged-in user และ guest",
     "fields": {
-      "orderItemId":  { "type": "UUID", "primaryKey": true },
-      "orderId":      { "type": "UUID", "references": "orders.orderId", "required": true },
-      "productId":    { "type": "UUID", "references": "products.productId", "required": true },
-      "quantity":     { "type": "integer", "required": true, "min": 1 },
-      "unitPrice":    { "type": "decimal(10,2)", "required": true, "note": "snapshot ราคา ณ ตอนสั่งซื้อ" },
-      "totalPrice":   { "type": "decimal(10,2)", "required": true }
+      "cartId":     { "type": "UUID", "primaryKey": true },
+      "customerId": { "type": "UUID", "required": false, "note": "Soft ref → user-svc / null = guest cart" },
+      "sessionId":  { "type": "string", "required": false, "note": "ใช้กรณี guest ที่ยังไม่ login" },
+      "createdAt":  { "type": "datetime", "default": "now()" },
+      "updatedAt":  { "type": "datetime", "default": "now()" }
     }
   },
- 
-  "payments": {
+
+  "[cart_db] cart_items": {
+    "fields": {
+      "cartItemId": { "type": "UUID", "primaryKey": true },
+      "cartId":     { "type": "UUID", "references": "carts.cartId", "required": true },
+      "productId":  { "type": "UUID", "required": true, "note": "Soft ref → product-svc" },
+      "quantity":   { "type": "integer", "required": true, "min": 1 },
+      "price":      { "type": "decimal(10,2)", "required": true, "note": "snapshot ราคา ณ ตอนเพิ่มลงตะกร้า" }
+    }
+  },
+
+  "[order_db] orders": {
+    "fields": {
+      "orderId":                 { "type": "UUID", "primaryKey": true },
+      "customerId":              { "type": "UUID", "required": true, "note": "Soft ref → user-svc" },
+      "addressId":               { "type": "UUID", "required": true, "note": "Soft ref → user-svc address" },
+      "orderDate":               { "type": "datetime", "default": "now()" },
+      "shippingAddressSnapshot": { "type": "json", "required": true, "note": "freeze ที่อยู่ ณ วันสั่งซื้อ" },
+      "totalAmount":             { "type": "decimal(10,2)", "required": true },
+      "shippingFee":             { "type": "decimal(10,2)", "default": 0 },
+      "discountAmount":          { "type": "decimal(10,2)", "default": 0 },
+      "grandTotal":              { "type": "decimal(10,2)", "required": true },
+      "status":                  { "type": "enum", "values": ["pending", "confirmed", "packed", "shipped", "delivered", "cancelled", "refunded"], "default": "pending" },
+      "remark":                  { "type": "text", "required": false }
+    }
+  },
+
+  "[order_db] order_items": {
+    "fields": {
+      "orderItemId": { "type": "UUID", "primaryKey": true },
+      "orderId":     { "type": "UUID", "references": "orders.orderId", "required": true },
+      "productId":   { "type": "UUID", "required": true, "note": "Soft ref → product-svc" },
+      "quantity":    { "type": "integer", "required": true, "min": 1 },
+      "unitPrice":   { "type": "decimal(10,2)", "required": true, "note": "snapshot ราคา ณ วันสั่งซื้อ" },
+      "totalPrice":  { "type": "decimal(10,2)", "required": true }
+    }
+  },
+
+  "[order_db] shipments": {
+    "fields": {
+      "shipmentId":     { "type": "UUID", "primaryKey": true },
+      "orderId":        { "type": "UUID", "references": "orders.orderId", "unique": true, "required": true },
+      "trackingNumber": { "type": "string", "required": false },
+      "carrier":        { "type": "string", "required": false },
+      "shippingStatus": { "type": "enum", "values": ["preparing", "shipped", "in_transit", "delivered", "returned"], "default": "preparing" },
+      "shippingDate":   { "type": "datetime", "required": false },
+      "deliveredDate":  { "type": "datetime", "required": false }
+    }
+  },
+
+  "[payment_db] payments": {
     "fields": {
       "paymentId":      { "type": "UUID", "primaryKey": true },
-      "orderId":        { "type": "UUID", "references": "orders.orderId", "required": true },
+      "orderId":        { "type": "UUID", "required": true, "note": "Soft ref → order-svc" },
       "paymentMethod":  { "type": "enum", "values": ["credit_card", "promptpay", "bank_transfer"], "required": true },
       "provider":       { "type": "string", "default": "omise" },
       "amount":         { "type": "decimal(10,2)", "required": true },
@@ -1317,41 +1342,72 @@ flowchart TB
       "createdAt":      { "type": "datetime", "default": "now()" }
     }
   },
- 
-  "shipments": {
-    "fields": {
-      "shipmentId":     { "type": "UUID", "primaryKey": true },
-      "orderId":        { "type": "UUID", "references": "orders.orderId", "required": true },
-      "trackingNumber": { "type": "string", "required": false },
-      "carrier":        { "type": "string", "required": false },
-      "shippingStatus": { "type": "enum", "values": ["preparing", "shipped", "in_transit", "delivered", "returned"], "default": "preparing" },
-      "shippingDate":   { "type": "datetime", "required": false },
-      "deliveredDate":  { "type": "datetime", "required": false }
-    }
-  },
- 
-  "reviews": {
-    "fields": {
-      "reviewId":     { "type": "UUID", "primaryKey": true },
-      "customerId":   { "type": "UUID", "references": "customers.customerId", "required": true },
-      "productId":    { "type": "UUID", "references": "products.productId", "required": true },
-      "rating":       { "type": "integer", "min": 1, "max": 5, "required": true },
-      "comment":      { "type": "text", "required": false },
-      "createdAt":    { "type": "datetime", "default": "now()" }
-    }
-  },
- 
-  "notifications": {
+
+  "[notification_db] notifications": {
     "fields": {
       "notificationId": { "type": "UUID", "primaryKey": true },
-      "customerId":     { "type": "UUID", "references": "customers.customerId", "required": true },
-      "productId":      { "type": "UUID", "references": "products.productId", "required": false, "note": "PATCH: nullable เพราะ order_update/system ไม่ได้อ้างอิงสินค้า แต่ back_in_stock/promotion ต้องมีไว้บอกว่าพูดถึงสินค้าตัวไหน" },
+      "customerId":     { "type": "UUID", "required": true, "note": "Soft ref → user-svc" },
+      "orderId":        { "type": "UUID", "required": false, "note": "Soft ref → order-svc" },
+      "productId":      { "type": "UUID", "required": false, "note": "Soft ref → product-svc (ใช้กรณี back_in_stock/promotion)" },
       "title":          { "type": "string", "required": true },
       "message":        { "type": "text", "required": true },
       "type":           { "type": "enum", "values": ["order_update", "back_in_stock", "promotion", "system"], "required": true },
       "status":         { "type": "enum", "values": ["sent", "pending", "failed"], "default": "pending" },
       "isRead":         { "type": "boolean", "default": false },
-      "createdAt":      { "type": "datetime", "default": "now()" }
+      "isStaffAlert":   { "type": "boolean", "default": false, "note": "true = แสดงใน Staff Portal (Low Stock Alert, Order ใหม่)" },
+      "createdAt":      { "type": "datetime", "default": "now()" },
+      "__indexes":      ["orderId", "[isStaffAlert, isRead]"]
+    }
+  },
+
+  "[report_db] daily_sales_reports": {
+    "description": "ข้อมูลยอดขายรวมรายวัน สร้าง/อัปเดตโดย report-svc เมื่อมี order เข้ามา",
+    "fields": {
+      "id":           { "type": "UUID", "primaryKey": true },
+      "reportDate":   { "type": "date", "unique": true },
+      "totalOrders":  { "type": "integer", "default": 0 },
+      "totalRevenue": { "type": "decimal(10,2)", "default": 0 },
+      "updatedAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+
+  "[report_db] product_sales_snapshots": {
+    "description": "ข้อมูลยอดขายแยกรายสินค้าต่อวัน ใช้สร้าง Top Products report ใน Admin Dashboard",
+    "fields": {
+      "id":           { "type": "UUID", "primaryKey": true },
+      "reportDate":   { "type": "date", "required": true },
+      "productId":    { "type": "UUID", "required": true, "note": "Soft ref → product-svc" },
+      "productName":  { "type": "string", "required": true },
+      "category":     { "type": "string", "required": true },
+      "quantitySold": { "type": "integer", "default": 0 },
+      "revenue":      { "type": "decimal(10,2)", "default": 0 },
+      "updatedAt":    { "type": "datetime", "default": "now()" },
+      "__unique":     "[reportDate, productId]"
+    }
+  },
+
+  "[report_db] inventory_snapshots": {
+    "description": "Snapshot สต็อกสินค้าสำหรับ Inventory Report ใน Admin — อัปเดตเมื่อ inventory เปลี่ยน",
+    "fields": {
+      "id":           { "type": "UUID", "primaryKey": true },
+      "productId":    { "type": "UUID", "unique": true, "required": true, "note": "Soft ref → product-svc" },
+      "productName":  { "type": "string", "required": true },
+      "category":     { "type": "string", "default": "Uncategorized" },
+      "stockLevel":   { "type": "integer", "default": 0 },
+      "reorderPoint": { "type": "integer", "default": 0 },
+      "status":       { "type": "string", "note": "'In Stock' | 'Low' | 'Critical'" },
+      "updatedAt":    { "type": "datetime", "default": "now()" }
+    }
+  },
+
+  "[report_db] system_audit_logs": {
+    "description": "บันทึก event ทุกประเภทที่เกิดในระบบ ใช้สำหรับ audit trail และ debug",
+    "fields": {
+      "logId":       { "type": "UUID", "primaryKey": true },
+      "eventType":   { "type": "string", "required": true, "example": "order_created, inventory_adjusted" },
+      "referenceId": { "type": "UUID", "required": true, "note": "ID ของ Order หรือ Product ที่เกี่ยวข้อง" },
+      "payload":     { "type": "json", "required": true },
+      "createdAt":   { "type": "datetime", "default": "now()" }
     }
   }
 }
@@ -1359,72 +1415,72 @@ flowchart TB
 
 # User Acceptance Testing: UAT (Manual Testing)
 แบ่งผู้ทดสอบตาม role ที่รับผิดชอบ:
- 
+
 | ผู้ทดสอบ | Role ที่ทดสอบ |
 |---|---|
 | เดียร์ (67095474) | Staff |
 | บุญ (67096366) | Customer |
 | เขต (67118456) | Admin |
- 
-> หมายเหตุ: คอลัมน์ **Actual Result** และ **Status** เว้นว่างไว้ให้กรอกตอนทดสอบจริงกับระบบที่ build เสร็จแล้ว
- 
+
+> หมายเหตุ: คอลัมน์ **Actual Result** และ **Status** เว้นว่างไว้ให้กรอกตอนทดสอบจริงกับระบบที่ deploy เสร็จแล้ว
+
 ## 🧑‍🎤 UAT — Customer (ผู้ทดสอบ: บุญ)
- 
+
 | TC ID | Feature | ขั้นตอนการทดสอบ | Test Data | ผลลัพธ์ที่คาดหวัง | ผลลัพธ์จริง | Status |
 |---|---|---|---|---|---|---|
-| CUS-01 | Register | กรอกอีเมล/รหัสผ่าน/ชื่อ-นามสกุล แล้วกด Register | email: boon@test.com | สมัครสำเร็จ, redirect ไปหน้า login หรือ login อัตโนมัติ | | |
-| CUS-02 | Login | กรอก email/password ที่ถูกต้อง แล้วกด Login | account ที่สมัครไว้ | login สำเร็จ, ได้รับ JWT token, เข้าหน้า homepage | | |
-| CUS-03 | Login (negative) | กรอก password ผิด | wrong password | ระบบแจ้ง error "อีเมลหรือรหัสผ่านไม่ถูกต้อง" ไม่ login ผ่าน | | |
-| CUS-04 | Search Product | พิมพ์คำค้นหาในช่อง search เช่น "guitar" | keyword: guitar | แสดงรายการสินค้าที่ตรงกับคำค้นหา | | |
-| CUS-05 | Filter Product | เลือก filter brand/type/price range | brand: Yamaha | แสดงเฉพาะสินค้าที่ตรง filter | | |
-| CUS-06 | Browse / View Product Detail | คลิกเข้าไปดูสินค้า 1 ชิ้น | product: Acoustic Guitar | แสดงรายละเอียดสินค้าครบ (ราคา, สเปก, รูป, รีวิว) | | |
-| CUS-07 | Compare Product | เลือกสินค้า 2 ชิ้นขึ้นไปเพื่อเปรียบเทียบ | 2 guitar models | แสดงตารางเปรียบเทียบ spec/ราคา ข้างกัน | | |
-| CUS-08 | Add to Cart | กด "Add to cart" จากหน้ารายละเอียดสินค้า | qty: 1 | สินค้าถูกเพิ่มในตะกร้า, จำนวนในไอคอนตะกร้าอัปเดต | | |
-| CUS-09 | Manage Cart | เพิ่ม/ลด/ลบสินค้าในตะกร้า | - | ยอดรวมในตะกร้าคำนวณใหม่ถูกต้องทุกครั้งที่แก้ไข | | |
-| CUS-10 | Manage Address | เพิ่มที่อยู่จัดส่งใหม่ และตั้งเป็น default | ที่อยู่ใหม่ 1 รายการ | บันทึกที่อยู่สำเร็จ และแสดงเป็นค่า default ตอน checkout | | |
-| CUS-11 | Checkout | กด checkout จากตะกร้า เลือกที่อยู่จัดส่ง | cart ที่มีของ ≥1 ชิ้น | สร้าง order สถานะ "pending payment" พร้อมสรุปยอด (subtotal/shipping/total) ถูกต้อง | | |
-| CUS-12 | Payment (Omise sandbox) | เลือกวิธีชำระเงิน กรอกข้อมูลบัตร sandbox | Omise test card | ชำระเงินสำเร็จ, order status เปลี่ยนเป็น "confirmed/paid" | | |
-| CUS-13 | Payment (negative) | ใช้บัตรที่ถูก decline โดย sandbox | Omise decline test card | แสดง error การชำระเงินไม่สำเร็จ, order ไม่ถูกตัดสถานะ paid, สต็อกที่ reserve ไว้ถูกคืน | | |
-| CUS-14 | Order Tracking | เข้าหน้า "My Orders" ดูสถานะ order ที่สั่งไว้ | order ที่ confirm แล้ว | แสดงสถานะปัจจุบันถูกต้อง (pending/packed/shipped/delivered) | | |
-| CUS-15 | Order History | เข้าดูประวัติคำสั่งซื้อทั้งหมด | account ที่มี order เก่า | แสดงรายการ order ย้อนหลังครบถ้วน เรียงตามวันที่ | | |
-| CUS-16 | Review Product | ให้คะแนนดาว + เขียนคอมเมนต์สินค้าที่ซื้อแล้ว | rating: 5, comment: "เสียงดีมาก" | รีวิวถูกบันทึกและแสดงในหน้าสินค้า | | |
-| CUS-17 | Back-in-stock Notification | กดขอรับแจ้งเตือนสินค้าที่ "หมด" แล้วรอ staff เติมสต็อก | สินค้าที่ status = out_of_stock | ได้รับอีเมล/notification เมื่อสต็อกถูกเติมกลับเข้ามา | | |
-| CUS-18 | Beginner Bundle Recommendation | เข้าหน้าสินค้าที่มี skillLevel = beginner | - | ระบบแนะนำ bundle set อุปกรณ์เริ่มต้นที่เข้ากันได้ | | |
- 
+| CUS-01 | Register | กรอกอีเมล/รหัสผ่าน/ชื่อ-นามสกุล แล้วกด Register | email: boon@test.com, password: Test1234! | สมัครสำเร็จ, redirect ไปหน้า login หรือ login อัตโนมัติ | | |
+| CUS-02 | Login | กรอก email/password ที่ถูกต้อง แล้วกด Login | account ที่สมัครไว้ | login สำเร็จ, ได้รับ JWT, เข้าหน้า homepage | | |
+| CUS-03 | Login (negative) | กรอก password ผิด | wrong password | ระบบแจ้ง error ไม่ login ผ่าน | | |
+| CUS-04 | Forgot Password | กรอก email ที่ลงทะเบียนไว้ กด Reset Password | email ที่ใช้สมัคร | ได้รับอีเมล reset-password จาก Resend | | |
+| CUS-05 | Browse & Search Product | พิมพ์คำค้นหาในช่อง search เช่น "guitar" | keyword: guitar | แสดงรายการสินค้าที่ตรงกับคำค้นหา | | |
+| CUS-06 | Filter Product | เลือก filter brand / category | brand: Yamaha | แสดงเฉพาะสินค้าที่ตรง filter | | |
+| CUS-07 | View Product Detail | คลิกเข้าไปดูสินค้า 1 ชิ้น | product: กีตาร์ | แสดงรายละเอียดสินค้าครบ (ราคา, สเปก, skillLevel, รูป, รีวิว, อุปกรณ์แนะนำ) | | |
+| CUS-08 | Compare Product | เลือกสินค้า 2 ชิ้นขึ้นไปเพื่อเปรียบเทียบ | สินค้า 2 รายการ | แสดงตารางเปรียบเทียบ spec/ราคา ข้างกัน | | |
+| CUS-09 | Bundle / Accessories Recommendation | เปิดหน้าสินค้า ดูส่วน Accessories แนะนำ | สินค้าที่มี bundle | แสดงรายการอุปกรณ์ที่แนะนำให้ใช้ร่วมกัน สามารถติ๊กเพิ่มลงตะกร้าพร้อมกันได้ | | |
+| CUS-10 | Add to Cart | กด "Add to cart" จากหน้ารายละเอียดสินค้า | qty: 1 | สินค้าถูกเพิ่มในตะกร้า, จำนวนในไอคอนตะกร้าอัปเดต | | |
+| CUS-11 | Manage Cart | เพิ่ม/ลด/ลบสินค้าในตะกร้า | - | ยอดรวมในตะกร้าคำนวณใหม่ถูกต้องทุกครั้งที่แก้ไข | | |
+| CUS-12 | Manage Address | เพิ่มที่อยู่จัดส่งใหม่ และตั้งเป็น default | ที่อยู่ใหม่ 1 รายการ | บันทึกที่อยู่สำเร็จ และแสดงเป็นค่า default ตอน checkout | | |
+| CUS-13 | Checkout | กด checkout จากตะกร้า เลือกที่อยู่จัดส่ง | cart ที่มีของ ≥1 ชิ้น | สร้าง order สถานะ pending พร้อมสรุปยอด (subtotal/shipping/total) ถูกต้อง | | |
+| CUS-14 | Payment — สำเร็จ (Omise sandbox) | เลือกวิธีชำระเงิน กรอกข้อมูลบัตร sandbox | Omise test card | ชำระเงินสำเร็จ, order status เปลี่ยนเป็น confirmed | | |
+| CUS-15 | Payment — ล้มเหลว (negative) | ใช้บัตรที่ถูก decline โดย sandbox | Omise decline test card | แสดง error, order ไม่เปลี่ยนสถานะ, สต็อกที่ reserve ไว้ถูกคืน (releaseStock) | | |
+| CUS-16 | Order Tracking | เข้าหน้า "My Orders" ดูสถานะ order ที่สั่งไว้ | order ที่ confirm แล้ว | แสดงสถานะปัจจุบันถูกต้อง (pending/packed/shipped/delivered) | | |
+| CUS-17 | Order History | เข้าดูประวัติคำสั่งซื้อทั้งหมด | account ที่มี order เก่า | แสดงรายการ order ย้อนหลังครบถ้วน เรียงตามวันที่ | | |
+| CUS-18 | Write Review | ให้คะแนนดาว + เขียนคอมเมนต์สินค้า | rating: 5, comment: "เสียงดีมาก" | รีวิวถูกบันทึกและแสดงในหน้าสินค้า | | |
+
 ## 🔧 UAT — Staff (ผู้ทดสอบ: เดียร์)
- 
+
 | TC ID | Feature | ขั้นตอนการทดสอบ | Test Data | ผลลัพธ์ที่คาดหวัง | ผลลัพธ์จริง | Status |
 |---|---|---|---|---|---|---|
-| STF-01 | Login | login ด้วย account role staff | staff account | login สำเร็จ, เข้าสู่ Staff Portal (โทนมืด) | | |
-| STF-02 | Access Control | ลอง login ด้วย staff account แล้วพยายามเข้า URL ของ Admin Portal ตรงๆ | staff token | ระบบ block / redirect, ไม่สามารถเข้าถึงหน้า Admin ได้ | | |
+| STF-01 | Login | login ด้วย account role=staff | staff account | login สำเร็จ, เข้าสู่ Staff Portal (โทนมืด) | | |
+| STF-02 | Access Control | ลอง login ด้วย staff account แล้วเข้า URL ของ Admin Portal ตรงๆ | staff JWT | ระบบ block / redirect กลับ, ไม่สามารถเข้าถึงหน้า Admin ได้ | | |
 | STF-03 | View All Orders | เข้าหน้า order list | - | แสดงรายการคำสั่งซื้อทั้งหมด พร้อมสถานะปัจจุบัน | | |
-| STF-04 | Confirm Order | เลือก order สถานะ pending แล้วกด confirm | order ที่ status = pending | order status เปลี่ยนเป็น confirmed | | |
-| STF-05 | Prepare / Pack Product | เปิด order ที่ confirm แล้ว กด "Prepare" | order ที่ confirmed | ระบบจองสต็อก (reservedQuantity เพิ่ม), status เปลี่ยนเป็น packed | | |
-| STF-06 | Bundle Stock Awareness | เปิด order ที่มีสินค้าเป็นชุด bundle | order ที่มี bundle item | หน้าจัดเตรียมแสดงรายการสินค้าย่อยใน bundle ครบ ไม่ต้องเดาเอง | | |
-| STF-07 | Update Order Status → Shipped | กรอก tracking number แล้วเปลี่ยนสถานะเป็น shipped | tracking no. ตัวอย่าง | status order/shipment เปลี่ยนเป็น shipped, ลูกค้าได้รับ notification | | |
-| STF-08 | Check Stock | ค้นหาสินค้าแล้วดูจำนวนคงเหลือ | productId ใดก็ได้ | แสดง quantity และ reservedQuantity ปัจจุบันถูกต้อง | | |
-| STF-09 | Receiving Product (รับของเข้าสต็อก) | กรอกจำนวนสินค้าที่รับเข้าใหม่ | productId, qty: +20 | quantity ในสต็อกเพิ่มขึ้นตามจำนวนที่กรอก | | |
-| STF-10 | Stock Out → Back-in-stock Trigger | เติมสต็อกสินค้าที่เคย out_of_stock จนมี qty > 0 | สินค้าที่เคย out_of_stock | ระบบยิง notification back-in-stock ไปหาลูกค้าที่กดติดตามไว้ | | |
-| STF-11 | Manage Bundle Set | สร้าง bundle set ใหม่ เลือกสินค้าที่เข้ากันได้ + ตั้ง discount | 3 สินค้า + discount 10% | บันทึก bundle สำเร็จ และแสดงในหน้า customer | | |
-| STF-12 | Bundle Stock Validation (negative) | พยายามสร้าง bundle จากสินค้าที่ quantity = 0 | สินค้าหมดสต็อก | ระบบแจ้งเตือนว่าสินค้าในชุดหมดสต็อก ก่อนให้บันทึก bundle | | |
-| STF-13 | Dashboard Report | เข้าหน้า Dashboard ของ staff | - | แสดงสรุปสถานะสต็อก, order ที่รอจัดเตรียมวันนี้ | | |
- 
+| STF-04 | Confirm Order | เลือก order สถานะ pending แล้วกด Confirm | order ที่ status=pending | order status เปลี่ยนเป็น confirmed | | |
+| STF-05 | Prepare / Pack (reserve stock) | เปิด order ที่ confirmed แล้ว กด "Prepare" | order ที่ confirmed | reservedQuantity เพิ่ม, status เปลี่ยนเป็น packed | | |
+| STF-06 | Packing Slip / Bundle Awareness | เปิด order ที่มีสินค้าเป็นชุด bundle | order ที่มี bundle items | หน้าจัดเตรียมแสดงรายการสินค้าย่อยใน bundle ครบถ้วน | | |
+| STF-07 | Update Status → Shipped | กรอก tracking number แล้วเปลี่ยนสถานะเป็น shipped | tracking no. ตัวอย่าง | status order/shipment เปลี่ยนเป็น shipped, notification ส่งถึงลูกค้า | | |
+| STF-08 | Check Stock / Low Stock Alert | เข้าหน้า Inventory ดูสต็อกสินค้า | - | แสดง quantity, reservedQuantity, และแจ้ง Low/Critical ตาม reorderPoint | | |
+| STF-09 | Receiving Product (รับของเข้าสต็อก) | กรอกจำนวนสินค้าที่รับเข้า กด Confirm | productId, expectedQty: 20, receivedQty: 18 | quantity เพิ่มตาม receivedQty, บันทึก InventoryLog (action=receive) | | |
+| STF-10 | Receiving — Discrepancy Warning | รับของเข้าโดยที่ receivedQty ≠ expectedQty | receivedQty < expectedQty | ระบบแสดง confirm dialog แจ้งความไม่ตรง ก่อนยืนยัน | | |
+| STF-11 | Manage Bundle — Create | สร้าง bundle set ใหม่ เลือกสินค้า + ตั้ง discount | 3 สินค้า + discount 10% | บันทึก bundle สำเร็จ, ปรากฏในรายการ | | |
+| STF-12 | Manage Bundle — Edit | แก้ไข discount หรือรายการสินค้าใน bundle ที่มีอยู่ | bundle ที่สร้างไว้ | ข้อมูล bundle อัปเดตสำเร็จ | | |
+| STF-13 | Manage Bundle — Delete | ลบ bundle ออกจากรายการ | bundle ที่สร้างไว้ | bundle ถูกลบ ไม่ปรากฏในรายการอีก | | |
+| STF-14 | Staff Dashboard | เข้าหน้า Dashboard | - | แสดงสรุป: order รอจัดเตรียม, สต็อก Low/Critical, ยอด order วันนี้ | | |
+
 ## 📊 UAT — Admin (ผู้ทดสอบ: เขต)
- 
+
 | TC ID | Feature | ขั้นตอนการทดสอบ | Test Data | ผลลัพธ์ที่คาดหวัง | ผลลัพธ์จริง | Status |
 |---|---|---|---|---|---|---|
-| ADM-01 | Login | login ด้วย account role admin | admin account | login สำเร็จ, เข้าสู่ Admin Portal | | |
-| ADM-02 | Access Control | ลอง login ด้วย customer/staff account แล้วเข้า URL ของ Admin ตรงๆ | non-admin token | ระบบ block ไม่ให้เข้าถึง route admin ใดๆ | | |
-| ADM-03 | View Dashboard | เข้าหน้า dashboard หลัก | - | แสดงสรุป sales, users, orders ภาพรวม ถูกต้องตรงกับข้อมูลจริงในระบบ | | |
-| ADM-04 | Manage Category — Create | สร้างหมวดหมู่ใหม่ | name: "Guitar Accessories" | บันทึกหมวดหมู่สำเร็จ และเลือกใช้ตอนสร้างสินค้าได้ | | |
-| ADM-05 | Manage Category — Edit/Delete | แก้ไขชื่อ category / ลบ category ที่ไม่มีสินค้าผูกอยู่ | category ทดสอบ | แก้ไข/ลบสำเร็จ | | |
-| ADM-06 | Manage Category — Delete (negative) | ลบ category ที่ยังมีสินค้าผูกอยู่ | category ที่มี product | ระบบ block การลบ พร้อมแจ้งเตือนว่ามีสินค้าผูกอยู่ | | |
-| ADM-07 | Manage Product — Create | เพิ่มสินค้าใหม่ พร้อมอัปโหลดรูปภาพ | product data + รูป 1 ไฟล์ | สินค้าถูกสร้าง, รูปอัปโหลดขึ้น Cloudflare R2 สำเร็จ, แสดงในหน้า customer | | |
-| ADM-08 | Manage Product — Edit | แก้ไขราคา/รายละเอียดสินค้าเดิม | product เดิม | ข้อมูลอัปเดต, ราคาที่แสดงหน้า customer เปลี่ยนตาม แต่ order เก่าไม่เปลี่ยน (snapshot) | | |
-| ADM-09 | Manage Product — Tag/SkillLevel | ตั้งค่า skillLevel = beginner ให้สินค้า | product 1 ชิ้น | สินค้าปรากฏในระบบแนะนำมือใหม่ฝั่ง customer | | |
+| ADM-01 | Login | login ด้วย account role=admin | admin account | login สำเร็จ, เข้าสู่ Admin Portal | | |
+| ADM-02 | Access Control | ลอง login ด้วย customer/staff account แล้วเข้า URL ของ Admin ตรงๆ | non-admin JWT | ระบบ block ไม่ให้เข้าถึง route admin ใดๆ | | |
+| ADM-03 | View Dashboard | เข้าหน้า dashboard หลัก | - | แสดงสรุป totalOrders, totalRevenue, topProducts ภาพรวม | | |
+| ADM-04 | Manage Category — Create | สร้างหมวดหมู่ใหม่ | name: "Guitar Accessories" | บันทึกสำเร็จ, เลือกใช้ตอนสร้างสินค้าได้ | | |
+| ADM-05 | Manage Category — Edit/Delete | แก้ไขชื่อ / ลบ category ที่ไม่มีสินค้าผูก | category ทดสอบ | แก้ไข/ลบสำเร็จ | | |
+| ADM-06 | Manage Category — Delete (negative) | ลบ category ที่ยังมีสินค้าผูกอยู่ | category ที่มี product | ระบบ block การลบ พร้อมแจ้งเตือน | | |
+| ADM-07 | Manage Product — Create | เพิ่มสินค้าใหม่ พร้อมอัปโหลดรูปภาพ | productData + รูป 1 ไฟล์ | สินค้าถูกสร้าง, รูปอัปโหลดขึ้น Cloudflare R2 สำเร็จ | | |
+| ADM-08 | Manage Product — Edit | แก้ไขราคา/รายละเอียด/skillLevel สินค้าเดิม | product เดิม | ข้อมูลอัปเดต ราคาที่แสดงฝั่ง customer เปลี่ยนตาม แต่ order เก่าไม่เปลี่ยน (snapshot) | | |
+| ADM-09 | Manage Product — Set SkillLevel | ตั้งค่า skillLevel = beginner ให้สินค้า | product 1 ชิ้น | สินค้าถูก tag beginner, ฝั่ง customer filter ด้วย skillLevel=beginner เจอสินค้านี้ | | |
 | ADM-10 | Manage User — View List | เข้าหน้ารายชื่อผู้ใช้ทั้งหมด | - | แสดงรายชื่อ user ทุก role พร้อมสถานะ | | |
-| ADM-11 | Manage User — Suspend | เปลี่ยนสถานะ user เป็น banned | customer account ทดสอบ | user ไม่สามารถ login ได้อีก จนกว่าจะถูกปลด ban | | |
-| ADM-12 | Inventory Report | เข้าหน้ารายงานสต็อกสินค้า | - | แสดงรายงานสต็อกคงเหลือ และคู่สินค้าที่มักถูกซื้อร่วมกัน | | |
-| ADM-13 | Sales Report | เข้าหน้ารายงานยอดขาย เลือกช่วงวันที่ | date range 1 เดือน | แสดงยอดขายรวม, สินค้าขายดี ตรงกับข้อมูล order จริงในระบบ | | |
-| ADM-14 | Financial Report | เข้าหน้ารายงานผลลัพธ์ทางการเงิน | - | แสดงรายงานรายรับ-ค่าธรรมเนียม payment ถูกต้อง, ตัวเลขสอดคล้องกับ Sales Report | | |
-| ADM-15 | Manager-level Restriction (ถ้ามี role manager แยก) | login ด้วย manager account ดู revenue summary | manager account | เห็น top-line sales summary แต่ไม่เห็น margin/cost จริงของ admin | | |
+| ADM-11 | Manage User — Suspend/Ban | เปลี่ยนสถานะ user เป็น banned | customer account ทดสอบ | user ไม่สามารถ login ได้อีก จนกว่าจะถูกปลด ban | | |
+| ADM-12 | Sales Report | เข้าหน้ารายงานยอดขาย เลือกช่วงวันที่ | date range 1 เดือน | แสดงยอดขายรวม, สินค้าขายดี ตรงกับข้อมูล order จริงในระบบ | | |
+| ADM-13 | Inventory Report | เข้าหน้ารายงานสต็อก | - | แสดง InventorySnapshot รายสินค้า (stockLevel, status In Stock/Low/Critical) | | |
+| ADM-14 | Financial Report | เข้าหน้ารายงานการเงิน | - | แสดงรายรับรวม (จาก DailySalesReport) ตรงกับยอดขายใน Sales Report | | |
