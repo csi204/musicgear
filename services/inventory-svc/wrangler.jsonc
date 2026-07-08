@@ -9,7 +9,9 @@
   },
   "vars": {
     "QSTASH_URL": "https://qstash-us-east-1.upstash.io",
-    "NOTIFICATION_SVC_URL": "https://notification-svc.thunderwolf2209.workers.dev"
+    "NOTIFICATION_SVC_URL": "https://notification-svc.thunderwolf2209.workers.dev",
+    "REPORT_SVC_URL": "https://report-svc.thunderwolf2209.workers.dev",
+    "PRODUCT_SVC_URL": "https://product-svc.thunderwolf2209.workers.dev"
   },
   // "kv_namespaces": [
   //   {
