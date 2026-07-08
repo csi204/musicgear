@@ -144,6 +144,20 @@ stockRoutes.post(
 );
 
 // ──────────────────────────────────────────────────────────────────────────────
+// GET /stock — ดูสถานะสต็อกสินค้าทั้งหมด
+// ──────────────────────────────────────────────────────────────────────────────
+stockRoutes.get("/", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    const inventories = await db.inventory.findMany();
+    return c.json({ status: "ok", inventories }, 200);
+  } catch (err) {
+    console.error("[GET /stock]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: err.message, stack: err.stack } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // GET /stock/:productId — ดูสถานะสต็อกปัจจุบัน (quantity, reorderPoint, status)
 // ──────────────────────────────────────────────────────────────────────────────
 stockRoutes.get("/:productId", async (c) => {

@@ -115,8 +115,10 @@ router.get("/", async (c) => {
     const { customerId, status, page, limit } = validation.data;
 
     // RBAC: Customer can only view their own history
-    if (authUser.role === "customer" && authUser.userId !== customerId) {
-      return c.json({ error: { code: "FORBIDDEN", message: "ไม่มีสิทธิ์เข้าถึงประวัติออเดอร์ของลูกค้าท่านอื่น" } }, 403);
+    if (authUser.role === "customer") {
+      if (!customerId || authUser.userId !== customerId) {
+        return c.json({ error: { code: "FORBIDDEN", message: "ไม่มีสิทธิ์เข้าถึงประวัติออเดอร์ของลูกค้าท่านอื่น" } }, 403);
+      }
     }
 
     const result = await OrderService.getOrders(prisma, customerId, { status, page, limit });

@@ -1,6 +1,6 @@
 import { auth } from "./auth";
 
-export default auth((req) => {
+export default auth((req: any) => {
   const isLoggedIn = !!req.auth;
   const isAuthPage = req.nextUrl.pathname.startsWith("/login") || req.nextUrl.pathname.startsWith("/register");
 
