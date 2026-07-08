@@ -15,6 +15,13 @@ export const stockUpdatedEvent = z.object({
   productId: uuidSchema,
   beforeQty: z.number().int(),
   afterQty: z.number().int(),
+  // Snapshot fields — เพิ่มมาเพื่อให้ report-svc อัปเดต InventorySnapshot ได้เลย
+  // โดยไม่ต้องย้อนไป query product-svc อีกรอบ (ลด coupling ระหว่าง service)
+  productName: z.string(),
+  category: z.string(),
+  stockLevel: z.number().int(),
+  reorderPoint: z.number().int(),
+  status: z.enum(["In Stock", "Low", "Critical"]),
 });
 
 export const orderStatusChangedEvent = z.object({

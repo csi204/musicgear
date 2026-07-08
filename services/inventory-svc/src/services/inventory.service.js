@@ -1,4 +1,5 @@
 import { publishStockUpdated } from "../events/publishStockUpdated.js";
+import { fetchProductSnapshot } from "../events/fetchProductSnapshot.js";
 
 // ---------------------------------------------------------------------------
 // checkStock — ตรวจว่าสินค้ามีพอไหม (ไม่แก้ DB)
@@ -235,10 +236,32 @@ export async function saleDeductStock(db, orderId, env) {
     deductedItems.push({ productId: log.productId, beforeQty, afterQty });
   }
 
-  // Publish stock.updated event สำหรับสินค้าที่ quantity ลดถึง 0
+  // Publish stock.updated event สำหรับสินค้าที่ quantity ลดถึง 0 (out-of-stock)
   for (const item of deductedItems) {
     if (item.afterQty === 0) {
-      await publishStockUpdated(env, item.productId, item.beforeQty, item.afterQty);
+      // ดึงข้อมูล reorderPoint จาก DB + productName/category จาก product-svc
+      const inv = await db.inventory.findUnique({
+        where: { productId: item.productId },
+        select: { reorderPoint: true },
+      });
+      const reorderPoint = inv?.reorderPoint ?? 0;
+
+      // คำนวณ status ตาม stockLevel vs reorderPoint
+      const stockLevel = item.afterQty;
+      const status = stockLevel === 0 ? "Critical"
+        : stockLevel <= reorderPoint ? "Low"
+        : "In Stock";
+
+      // ดึง productName + category จาก product-svc
+      const productInfo = await fetchProductSnapshot(env, item.productId);
+
+      await publishStockUpdated(env, item.productId, item.beforeQty, item.afterQty, {
+        productName: productInfo?.productName ?? "Unknown",
+        category: productInfo?.category ?? "Uncategorized",
+        stockLevel,
+        reorderPoint,
+        status,
+      });
     }
   }
 
@@ -303,8 +326,31 @@ export async function adjustStock(db, productId, changeQty, action, staffId, env
   });
 
   // ถ้าสินค้ากลับมามีสต็อก (beforeQty = 0, afterQty > 0) → notify ลูกค้าที่รอ
+  // หรือเมื่อสต็อกเปลี่ยนแปลง → อัปเดต InventorySnapshot ใน report-svc ด้วย
   if (beforeQty === 0 && afterQty > 0) {
-    await publishStockUpdated(env, productId, beforeQty, afterQty);
+    // ดึงข้อมูล reorderPoint จาก DB
+    const inv = await db.inventory.findUnique({
+      where: { productId },
+      select: { reorderPoint: true },
+    });
+    const reorderPoint = inv?.reorderPoint ?? 0;
+
+    // คำนวณ status ตาม stockLevel vs reorderPoint
+    const stockLevel = afterQty;
+    const status = stockLevel === 0 ? "Critical"
+      : stockLevel <= reorderPoint ? "Low"
+      : "In Stock";
+
+    // ดึง productName + category จาก product-svc
+    const productInfo = await fetchProductSnapshot(env, productId);
+
+    await publishStockUpdated(env, productId, beforeQty, afterQty, {
+      productName: productInfo?.productName ?? "Unknown",
+      category: productInfo?.category ?? "Uncategorized",
+      stockLevel,
+      reorderPoint,
+      status,
+    });
   }
 
   return { adjusted: true, productId, beforeQty, afterQty };

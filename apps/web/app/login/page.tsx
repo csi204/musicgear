@@ -21,17 +21,21 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-    
-    if (res?.error) {
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+      
+      if (res?.error) {
+        setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      } else {
+        router.push(callbackUrl);
+        router.refresh();
+      }
+    } catch {
       setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
-    } else {
-      router.push(callbackUrl);
-      router.refresh();
     }
   };
 

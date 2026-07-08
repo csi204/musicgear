@@ -26,6 +26,7 @@ model Inventory {
   productId        String   @unique @db.Uuid // Soft ref -> product-svc
   quantity         Int      @default(0)
   reservedQuantity Int      @default(0)
+  reorderPoint     Int      @default(0)     // จุด reorder สำหรับแจ้งเตือน Low/Critical
   updatedAt        DateTime @default(now()) @updatedAt @db.Timestamptz
 }
 
