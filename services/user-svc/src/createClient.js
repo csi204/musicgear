@@ -1,7 +1,8 @@
 // @ts-nocheck
 // Use the locally generated Prisma client (Prisma 7 prisma-client generator)
 // instead of @prisma/client which is not compatible with Cloudflare Workers.
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
 import { PrismaNeonHttp } from "@prisma/adapter-neon";
 
 export function createPrismaClient(connectionString) {

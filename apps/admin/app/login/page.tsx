@@ -16,17 +16,21 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-    
-    if (res?.error) {
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+      
+      if (res?.error) {
+        setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือคุณไม่มีสิทธิ์เข้าถึง");
+      } else {
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch {
       setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือคุณไม่มีสิทธิ์เข้าถึง");
-    } else {
-      router.push("/dashboard");
-      router.refresh();
     }
   };
 

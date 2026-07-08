@@ -8,23 +8,25 @@ import { initializeInventory } from "./services/inventory.service.js";
 const app = new Hono();
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Auth Middleware — ทุก request ต้องผ่าน verifyKindeToken ก่อน
+// Auth Middleware — ทุก request ต้องผ่าน verifyToken ก่อน
 // ยกเว้น health check และ webhooks
 // ──────────────────────────────────────────────────────────────────────────────
-app.use("/stock/*", (c, next) => {
-  const authMiddleware = createAuthMiddleware();
-  return authMiddleware(c, next);
-});
+const authMiddleware = (c, next) => createAuthMiddleware()(c, next);
+app.use("/stock", authMiddleware);
+app.use("/stock/*", authMiddleware);
+app.use("/inventory/stock", authMiddleware);
+app.use("/inventory/stock/*", authMiddleware);
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Health Check
 // ──────────────────────────────────────────────────────────────────────────────
 app.get("/", (c) => c.json({ status: "ok", service: "inventory-svc" }));
+app.get("/inventory", (c) => c.json({ status: "ok", service: "inventory-svc" }));
 
 // ──────────────────────────────────────────────────────────────────────────────
 // POST /webhooks/qstash — QStash Subscriber (สำหรับซิงค์ข้อมูลสต็อกเริ่มต้น)
 // ──────────────────────────────────────────────────────────────────────────────
-app.post("/webhooks/qstash", async (c) => {
+const qstashHandler = async (c) => {
   let rawBody;
   try {
     rawBody = await c.req.json();
@@ -57,11 +59,15 @@ app.post("/webhooks/qstash", async (c) => {
     console.error("[POST /webhooks/qstash] Error processing event:", err);
     return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to process event" } }, 500);
   }
-});
+};
+
+app.post("/webhooks/qstash", qstashHandler);
+app.post("/inventory/webhooks/qstash", qstashHandler);
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Routes
 // ──────────────────────────────────────────────────────────────────────────────
 app.route("/stock", stockRoutes);
+app.route("/inventory/stock", stockRoutes);
 
 export default app;

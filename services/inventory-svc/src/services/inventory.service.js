@@ -1,4 +1,5 @@
 import { publishStockUpdated } from "../events/publishStockUpdated.js";
+import { fetchProductSnapshot } from "../events/fetchProductSnapshot.js";
 
 // ---------------------------------------------------------------------------
 // checkStock — ตรวจว่าสินค้ามีพอไหม (ไม่แก้ DB)
@@ -50,46 +51,51 @@ export async function checkStock(db, items) {
  */
 export async function reserveStock(db, orderId, items) {
   try {
-    await db.$transaction(async (tx) => {
-      for (const item of items) {
-        // ล็อค row ด้วย FOR UPDATE เพื่อป้องกัน race condition
-        const rows = await tx.$queryRaw`
-          SELECT "inventoryId", "productId", "quantity", "reservedQuantity"
-          FROM "Inventory"
-          WHERE "productId" = ${item.productId}::uuid
-          FOR UPDATE
-        `;
+    const rolledBackOps = [];
+    for (const item of items) {
+      const inv = await db.inventory.findUnique({
+        where: { productId: item.productId }
+      });
 
-        const inv = rows[0];
-        const available = inv ? inv.quantity - inv.reservedQuantity : 0;
+      const available = inv ? inv.quantity - inv.reservedQuantity : 0;
 
-        if (!inv || available < item.quantity) {
-          // throw เพื่อให้ Prisma rollback transaction ทั้งหมด
-          const err = new Error("INSUFFICIENT_STOCK");
-          err.productId = item.productId;
-          err.requested = item.quantity;
-          err.available = available;
-          throw err;
+      if (!inv || available < item.quantity) {
+        // Rollback completed operations to ensure atomicity
+        for (const op of rolledBackOps) {
+          await db.inventory.update({
+            where: { productId: op.productId },
+            data: { reservedQuantity: { decrement: op.quantity } },
+          });
+          await db.inventoryLog.deleteMany({
+            where: { orderId, productId: op.productId, action: "reserve" }
+          });
         }
 
-        // เพิ่ม reservedQuantity + insert log
-        await tx.inventory.update({
-          where: { productId: item.productId },
-          data: { reservedQuantity: { increment: item.quantity } },
-        });
-
-        await tx.inventoryLog.create({
-          data: {
-            productId: item.productId,
-            orderId,
-            beforeQty: inv.reservedQuantity,
-            afterQty: inv.reservedQuantity + item.quantity,
-            changeQty: item.quantity,
-            action: "reserve",
-          },
-        });
+        const err = new Error("INSUFFICIENT_STOCK");
+        err.productId = item.productId;
+        err.requested = item.quantity;
+        err.available = available;
+        throw err;
       }
-    });
+
+      const updatedInv = await db.inventory.update({
+        where: { productId: item.productId },
+        data: { reservedQuantity: { increment: item.quantity } },
+      });
+
+      await db.inventoryLog.create({
+        data: {
+          productId: item.productId,
+          orderId,
+          beforeQty: inv.reservedQuantity,
+          afterQty: inv.reservedQuantity + item.quantity,
+          changeQty: item.quantity,
+          action: "reserve",
+        },
+      });
+
+      rolledBackOps.push({ productId: item.productId, quantity: item.quantity });
+    }
 
     return { reserved: true, orderId };
   } catch (err) {
@@ -107,7 +113,7 @@ export async function reserveStock(db, orderId, items) {
         ],
       };
     }
-    throw err; // re-throw unexpected errors
+    throw err;
   }
 }
 
@@ -140,30 +146,28 @@ export async function releaseStock(db, orderId) {
     return { released: true, orderId };
   }
 
-  // Atomic transaction: ลด reservedQuantity + insert release log
-  await db.$transaction(async (tx) => {
-    for (const log of reserveLogs) {
-      const inv = await tx.inventory.update({
-        where: { productId: log.productId },
-        data: {
-          reservedQuantity: {
-            decrement: log.changeQty,
-          },
+  // Atomic release: ลด reservedQuantity + insert release log sequentially
+  for (const log of reserveLogs) {
+    const inv = await db.inventory.update({
+      where: { productId: log.productId },
+      data: {
+        reservedQuantity: {
+          decrement: log.changeQty,
         },
-      });
+      },
+    });
 
-      await tx.inventoryLog.create({
-        data: {
-          productId: log.productId,
-          orderId,
-          beforeQty: inv.reservedQuantity + log.changeQty, // ค่าก่อน decrement (Prisma return ค่าใหม่)
-          afterQty: inv.reservedQuantity,
-          changeQty: log.changeQty,
-          action: "release",
-        },
-      });
-    }
-  });
+    await db.inventoryLog.create({
+      data: {
+        productId: log.productId,
+        orderId,
+        beforeQty: inv.reservedQuantity + log.changeQty, // ค่าก่อน decrement (Prisma return ค่าใหม่)
+        afterQty: inv.reservedQuantity,
+        changeQty: log.changeQty,
+        action: "release",
+      },
+    });
+  }
 
   return { released: true, orderId };
 }
@@ -191,45 +195,66 @@ export async function saleDeductStock(db, orderId, env) {
 
   const deductedItems = [];
 
-  await db.$transaction(async (tx) => {
-    for (const log of reserveLogs) {
-      // ดึงค่าปัจจุบันก่อนตัด (ใช้ query ก่อน update)
-      const before = await tx.inventory.findUnique({
-        where: { productId: log.productId },
-        select: { quantity: true },
-      });
-      const beforeQty = before?.quantity ?? 0;
+  // Deduct sequentially without transaction block
+  for (const log of reserveLogs) {
+    // ดึงค่าปัจจุบันก่อนตัด
+    const before = await db.inventory.findUnique({
+      where: { productId: log.productId },
+      select: { quantity: true },
+    });
+    const beforeQty = before?.quantity ?? 0;
 
-      // ลด quantity + reservedQuantity พร้อมกัน
-      const inv = await tx.inventory.update({
-        where: { productId: log.productId },
-        data: {
-          quantity: { decrement: log.changeQty },
-          reservedQuantity: { decrement: log.changeQty },
-        },
-      });
+    // ลด quantity + reservedQuantity พร้อมกัน
+    const inv = await db.inventory.update({
+      where: { productId: log.productId },
+      data: {
+        quantity: { decrement: log.changeQty },
+        reservedQuantity: { decrement: log.changeQty },
+      },
+    });
 
-      const afterQty = Math.max(0, inv.quantity);
+    const afterQty = Math.max(0, inv.quantity);
 
-      await tx.inventoryLog.create({
-        data: {
-          productId: log.productId,
-          orderId,
-          beforeQty,
-          afterQty,
-          changeQty: log.changeQty,
-          action: "sale_deduct",
-        },
-      });
+    await db.inventoryLog.create({
+      data: {
+        productId: log.productId,
+        orderId,
+        beforeQty,
+        afterQty,
+        changeQty: log.changeQty,
+        action: "sale_deduct",
+      },
+    });
 
-      deductedItems.push({ productId: log.productId, beforeQty, afterQty });
-    }
-  });
+    deductedItems.push({ productId: log.productId, beforeQty, afterQty });
+  }
 
-  // Publish stock.updated event สำหรับสินค้าที่ quantity ลดถึง 0
+  // Publish stock.updated event สำหรับสินค้าที่ quantity ลดถึง 0 (out-of-stock)
   for (const item of deductedItems) {
     if (item.afterQty === 0) {
-      await publishStockUpdated(env, item.productId, item.beforeQty, item.afterQty);
+      // ดึงข้อมูล reorderPoint จาก DB + productName/category จาก product-svc
+      const inv = await db.inventory.findUnique({
+        where: { productId: item.productId },
+        select: { reorderPoint: true },
+      });
+      const reorderPoint = inv?.reorderPoint ?? 0;
+
+      // คำนวณ status ตาม stockLevel vs reorderPoint
+      const stockLevel = item.afterQty;
+      const status = stockLevel === 0 ? "Critical"
+        : stockLevel <= reorderPoint ? "Low"
+        : "In Stock";
+
+      // ดึง productName + category จาก product-svc
+      const productInfo = await fetchProductSnapshot(env, item.productId);
+
+      await publishStockUpdated(env, item.productId, item.beforeQty, item.afterQty, {
+        productName: productInfo?.productName ?? "Unknown",
+        category: productInfo?.category ?? "Uncategorized",
+        stockLevel,
+        reorderPoint,
+        status,
+      });
     }
   }
 
@@ -256,52 +281,69 @@ export async function adjustStock(db, productId, changeQty, action, staffId, env
   let beforeQty = 0;
   let afterQty = 0;
 
-  await db.$transaction(async (tx) => {
-    // ดึงค่าปัจจุบัน (ล็อค row)
-    const rows = await tx.$queryRaw`
-      SELECT "inventoryId", quantity, "reservedQuantity"
-      FROM "Inventory"
-      WHERE "productId" = ${productId}::uuid
-      FOR UPDATE
-    `;
+  // Query current inventory record sequentially without transaction
+  const inv = await db.inventory.findUnique({
+    where: { productId }
+  });
 
-    let inv = rows[0];
-    beforeQty = inv?.quantity ?? 0;
+  beforeQty = inv?.quantity ?? 0;
 
-    // ถ้าไม่มี inventory record ให้ create ใหม่ (upsert-style)
-    if (!inv) {
-      await tx.inventory.create({
-        data: {
-          productId,
-          quantity: Math.max(0, changeQty),
-          reservedQuantity: 0,
-        },
-      });
-      afterQty = Math.max(0, changeQty);
-    } else {
-      const newQty = Math.max(0, inv.quantity + changeQty);
-      await tx.inventory.update({
-        where: { productId },
-        data: { quantity: newQty },
-      });
-      afterQty = newQty;
-    }
-
-    await tx.inventoryLog.create({
+  // If no inventory record exists, create it
+  if (!inv) {
+    await db.inventory.create({
       data: {
         productId,
-        beforeQty,
-        afterQty,
-        changeQty,
-        action,
-        staffId: staffId ?? null,
+        quantity: Math.max(0, changeQty),
+        reservedQuantity: 0,
       },
     });
+    afterQty = Math.max(0, changeQty);
+  } else {
+    const newQty = Math.max(0, inv.quantity + changeQty);
+    await db.inventory.update({
+      where: { productId },
+      data: { quantity: newQty },
+    });
+    afterQty = newQty;
+  }
+
+  await db.inventoryLog.create({
+    data: {
+      productId,
+      beforeQty,
+      afterQty,
+      changeQty,
+      action,
+      staffId: staffId ?? null,
+    },
   });
 
   // ถ้าสินค้ากลับมามีสต็อก (beforeQty = 0, afterQty > 0) → notify ลูกค้าที่รอ
+  // หรือเมื่อสต็อกเปลี่ยนแปลง → อัปเดต InventorySnapshot ใน report-svc ด้วย
   if (beforeQty === 0 && afterQty > 0) {
-    await publishStockUpdated(env, productId, beforeQty, afterQty);
+    // ดึงข้อมูล reorderPoint จาก DB
+    const inv = await db.inventory.findUnique({
+      where: { productId },
+      select: { reorderPoint: true },
+    });
+    const reorderPoint = inv?.reorderPoint ?? 0;
+
+    // คำนวณ status ตาม stockLevel vs reorderPoint
+    const stockLevel = afterQty;
+    const status = stockLevel === 0 ? "Critical"
+      : stockLevel <= reorderPoint ? "Low"
+      : "In Stock";
+
+    // ดึง productName + category จาก product-svc
+    const productInfo = await fetchProductSnapshot(env, productId);
+
+    await publishStockUpdated(env, productId, beforeQty, afterQty, {
+      productName: productInfo?.productName ?? "Unknown",
+      category: productInfo?.category ?? "Uncategorized",
+      stockLevel,
+      reorderPoint,
+      status,
+    });
   }
 
   return { adjusted: true, productId, beforeQty, afterQty };
