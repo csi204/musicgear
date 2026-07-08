@@ -63,13 +63,13 @@
 #### 1.1 cart-svc — Business Logic
 
 **ต้องทำ:**
-- [ ] `POST /carts` — สร้างตะกร้าใหม่ (guest หรือ logged-in)
-- [ ] `GET /carts/:cartId` — ดูรายการสินค้าในตะกร้า
-- [ ] `POST /carts/:cartId/items` — เพิ่มสินค้าลงตะกร้า
-- [ ] `PATCH /carts/:cartId/items/:itemId` — แก้จำนวน
-- [ ] `DELETE /carts/:cartId/items/:itemId` — ลบสินค้าออก
-- [ ] `DELETE /carts/:cartId` — ล้างตะกร้าทั้งหมด (หลังชำระเงินเสร็จ)
-- [ ] `POST /carts/merge` — merge guest cart → logged-in cart ตอน login (ดู `frontend/skill.md` ข้อ 7)
+- [x] `POST /carts` — สร้างตะกร้าใหม่ (guest หรือ logged-in)
+- [x] `GET /carts/:cartId` — ดูรายการสินค้าในตะกร้า
+- [x] `POST /carts/:cartId/items` — เพิ่มสินค้าลงตะกร้า
+- [x] `PATCH /carts/:cartId/items/:itemId` — แก้จำนวน
+- [x] `DELETE /carts/:cartId/items/:itemId` — ลบสินค้าออก
+- [x] `DELETE /carts/:cartId` — ล้างตะกร้าทั้งหมด (หลังชำระเงินเสร็จ)
+- [x] `POST /carts/merge` — merge guest cart → logged-in cart ตอน login (ดู `frontend/skill.md` ข้อ 7)
 
 **โครงสร้างไฟล์ที่ต้องสร้าง:**
 ```
@@ -91,18 +91,18 @@ services/cart-svc/src/
 #### 1.2 order-svc — Business Logic (ส่วนที่ไม่ต้องข้ามไป product-svc)
 
 **ต้องทำก่อน (ไม่ขึ้นกับใคร):**
-- [ ] Prisma migration รัน schema จริงเข้า Neon (`pnpm dlx prisma migrate dev`)
-- [ ] `GET /orders/:orderId` — ดูรายละเอียด order
-- [ ] `GET /orders?customerId=xxx` — ดูประวัติ order ของลูกค้า
-- [ ] `PATCH /orders/:orderId/status` — Staff/Admin อัปเดตสถานะ (ต้องมี RBAC)
+- [x] Prisma migration รัน schema จริงเข้า Neon (`pnpm dlx prisma migrate dev`)
+- [x] `GET /orders/:orderId` — ดูรายละเอียด order
+- [x] `GET /orders?customerId=xxx` — ดูประวัติ order ของลูกค้า
+- [x] `PATCH /orders/:orderId/status` — Staff/Admin อัปเดตสถานะ (ต้องมี RBAC)
 
 #### 1.3 Frontend — Customer Web App โครงสร้างหน้า
 
 **ต้องทำ:**
-- [ ] ทำ Layout หลัก (`apps/web/app/layout.tsx`) — Navbar + Footer ตาม design system
-- [ ] หน้าแสดงสินค้า (`/products`) — grid สินค้า (ดึงจาก product-svc ของเดียร์เมื่อพร้อม)
-- [ ] หน้า Cart (`/cart`) — รายการ, ปรับจำนวน, ลบ, ราคารวม
-- [ ] Component `CartProvider` — state management ของ cart
+- [x] ทำ Layout หลัก (`apps/web/app/layout.tsx`) — Navbar + Footer ตาม design system
+- [x] หน้าแสดงสินค้า (`/products`) — grid สินค้า (ดึงจาก product-svc ของเดียร์เมื่อพร้อม)
+- [x] หน้า Cart (`/cart`) — รายการ, ปรับจำนวน, ลบ, ราคารวม
+- [x] Component `CartProvider` — state management ของ cart
 
 **Design System ที่ต้องใช้ (Customer Web = Light Mode):**
 ```
@@ -120,7 +120,7 @@ Font:       Inter + Noto Sans Thai
 #### 2.1 order-svc — Checkout Flow (สำคัญที่สุด)
 
 **ต้องทำ:**
-- [ ] `POST /orders` — สร้าง order จาก cart
+- [x] `POST /orders` — สร้าง order จาก cart
   - ดึง `cart items` จาก `cart-svc`
   - **เรียก `product-svc` เช็คสต็อกก่อน** (ประสานเดียร์เรื่อง endpoint + payload)
   - **เรียก `user-svc` ดึง address** (ประสานเขต)
@@ -146,9 +146,9 @@ POST /products/:productId/stock/reserve
 
 #### 2.2 Frontend — หน้า Checkout
 
-- [ ] หน้า Checkout (`/checkout`) — แสดงรายการ, เลือกที่อยู่, สรุปราคา
-- [ ] Form เลือกที่อยู่ — ดึงจาก `user-svc` (auth required)
-- [ ] หน้า Order Detail (`/orders/[id]`) — แสดงสถานะ order
+- [x] หน้า Checkout (`/checkout`) — แสดงรายการ, เลือกที่อยู่, สรุปราคา
+- [x] Form เลือกที่อยู่ — ดึงจาก `user-svc` (auth required)
+- [x] หน้า Order Detail (`/orders/[id]`) — แสดงสถานะ order
 
 ---
 
@@ -157,13 +157,13 @@ POST /products/:productId/stock/reserve
 #### 3.1 payment-svc — Omise Integration
 
 **ต้องทำ:**
-- [ ] ทำความเข้าใจ Omise API ก่อน (sandbox)
-- [ ] `POST /payments` — สร้าง payment จาก orderId
+- [x] ทำความเข้าใจ Omise API ก่อน (sandbox)
+- [x] `POST /payments` — สร้าง payment จาก orderId
   - Charge ผ่าน Omise
   - บันทึก `transactionRef`
   - อัปเดต `Payment.status = paid`
-- [ ] `POST /payments/:paymentId/refund` — คืนเงิน (admin only)
-- [ ] Publish QStash event `payment.success` หลังชำระสำเร็จ
+- [x] `POST /payments/:paymentId/refund` — คืนเงิน (admin only)
+- [x] Publish QStash event `payment.success` หลังชำระสำเร็จ
 
 **Payload ที่ต้อง publish (ดู `packages/types/src/events.js`):**
 ```js
@@ -177,8 +177,8 @@ POST /products/:productId/stock/reserve
 
 #### 3.2 order-svc — หลัง payment สำเร็จ
 
-- [ ] Webhook receiver รับ event จาก `payment-svc` → อัปเดต `Order.status = confirmed`
-- [ ] Publish QStash event `order.status_changed` (ดู `packages/types/src/events.js`)
+- [x] Webhook receiver รับ event จาก `payment-svc` → อัปเดต `Order.status = confirmed`
+- [x] Publish QStash event `order.status_changed` (ดู `packages/types/src/events.js`)
 
 ---
 

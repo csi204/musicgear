@@ -213,6 +213,33 @@ export function useCart() {
     }
     if (!currentCartId) return;
 
+    // Save previous state for rollback
+    const previousItems = [...items];
+
+    // Check if the item already exists in the cart (so we just increase quantity)
+    const existingIndex = items.findIndex(
+      (i) => i.productId === item.productId && i.color === item.color
+    );
+
+    let optimisticItems = [...items];
+    if (existingIndex > -1) {
+      const existing = optimisticItems[existingIndex];
+      if (existing) {
+        optimisticItems[existingIndex] = {
+          ...existing,
+          quantity: existing.quantity + item.quantity,
+        };
+      }
+    } else {
+      optimisticItems.push({
+        ...item,
+        id: `opt-${crypto.randomUUID()}`, // Temporary ID
+      } as CartItem);
+    }
+
+    // Optimistically update state
+    setItems(optimisticItems);
+
     try {
       await cartApi.addItem(currentCartId, {
         productId: item.productId,
@@ -225,7 +252,8 @@ export function useCart() {
       });
       triggerUpdate();
     } catch (e) {
-      console.error("Failed to add item to cart", e);
+      console.error("Failed to add item to cart, rolling back", e);
+      setItems(previousItems);
     }
   };
 
@@ -235,6 +263,33 @@ export function useCart() {
       currentCartId = localStorage.getItem("mg_cart_id");
     }
     if (!currentCartId) return;
+
+    // Save previous state for rollback
+    const previousItems = [...items];
+
+    // Optimistically update items
+    let optimisticItems = [...items];
+    for (const item of itemsToAdd) {
+      const existingIndex = optimisticItems.findIndex(
+        (i) => i.productId === item.productId && i.color === item.color
+      );
+      if (existingIndex > -1) {
+        const existing = optimisticItems[existingIndex];
+        if (existing) {
+          optimisticItems[existingIndex] = {
+            ...existing,
+            quantity: existing.quantity + item.quantity,
+          };
+        }
+      } else {
+        optimisticItems.push({
+          ...item,
+          id: `opt-${crypto.randomUUID()}`,
+        } as CartItem);
+      }
+    }
+
+    setItems(optimisticItems);
 
     try {
       for (const item of itemsToAdd) {
@@ -250,7 +305,8 @@ export function useCart() {
       }
       triggerUpdate();
     } catch (e) {
-      console.error("Failed to add multiple items", e);
+      console.error("Failed to add multiple items, rolling back", e);
+      setItems(previousItems);
     }
   };
 
@@ -261,11 +317,18 @@ export function useCart() {
     }
     if (!currentCartId) return;
 
+    // Save previous state for rollback
+    const previousItems = [...items];
+
+    // Optimistically update the state
+    setItems((prevItems) => prevItems.filter((item) => item.id !== id));
+
     try {
       await cartApi.removeItem(currentCartId, id);
       triggerUpdate();
     } catch (e) {
-      console.error("Failed to remove item", e);
+      console.error("Failed to remove item, rolling back", e);
+      setItems(previousItems);
     }
   };
 
@@ -280,11 +343,23 @@ export function useCart() {
       await removeItem(id);
       return;
     }
+
+    // Save previous state for rollback
+    const previousItems = [...items];
+
+    // Optimistically update the state
+    setItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === id ? { ...item, quantity } : item
+      )
+    );
+
     try {
       await cartApi.updateItem(currentCartId, id, quantity);
       triggerUpdate();
     } catch (e) {
-      console.error("Failed to update item quantity", e);
+      console.error("Failed to update item quantity, rolling back", e);
+      setItems(previousItems);
     }
   };
 
@@ -295,11 +370,18 @@ export function useCart() {
     }
     if (!currentCartId) return;
 
+    // Save previous state for rollback
+    const previousItems = [...items];
+
+    // Optimistically clear items
+    setItems([]);
+
     try {
       await cartApi.clearCart(currentCartId);
       triggerUpdate();
     } catch (e) {
-      console.error("Failed to clear cart", e);
+      console.error("Failed to clear cart, rolling back", e);
+      setItems(previousItems);
     }
   };
 

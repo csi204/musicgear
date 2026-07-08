@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 import { useCartContext } from "./cart-provider";
-import { isAuthenticated, buildLoginUrl } from "../lib/auth";
+import { isAuthenticated } from "../lib/auth";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -73,7 +73,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const handleCheckoutClick = (e: React.MouseEvent) => {
     if (!isUserLoggedIn) {
       e.preventDefault();
-      window.location.href = buildLoginUrl("/checkout");
+      window.location.href = "/login?callbackUrl=/checkout";
     }
   };
 

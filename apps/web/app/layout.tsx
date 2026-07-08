@@ -30,12 +30,19 @@ const fontAnuphan = Anuphan({
 })
 
 import { SessionProvider } from "next-auth/react";
+import { cookies } from "next/headers";
+import { SyncToken } from "@/components/sync-token";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const cookieStore = await cookies();
+  const token =
+    cookieStore.get("mg_web_session")?.value ||
+    cookieStore.get("__Secure-mg_web_session")?.value;
+
   return (
     <html
       lang="th"
@@ -51,6 +58,7 @@ export default function RootLayout({
       )}
     >
       <body>
+        <SyncToken token={token} />
         <SessionProvider>
           <ThemeProvider defaultTheme="light" enableSystem={false}>
             <CartProvider>
