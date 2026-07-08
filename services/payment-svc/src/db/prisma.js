@@ -3,18 +3,13 @@
 globalThis.__dirname ??= "";
 
 import { PrismaClient } from "../../generated/prisma/client.js";
-import { PrismaNeonHttp } from "@prisma/adapter-neon";
+import { PrismaNeon } from "@prisma/adapter-neon";
 
 /**
  * สร้าง Prisma client ต่อ 1 request
- * ดึง DATABASE_URL จาก Cloudflare Worker env bindings (c.env)
  * @param {string} connectionString — DATABASE_URL จาก c.env
  */
-export function createClient(connectionString) {
-  let cleanString = connectionString;
-  if (cleanString) {
-    cleanString = cleanString.replace(/^["']|["']$/g, "").trim();
-  }
-  const adapter = new PrismaNeonHttp(cleanString, { fetchOptions: { cache: 'no-store' } });
+export function createPrisma(connectionString) {
+  const adapter = new PrismaNeon({ connectionString });
   return new PrismaClient({ adapter });
 }

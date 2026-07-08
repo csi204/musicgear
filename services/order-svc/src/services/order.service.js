@@ -87,7 +87,9 @@ export class OrderService {
    */
   static async createOrder(prisma, env, customerId, { cartId, addressId, remark, shippingAddressSnapshot }, authHeader = "") {
     // 1. ดึงข้อมูลตะกร้าสินค้าจาก cart-svc
-    const cartRes = await env.CART_SVC.fetch(`http://cart-svc/carts/${cartId}`);
+    const cartRes = await env.CART_SVC.fetch(`http://cart-svc/carts/${cartId}`, {
+      headers: { Authorization: authHeader },
+    });
     if (!cartRes.ok) {
       throw new Error("CART_NOT_FOUND");
     }
@@ -103,7 +105,7 @@ export class OrderService {
     }));
     const stockRes = await env.INVENTORY_SVC.fetch("http://inventory-svc/stock/check", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: authHeader },
       body: JSON.stringify({ items: checkItems }),
     });
 
@@ -157,7 +159,7 @@ export class OrderService {
     // 5. สั่งจองสต็อกกับ inventory-svc
     const reserveRes = await env.INVENTORY_SVC.fetch("http://inventory-svc/stock/reserve", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: authHeader },
       body: JSON.stringify({
         orderId: order.orderId,
         items: checkItems,
@@ -175,6 +177,7 @@ export class OrderService {
     // 6. ล้างสินค้าในตะกร้าจาก cart-svc
     await env.CART_SVC.fetch(`http://cart-svc/carts/${cartId}`, {
       method: "DELETE",
+      headers: { Authorization: authHeader },
     });
 
     return order;

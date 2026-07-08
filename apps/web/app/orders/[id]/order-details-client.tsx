@@ -414,15 +414,15 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
                 </span>
               </div>
 
-              {/* Pay Now Button for Pending Status (Coming soon in Phase 3) */}
+              {/* Pay Now Button for Pending Status */}
               {order.status === "pending" && (
-                <button
-                  onClick={() => alert("ระบบชำระเงิน Omise Sandbox จะใช้งานได้สมบูรณ์ใน Phase 3 ครับ!")}
+                <Link
+                  href={`/payment?orderId=${order.orderId}`}
                   className="w-full flex items-center justify-center gap-2 rounded-full bg-electric-blue hover:bg-electric-blue/90 text-white font-semibold py-4 transition-all shadow-md shadow-electric-blue/10 cursor-pointer text-sm"
                 >
                   <CreditCard className="h-4.5 w-4.5" />
-                  ชำระเงินผ่าน Omise (Phase 3)
-                </button>
+                  ชำระเงินทันที (Pay Now)
+                </Link>
               )}
             </div>
             

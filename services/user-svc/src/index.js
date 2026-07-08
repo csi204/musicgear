@@ -198,11 +198,17 @@ async function ensureUser(prisma, authUser) {
         where: { userId: existingByEmail.userId },
         data: { userId: authUser.userId },
       });
-      // Also update related tables
+      // Also update related tables avoiding updateMany to prevent transaction errors
+      const [customers, staffs, admins] = await Promise.all([
+        prisma.customer.findMany({ where: { customerId: existingByEmail.userId } }),
+        prisma.staff.findMany({ where: { staffId: existingByEmail.userId } }),
+        prisma.admin.findMany({ where: { adminId: existingByEmail.userId } })
+      ]);
+      
       await Promise.allSettled([
-        prisma.customer.updateMany({ where: { customerId: existingByEmail.userId }, data: { customerId: authUser.userId } }),
-        prisma.staff.updateMany({ where: { staffId: existingByEmail.userId }, data: { staffId: authUser.userId } }),
-        prisma.admin.updateMany({ where: { adminId: existingByEmail.userId }, data: { adminId: authUser.userId } }),
+        ...customers.map(c => prisma.customer.update({ where: { customerId: c.customerId }, data: { customerId: authUser.userId } })),
+        ...staffs.map(s => prisma.staff.update({ where: { staffId: s.staffId }, data: { staffId: authUser.userId } })),
+        ...admins.map(a => prisma.admin.update({ where: { adminId: a.adminId }, data: { adminId: authUser.userId } }))
       ]);
       return loadUser(prisma, authUser.userId);
     }
@@ -894,10 +900,15 @@ app.post("/users/me/addresses", async (c) => {
     const addressData = validation.data;
 
     if (addressData.isDefault) {
-      await prisma.address.updateMany({
-        where: { customerId: customer.customerId },
-        data: { isDefault: false },
+      const defaultAddresses = await prisma.address.findMany({
+        where: { customerId: customer.customerId, isDefault: true },
       });
+      for (const addr of defaultAddresses) {
+        await prisma.address.update({
+          where: { addressId: addr.addressId },
+          data: { isDefault: false },
+        });
+      }
     }
 
     const address = await prisma.address.create({

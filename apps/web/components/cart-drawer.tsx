@@ -13,7 +13,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
-import { useCart } from "../hooks/useCart";
+import { useCartContext } from "./cart-provider";
 import { isAuthenticated, buildLoginUrl } from "../lib/auth";
 
 interface CartDrawerProps {
@@ -23,7 +23,7 @@ interface CartDrawerProps {
 
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { items, updateQuantity, removeItem, totalPrice, totalItems } =
-    useCart();
+    useCartContext();
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
@@ -100,88 +100,86 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         )}
       >
         {/* ── HEADER ── */}
-        <div className="flex items-center justify-between border-b border-[#E5E2DA] px-6 py-5">
-          <div className="flex items-baseline gap-3">
-            {/* "Cart²" — bordered box style like in image */}
-            <span className="font-heading text-lg font-bold text-neutral-950 border border-neutral-950 px-2 py-0.5 rounded leading-none">
+        <div className="flex items-center justify-between border-b border-neutral-100 px-8 py-6">
+          <div className="flex items-baseline gap-4">
+            <span className="text-[22px] font-extrabold text-neutral-900 tracking-tight flex items-start">
               Cart
-              <sup className="text-[11px] font-bold">{totalItems}</sup>
+              {totalItems > 0 && (
+                <sup className="text-[12px] font-bold ml-0.5">{totalItems}</sup>
+              )}
             </span>
-            <span className="text-sm font-medium text-neutral-400 tracking-wide">
-              Recently viewed
-            </span>
+            
           </div>
           <button
             onClick={handleClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#DEDCD4] bg-white text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-all cursor-pointer"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50 transition-colors"
             aria-label="Close cart"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4 stroke-[1.5]" />
           </button>
         </div>
 
-        {/* ── FREE SHIPPING BAR ── */}
-        <div className="px-6 pt-4 pb-3 border-b border-[#E5E2DA]/40">
-          <p className="text-xs font-bold text-neutral-900 mb-2">
-            {isEligibleForFreeShipping
-              ? "You are eligible for free shipping. 🎉"
-              : `Spend ${amountLeft.toLocaleString()} ฿ more to get free shipping!`}
-          </p>
-          <div className="h-[3px] w-full rounded-full bg-[#E5E2DA] overflow-hidden">
-            <div
-              className="h-full bg-neutral-950 transition-all duration-700 ease-out rounded-full"
-              style={{ width: `${shippingPercent}%` }}
-            />
+        {/* ── FREE SHIPPING BAR (Only show if there are items) ── */}
+        {items.length > 0 && (
+          <div className="px-8 pt-6 pb-2 border-b border-neutral-100">
+            <p className="text-[13px] font-bold text-neutral-900 mb-3">
+              {isEligibleForFreeShipping
+                ? "You are eligible for free shipping."
+                : `Spend ${amountLeft.toLocaleString()} ฿ more to get free shipping!`}
+            </p>
+            <div className="h-1.5 w-full bg-neutral-100 overflow-hidden">
+              <div
+                className="h-full bg-neutral-900 transition-all duration-700 ease-out"
+                style={{ width: `${shippingPercent}%` }}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── CART ITEMS ── */}
         <div className="flex-grow overflow-y-auto">
           {items.length === 0 ? (
             /* Empty State */
-            <div className="flex h-full flex-col items-center justify-center gap-5 px-8 py-20 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#F5F3EE]">
-                <ShoppingCart className="h-7 w-7 text-slate-gray" />
-              </div>
+            <div className="flex h-full flex-col items-center justify-center gap-6 px-8 py-20 text-center">
               <div>
-                <h3 className="font-heading text-base font-bold text-neutral-950">
-                  ตะกร้าของคุณยังว่างอยู่
+                <h3 className="text-[26px] font-extrabold text-neutral-900 leading-tight tracking-tight">
+                  Your cart is <br /> currently empty.
                 </h3>
-                <p className="text-xs text-slate-gray mt-1.5 leading-relaxed">
-                  เลือกเครื่องดนตรีที่โดนใจแล้วเริ่มต้นบทเพลงของคุณ
+                <p className="text-[13px] font-medium text-neutral-900 mt-4 leading-relaxed max-w-[200px] mx-auto" style={{ fontFamily: "Georgia, serif" }}>
+                  Not sure where to start?<br />
+                  Try these collections:
                 </p>
               </div>
               <button
                 onClick={handleClose}
-                className="rounded-full bg-neutral-950 px-6 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800 transition-all cursor-pointer"
+                className="mt-2 flex items-center justify-between w-full max-w-[240px] rounded-full bg-[#f7f7f7] px-6 py-3.5 text-[14px] font-bold text-neutral-900 hover:bg-neutral-200 transition-colors cursor-pointer"
               >
-                เลือกซื้อสินค้า
+                <span>Continue shopping</span>
+                <span className="text-lg leading-none transition-transform group-hover:translate-x-1">→</span>
               </button>
             </div>
           ) : (
-            <div className="divide-y divide-[#F5F3EE]">
+            <div className="divide-y divide-neutral-100 px-8">
               {items.map((item) => (
-                <div key={item.id} className="flex gap-4 px-6 py-5 items-start">
+                <div key={item.id} className="flex gap-4 py-6 items-start">
                   {/* Product Image */}
-                  <div className="h-[80px] w-[80px] shrink-0 rounded-xl border border-[#E5E2DA] bg-[#F5F3EE]/30 flex items-center justify-center overflow-hidden p-1.5">
+                  <div className="h-[84px] w-[84px] shrink-0 rounded-[10px] bg-neutral-100 flex items-center justify-center overflow-hidden">
                     <img
                       src={item.imageUrl || undefined}
                       alt={item.title}
-                      className="max-h-full max-w-full object-contain"
+                      className="h-full w-full object-cover"
                     />
                   </div>
 
                   {/* Item Details */}
-                  <div className="flex flex-grow flex-col min-w-0">
-                    <h4 className="font-heading text-sm font-bold text-neutral-900 leading-snug line-clamp-2">
+                  <div className="flex flex-grow flex-col min-w-0 pr-2">
+                    <h4 className="text-[13px] font-semibold text-neutral-900 leading-snug line-clamp-2">
                       {item.title}
                     </h4>
-                    {item.color && (
-                      <span className="text-[11px] text-slate-gray mt-0.5">
-                        {item.color}
-                      </span>
-                    )}
-                    <span className="text-sm font-bold text-neutral-950 mt-2">
+                    <span className="text-[11px] font-medium text-neutral-500 mt-1">
+                      {item.color || "Standard"}
+                    </span>
+                    <span className="text-[13px] font-bold text-neutral-900 mt-2">
                       {item.price.toLocaleString("en-US", {
                         minimumFractionDigits: 2,
                       })}{" "}
@@ -190,36 +188,35 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   </div>
 
                   {/* Qty Stepper + Remove */}
-                  <div className="flex flex-col items-end gap-2 shrink-0 self-start">
-                    {/* Arrow-style stepper like in reference image */}
-                    <div className="flex items-center gap-1.5 border border-[#DEDCD4] rounded-lg px-2 py-1 bg-white">
-                      <span className="text-sm font-semibold text-neutral-800 w-5 text-center tabular-nums">
+                  <div className="flex flex-col items-end gap-3 shrink-0 self-start">
+                    <div className="flex items-center justify-between bg-[#f7f7f7] rounded-[8px] px-3 py-1.5 w-[68px]">
+                      <span className="text-[13px] font-bold text-neutral-900 tabular-nums">
                         {item.quantity}
                       </span>
-                      <div className="flex flex-col">
+                      <div className="flex flex-col gap-0.5">
                         <button
                           onClick={() =>
                             updateQuantity(item.id, item.quantity + 1)
                           }
-                          className="flex h-4 w-4 items-center justify-center text-neutral-500 hover:text-neutral-950 transition-colors"
+                          className="flex h-3.5 w-4 items-center justify-center text-neutral-600 hover:text-neutral-900 transition-colors"
                           aria-label="Increase quantity"
                         >
-                          <ChevronUp className="h-3 w-3" />
+                          <ChevronUp className="h-3 w-3 stroke-[2.5]" />
                         </button>
                         <button
                           onClick={() =>
                             updateQuantity(item.id, item.quantity - 1)
                           }
-                          className="flex h-4 w-4 items-center justify-center text-neutral-500 hover:text-neutral-950 transition-colors"
+                          className="flex h-3.5 w-4 items-center justify-center text-neutral-600 hover:text-neutral-900 transition-colors"
                           aria-label="Decrease quantity"
                         >
-                          <ChevronDown className="h-3 w-3" />
+                          <ChevronDown className="h-3 w-3 stroke-[2.5]" />
                         </button>
                       </div>
                     </div>
                     <button
                       onClick={() => removeItem(item.id)}
-                      className="text-[11px] font-semibold text-slate-gray hover:text-red-500 hover:underline transition-colors cursor-pointer"
+                      className="text-[11px] font-bold text-neutral-600 underline underline-offset-[3px] decoration-neutral-400 hover:text-neutral-900 hover:decoration-neutral-900 transition-colors mr-1"
                     >
                       Remove
                     </button>
@@ -232,61 +229,63 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
         {/* ── FOOTER (only when items exist) ── */}
         {items.length > 0 && (
-          <div className="border-t border-[#E5E2DA] bg-[#F5F3EE]/20 px-6 py-5 space-y-4">
+          <div className="border-t border-neutral-100 bg-[#fafafa] px-8 py-6 space-y-8 pb-10">
             {/* Quick-action row: Order note | Shipping | Discount */}
-            <div className="grid grid-cols-3 divide-x divide-[#E5E2DA] border border-[#E5E2DA] rounded-xl overflow-hidden bg-white">
-              <button className="flex flex-col items-center gap-1.5 py-2.5 px-1 text-neutral-600 hover:bg-neutral-50 transition-colors cursor-pointer">
+            <div className="grid grid-cols-3 divide-x divide-neutral-100 border-b border-transparent">
+              <button className="flex items-center justify-center gap-2 py-2 px-1 text-neutral-900 hover:text-neutral-600 transition-colors cursor-pointer">
                 <FileText className="h-4 w-4" />
-                <span className="text-[10px] font-semibold">Order note</span>
+                <span className="text-[12px] font-bold">Order note</span>
               </button>
-              <button className="flex flex-col items-center gap-1.5 py-2.5 px-1 text-neutral-600 hover:bg-neutral-50 transition-colors cursor-pointer">
+              <button className="flex items-center justify-center gap-2 py-2 px-1 text-neutral-900 hover:text-neutral-600 transition-colors cursor-pointer">
                 <Truck className="h-4 w-4" />
-                <span className="text-[10px] font-semibold">Shipping</span>
+                <span className="text-[12px] font-bold">Shipping</span>
               </button>
-              <button className="flex flex-col items-center gap-1.5 py-2.5 px-1 text-neutral-600 hover:bg-neutral-50 transition-colors cursor-pointer">
+              <button className="flex items-center justify-center gap-2 py-2 px-1 text-neutral-900 hover:text-neutral-600 transition-colors cursor-pointer">
                 <Tag className="h-4 w-4" />
-                <span className="text-[10px] font-semibold">Discount</span>
+                <span className="text-[12px] font-bold">Discount</span>
               </button>
             </div>
 
-            {/* Taxes + Subtotal row */}
-            <div className="flex items-start justify-between gap-4">
-              <p className="text-xs font-semibold text-neutral-600 leading-snug max-w-[160px]">
-                Taxes included and shipping calculated at checkout.
-              </p>
-              <div className="text-right shrink-0">
-                <p className="text-[10px] font-semibold text-slate-gray uppercase tracking-wide">
-                  Subtotal
+            <div className="flex flex-col gap-6">
+              {/* Taxes + Subtotal row */}
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-[13px] font-bold text-neutral-900 leading-snug max-w-[180px]">
+                  Taxes included and shipping calculated at checkout.
                 </p>
-                <p className="font-heading text-lg font-extrabold text-neutral-950 leading-tight">
-                  {totalPrice.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                  })}{" "}
-                  ฿ THB
-                </p>
+                <div className="text-right shrink-0">
+                  <p className="text-[13px] font-bold text-neutral-900 mb-1">
+                    Subtotal
+                  </p>
+                  <p className="text-xl font-bold text-neutral-900 leading-none">
+                    {totalPrice.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })}{" "}
+                    ฿ THB
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col gap-2.5">
-              <Link
-                href="/checkout"
-                onClick={handleCheckoutClick}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-neutral-950 font-bold text-sm text-white hover:bg-neutral-800 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
-              >
-                {!isUserLoggedIn && (
-                  <Lock className="h-4 w-4 text-neutral-400" />
-                )}
-                Check out
-              </Link>
+              {/* CTA Buttons */}
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/checkout"
+                  onClick={handleCheckoutClick}
+                  className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full bg-[#1c1c1c] font-bold text-[15px] text-white hover:bg-black transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  {!isUserLoggedIn && (
+                    <Lock className="h-4 w-4 text-neutral-400 stroke-[2]" />
+                  )}
+                  Check out
+                </Link>
 
-              <Link
-                href="/cart"
-                onClick={handleClose}
-                className="flex h-12 w-full items-center justify-center rounded-full border border-neutral-950 bg-white font-bold text-sm text-neutral-950 hover:bg-neutral-50 transition-all cursor-pointer active:scale-[0.98]"
-              >
-                View cart
-              </Link>
+                <Link
+                  href="/cart"
+                  onClick={handleClose}
+                  className="flex h-[52px] flex-1 items-center justify-center rounded-full border border-neutral-800 bg-transparent font-medium text-[15px] text-neutral-900 hover:bg-white hover:shadow-sm transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  View cart
+                </Link>
+              </div>
             </div>
           </div>
         )}

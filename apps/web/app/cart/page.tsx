@@ -15,11 +15,11 @@ import {
   Truck 
 } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
-import { useCart } from "../../hooks/useCart";
+import { useCartContext } from "../../components/cart-provider";
 import { isAuthenticated, buildLoginUrl } from "../../lib/auth";
 
 export default function CartPage() {
-  const { items, updateQuantity, removeItem, totalPrice, totalItems, clearCart } = useCart();
+  const { items, updateQuantity, removeItem, totalPrice, totalItems, clearCart } = useCartContext();
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [shippingNote, setShippingNote] = useState("");
   const [isOpenShippingCalc, setIsOpenShippingCalc] = useState(false);

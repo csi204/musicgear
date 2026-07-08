@@ -29,21 +29,18 @@ export const paymentSuccessEvent = z.object({
   orderId: uuidSchema,
   customerId: uuidSchema,
   amount: z.number(),
+  items: z.array(
+    z.object({
+      productId: uuidSchema,
+      productName: z.string(),
+      category: z.string(),
+      quantitySold: z.number().int().positive(),
+      revenue: z.number(),
+    })
+  ),
 });
 
-export const addressCreatedEvent = z.object({
-  event: z.literal("address.created"),
-  addressId: uuidSchema,
-  customerId: uuidSchema,
-  addressData: z.any(), // Add specific fields if needed
-});
-
-export const addressUpdatedEvent = z.object({
-  event: z.literal("address.updated"),
-  addressId: uuidSchema,
-  customerId: uuidSchema,
-  addressData: z.any(),
-});
+// addressCreatedEvent and addressUpdatedEvent are defined below with full fields (from Khet)
 
 // subscriber ทั้งสองตัวที่ต้องฟัง event ชุดนี้ (QStash Topic fan-out)
 export const QSTASH_SUBSCRIBERS = {
@@ -136,6 +133,4 @@ export const qstashWebhookSchema = z.discriminatedUnion("event", [
   addressCreatedEvent,
   addressUpdatedEvent,
   productCreatedEvent,
-  addressCreatedEvent,
-  addressUpdatedEvent,
 ]);

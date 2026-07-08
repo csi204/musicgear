@@ -2,6 +2,7 @@ import { Inter, Noto_Sans_Thai, Outfit, Anuphan } from "next/font/google"
 import { Geist_Mono } from "next/font/google"
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { CartProvider } from "@/components/cart-provider"
 import { cn } from "@workspace/ui/lib/utils";
 
 const fontSans = Inter({ subsets: ["latin"], variable: "--font-sans" })
@@ -48,7 +49,11 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider defaultTheme="light" enableSystem={false}>{children}</ThemeProvider>
+        <ThemeProvider defaultTheme="light" enableSystem={false}>
+          <CartProvider>
+            {children}
+          </CartProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

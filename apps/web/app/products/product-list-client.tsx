@@ -5,13 +5,17 @@ import Link from "next/link";
 import { SlidersHorizontal, ChevronDown, Home } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 import { getApiBaseUrl } from "../../lib/auth";
-import {
-  Product,
-  guitarProducts,
-  keyboardProducts,
-  drumProducts,
-  proAudioProducts,
-} from "../../lib/products-data";
+export interface Product {
+  id: string;
+  productId: string;
+  brand: string;
+  title: string;
+  price: number;
+  originalPrice?: number;
+  imageUrl: string;
+  colors: { name: string; hex: string }[];
+  imagesByColor?: { [color: string]: string };
+}
 
 interface ProductListClientProps {
   initialCategory?: string;
@@ -26,12 +30,26 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
   useEffect(() => {
     async function loadProducts() {
       try {
-        setLoading(true);
+        if (typeof window !== "undefined") {
+          const cached = sessionStorage.getItem("mg_cached_products");
+          if (cached) {
+            setProducts(JSON.parse(cached));
+            setLoading(false);
+          } else {
+            setLoading(true);
+          }
+        } else {
+          setLoading(true);
+        }
+
         const res = await fetch(`${getApiBaseUrl()}/products?limit=100&status=active`);
         if (res.ok) {
           const data = await res.json();
           if (data.status === "ok" && data.products) {
             setProducts(data.products);
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem("mg_cached_products", JSON.stringify(data.products));
+            }
           }
         }
       } catch (err) {
@@ -95,12 +113,7 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
         comparisons: []
       }));
     } else {
-      displayProducts = [
-        ...guitarProducts,
-        ...keyboardProducts,
-        ...drumProducts,
-        ...proAudioProducts,
-      ];
+      displayProducts = [];
     }
 
     if (initialCategory) {
@@ -110,45 +123,37 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
           title = "คีย์บอร์ดทั้งหมด";
           bannerUrl = "/hero/hero_keyboard.png";
           breadcrumb = "คีย์บอร์ด";
-          displayProducts = products.length > 0
-            ? displayProducts.filter(p => {
+          displayProducts = displayProducts.filter(p => {
                 const orig = products.find(o => o.slug === p.id);
                 return orig?.category?.name?.toLowerCase().includes("keyboard");
-              })
-            : keyboardProducts;
+              });
           break;
         case "drums":
           title = "กลองทั้งหมด";
           bannerUrl = "/catagory/drum.jpg";
           breadcrumb = "กลอง";
-          displayProducts = products.length > 0
-            ? displayProducts.filter(p => {
+          displayProducts = displayProducts.filter(p => {
                 const orig = products.find(o => o.slug === p.id);
                 return orig?.category?.name?.toLowerCase().includes("drum");
-              })
-            : drumProducts;
+              });
           break;
         case "pro-audio":
           title = "เครื่องเสียงโปรทั้งหมด";
           bannerUrl = "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80";
           breadcrumb = "เครื่องเสียงโปร";
-          displayProducts = products.length > 0
-            ? displayProducts.filter(p => {
+          displayProducts = displayProducts.filter(p => {
                 const orig = products.find(o => o.slug === p.id);
                 return orig?.category?.name?.toLowerCase().match(/audio|sound|speaker/);
-              })
-            : proAudioProducts;
+              });
           break;
         case "guitars":
           title = "กีต้าร์ทั้งหมด";
           bannerUrl = "/catagory/guitar.jpg";
           breadcrumb = "กีต้าร์";
-          displayProducts = products.length > 0
-            ? displayProducts.filter(p => {
+          displayProducts = displayProducts.filter(p => {
                 const orig = products.find(o => o.slug === p.id);
                 return orig?.category?.name?.toLowerCase().includes("guitar");
-              })
-            : guitarProducts;
+              });
           break;
         default:
           break;

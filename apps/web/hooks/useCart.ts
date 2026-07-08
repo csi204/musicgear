@@ -74,7 +74,11 @@ const cartApi = {
       headers: getHeaders(),
       body: JSON.stringify(item),
     });
-    if (!res.ok) throw new Error("Failed to add item");
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Add item failed:", res.status, text);
+      throw new Error(`Failed to add item: ${res.status} ${text}`);
+    }
     return res.json();
   },
   async updateItem(cartId: string, itemId: string, quantity: number) {

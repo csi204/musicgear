@@ -7,11 +7,11 @@ import { LoginButton } from "./login-button";
 import { useState, useEffect } from "react";
 import { cn } from "@workspace/ui/lib/utils";
 
-import { useCart } from "../hooks/useCart";
+import { useCartContext } from "./cart-provider";
 import { CartDrawer } from "./cart-drawer";
 
 export function Navbar() {
-  const { totalItems } = useCart();
+  const { totalItems } = useCartContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -24,6 +24,7 @@ export function Navbar() {
   }, []);
 
   return (
+    <>
     <header className="sticky top-0 z-50 w-full border-b border-white bg-white backdrop-blur-sm">
       <div className="mx-auto flex max-w-7xl h-20 items-center justify-between px-6">
         
@@ -186,7 +187,8 @@ export function Navbar() {
           </nav>
         </div>
       )}
+      </header>
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-    </header>
+    </>
   );
 }

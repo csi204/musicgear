@@ -59,7 +59,7 @@ export function OrdersClient() {
         }
 
         // 2. Fetch orders list from order-svc
-        const res = await fetch(`${getApiBaseUrl()}/orders?customerId=${user.userId}`, {
+        const res = await fetch(`${getApiBaseUrl()}/orders?customerId=${user.id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

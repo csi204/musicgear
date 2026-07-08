@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useCart } from "../../hooks/useCart";
+import { useCartContext } from "../../components/cart-provider";
 import { getApiBaseUrl, getAccessToken, isAuthenticated } from "../../lib/auth";
 import { Navbar } from "../../components/navbar";
 import { Footer } from "../../components/footer";
@@ -34,7 +34,7 @@ interface Address {
 
 export function CheckoutClient() {
   const router = useRouter();
-  const { items, totalPrice, cartId, clearCart } = useCart();
+  const { items, totalPrice, cartId, clearCart } = useCartContext();
   
   // States
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -147,7 +147,8 @@ export function CheckoutClient() {
           setSelectedAddressId(data.address.addressId);
         }
       } else {
-        alert("บันทึกที่อยู่ล้มเหลว กรุณาลองใหม่อีกครั้ง");
+        const errData = await res.json().catch(() => ({}));
+        alert(`บันทึกที่อยู่ล้มเหลว กรุณาลองใหม่อีกครั้ง (Error: ${errData?.error?.message || res.status})`);
       }
     } catch (err) {
       console.error("Save address error:", err);
@@ -209,8 +210,8 @@ export function CheckoutClient() {
         // Order successfully created! 
         // Clear local cart state
         await clearCart();
-        // Redirect to success details page
-        router.push(`/orders/${data.orderId}`);
+        // Redirect to payment page
+        router.push(`/payment?orderId=${data.orderId}`);
       } else {
         const error = data.error;
         if (error?.code === "CONFLICT" || error?.code === "OUT_OF_STOCK") {
