@@ -12,7 +12,7 @@ const app = new Hono();
 // ยกเว้น health check และ webhooks
 // ──────────────────────────────────────────────────────────────────────────────
 app.use("/stock/*", (c, next) => {
-  const authMiddleware = createAuthMiddleware("https://musicgear.kinde.com");
+  const authMiddleware = createAuthMiddleware();
   return authMiddleware(c, next);
 });
 

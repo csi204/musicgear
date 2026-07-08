@@ -4,7 +4,7 @@ import { createPrisma } from "./db/prisma.js";
 import { z } from "zod";
 
 const app = new Hono()
-const authMiddleware = createAuthMiddleware("https://musicgear.kinde.com");
+const authMiddleware = createAuthMiddleware();
 const requireAdmin = createRoleMiddleware(["admin"]);
 
 app.get('/', (c) => c.json({ status: 'ok', service: 'payment' }))

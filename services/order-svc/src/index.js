@@ -6,7 +6,7 @@ import { createPrisma } from "./db/prisma.js";
 import { OrderService } from "./services/order.service.js";
 
 const app = new Hono()
-const authMiddleware = createAuthMiddleware("https://musicgear.kinde.com");
+const authMiddleware = createAuthMiddleware();
 
 app.get('/', (c) => c.json({ status: 'ok', service: 'order-svc' }));
 

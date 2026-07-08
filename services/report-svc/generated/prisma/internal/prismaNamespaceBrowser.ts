@@ -52,7 +52,9 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   DailySalesReport: 'DailySalesReport',
-  SystemAuditLog: 'SystemAuditLog'
+  InventorySnapshot: 'InventorySnapshot',
+  SystemAuditLog: 'SystemAuditLog',
+  ProductSalesSnapshot: 'ProductSalesSnapshot'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -82,6 +84,20 @@ export const DailySalesReportScalarFieldEnum = {
 export type DailySalesReportScalarFieldEnum = (typeof DailySalesReportScalarFieldEnum)[keyof typeof DailySalesReportScalarFieldEnum]
 
 
+export const InventorySnapshotScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  productName: 'productName',
+  category: 'category',
+  stockLevel: 'stockLevel',
+  reorderPoint: 'reorderPoint',
+  status: 'status',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InventorySnapshotScalarFieldEnum = (typeof InventorySnapshotScalarFieldEnum)[keyof typeof InventorySnapshotScalarFieldEnum]
+
+
 export const SystemAuditLogScalarFieldEnum = {
   logId: 'logId',
   eventType: 'eventType',
@@ -91,6 +107,20 @@ export const SystemAuditLogScalarFieldEnum = {
 } as const
 
 export type SystemAuditLogScalarFieldEnum = (typeof SystemAuditLogScalarFieldEnum)[keyof typeof SystemAuditLogScalarFieldEnum]
+
+
+export const ProductSalesSnapshotScalarFieldEnum = {
+  id: 'id',
+  reportDate: 'reportDate',
+  productId: 'productId',
+  productName: 'productName',
+  category: 'category',
+  quantitySold: 'quantitySold',
+  revenue: 'revenue',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProductSalesSnapshotScalarFieldEnum = (typeof ProductSalesSnapshotScalarFieldEnum)[keyof typeof ProductSalesSnapshotScalarFieldEnum]
 
 
 export const SortOrder = {

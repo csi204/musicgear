@@ -29,6 +29,8 @@ const fontAnuphan = Anuphan({
   weight: ["300", "400", "500", "600", "700"],
 })
 
+import { SessionProvider } from "next-auth/react";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -49,11 +51,13 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider defaultTheme="light" enableSystem={false}>
-          <CartProvider>
-            {children}
-          </CartProvider>
-        </ThemeProvider>
+        <SessionProvider>
+          <ThemeProvider defaultTheme="light" enableSystem={false}>
+            <CartProvider>
+              {children}
+            </CartProvider>
+          </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   )

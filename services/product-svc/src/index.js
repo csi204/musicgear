@@ -7,13 +7,13 @@ const app = new Hono();
 // Auth Middleware — เฉพาะ request ที่ไม่ใช่ GET (POST, PATCH, DELETE) ต้องผ่าน verifyKindeToken
 app.use("/products", async (c, next) => {
   if (c.req.method === "GET") return await next();
-  const authMiddleware = createAuthMiddleware("https://musicgear.kinde.com");
+  const authMiddleware = createAuthMiddleware();
   return authMiddleware(c, next);
 });
 
 app.use("/products/*", async (c, next) => {
   if (c.req.method === "GET") return await next();
-  const authMiddleware = createAuthMiddleware("https://musicgear.kinde.com");
+  const authMiddleware = createAuthMiddleware();
   return authMiddleware(c, next);
 });
 
