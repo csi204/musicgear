@@ -206,7 +206,7 @@ Requirement หลักของระบบ (ตามเกณฑ์ - คร
 ---
 
 ### 🔧 Persona 2 — Staff: "นอท"
-**อายุ:** 23 ปี | พนักงานดูแลคลังและจัดเตรียมสินค้า | **เป้าหมาย:** จัดเตรียมสินค้าตามออเดอร์และหยิบแพ็กสินค้าส่งออกได้ถูกต้อง รวดเร็ว 100%
+**อายุ:** 23 ปี | พนักงานจัดการสินค้าและคลัง | **เป้าหมาย:** จัดการข้อมูลสินค้าในระบบ จัดเตรียมสินค้าตามออเดอร์ และหยิบแพ็กสินค้าส่งออกได้ถูกต้อง รวดเร็ว 100%
 
 > *"ลูกค้าชอบสั่งสินค้าหลายชิ้นพร้อมกันเพราะกลัวว่าซื้อไปแล้วจะใช้ด้วยกันไม่ได้ แต่ในระบบคลังเราต้องมานั่งแยกเช็กทีละชิ้น ถ้าออเดอร์ไหนรายละเอียดไม่ชัดเจน ตอนไปหยิบของจะวุ่นวายและเสียเวลามาก"*
 
@@ -221,9 +221,9 @@ Requirement หลักของระบบ (ตามเกณฑ์ - คร
 ---
 
 ### 📊 Persona 3 — Admin: "แนท"
-**อายุ:** 29 ปี | ผู้ดูแลระบบและจัดการคอนเทนต์สินค้า | **เป้าหมาย:** เพิ่ม ลบ แก้ไขข้อมูลสินค้า และจัดหมวดหมู่สินค้าให้เข้าใจง่าย เพื่อช่วยให้ลูกค้าตัดสินใจซื้อได้เร็วที่สุดโดยไม่ต้องลองถามเพิ่ม
+**อายุ:** 29 ปี | ผู้ดูแลระบบ | **เป้าหมาย:** จัดการผู้ใช้งานในระบบ (Staff/Customer) และดูรายงานสรุปยอดขาย การเงิน เพื่อนำไปวิเคราะห์ภาพรวมธุรกิจ
 
-> *"การจัดหมวดหมู่และใส่รายละเอียดสินค้าดนตรีให้มือใหม่เข้าใจง่ายเป็นเรื่องท้าทายมาก ถ้าเราไม่สามารถเชื่อมโยงสินค้าที่เข้ากันได้ ระบบข้อมูลก็จะดูรกและไม่ช่วยให้ลูกค้าตัดสินใจได้เลย"*
+> *"การมีข้อมูลสรุปที่ชัดเจนและจัดการผู้ใช้งานได้ง่าย จะช่วยให้มองเห็นภาพรวมของธุรกิจและสามารถดูแลความปลอดภัยของระบบได้ดีขึ้น"*
 
 **🩹 Pain Points**
 - **ขาดภาพรวมข้อมูลที่เข้าใจง่าย:** ปัจจุบันต้องมานั่งสรุปข้อมูลเองจากหลายๆ หน้า ไม่สามารถดูภาพรวมของระบบหรือ Export ออกมาเป็นรายงานเพื่อใช้งานต่อได้ทันที
@@ -291,7 +291,6 @@ flowchart LR
         UC_Search(("Search Product"))
         UC_Filter(("Filter Product"))
         UC_ViewDetail(("View Product Detail"))
-        UC_Compare(("Compare Product"))
         UC_ManageCart(("Manage Cart"))
         UC_AddCart(("Add to Cart"))
         UC_ManageAddress(("Manage Address"))
@@ -300,23 +299,18 @@ flowchart LR
         UC_SelectPayMethod(("Select Payment Method"))
         UC_TrackOrder(("Track Order"))
         UC_OrderHistory(("Order History"))
-        UC_Review(("Write Review"))
         UC_Notification(("Receive Notification"))
-        UC_BackInStock(("Subscribe Back-in-Stock"))
     end
 
     Customer --- UC_Browse
     Customer --- UC_Search
-    Customer --- UC_Compare
     Customer --- UC_ManageCart
     Customer --- UC_ManageAddress
     Customer --- UC_Checkout
     Customer --- UC_Pay
     Customer --- UC_TrackOrder
     Customer --- UC_OrderHistory
-    Customer --- UC_Review
     Customer --- UC_Notification
-    Customer --- UC_BackInStock
 
     UC_Browse -.->|"<<extend>>"| UC_Filter
     UC_Search -.->|"<<extend>>"| UC_Filter
@@ -329,6 +323,9 @@ flowchart LR
     %% ── Staff Use Cases ──
     subgraph StaffUC["Staff"]
         direction TB
+        UC_ManageProduct(("Manage Product"))
+        UC_ManageCategory(("Manage Category"))
+        UC_ManageBrand(("Manage Brand"))
         UC_ViewOrders(("View Order List"))
         UC_ConfirmOrder(("Confirm Order"))
         UC_PrepareOrder(("Prepare / Pack Order"))
@@ -341,6 +338,9 @@ flowchart LR
         UC_StaffDashboard(("View Dashboard"))
     end
 
+    Staff --- UC_ManageProduct
+    Staff --- UC_ManageCategory
+    Staff --- UC_ManageBrand
     Staff --- UC_ViewOrders
     Staff --- UC_ConfirmOrder
     Staff --- UC_PrepareOrder
@@ -360,9 +360,6 @@ flowchart LR
     subgraph AdminUC["Admin"]
         direction TB
         UC_AdminDashboard(("Admin Dashboard"))
-        UC_ManageProduct(("Manage Product"))
-        UC_ManageCategory(("Manage Category"))
-        UC_ManageBrand(("Manage Brand"))
         UC_ManageUser(("Manage User"))
         UC_SalesReport(("Sales Report"))
         UC_InventoryReport(("Inventory Report"))
@@ -370,9 +367,6 @@ flowchart LR
     end
 
     Admin --- UC_AdminDashboard
-    Admin --- UC_ManageProduct
-    Admin --- UC_ManageCategory
-    Admin --- UC_ManageBrand
     Admin --- UC_ManageUser
     Admin --- UC_SalesReport
     Admin --- UC_InventoryReport
@@ -849,6 +843,21 @@ sequenceDiagram
 
 ### 2. Staff
 
+
+    %% Manage Product — Create
+    S->>GW: POST /products  {productData + imageFile}
+    GW->>PS: createProduct(data)
+    PS->>R2: uploadImage(file)
+    R2-->>PS: imageUrl
+    PS-->>GW: Product created
+    GW-->>S: สร้างสินค้าใหม่สำเร็จ
+
+    %% Manage Product — Edit
+    S->>GW: PUT /products/:productId  {price, skillLevel, ...}
+    GW->>PS: updateProduct(id, data)
+    PS-->>GW: Product updated
+    GW-->>S: อัปเดตข้อมูลสินค้าสำเร็จ
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -923,6 +932,21 @@ sequenceDiagram
     GW->>Rep: getDashboardSummary()
     Rep-->>GW: totalOrders, lowStockAlerts, pendingOrders
     GW-->>S: แสดง Dashboard
+
+    %% Manage Product — Create
+    S->>GW: POST /products  {productData + imageFile}
+    GW->>PS: createProduct(data)
+    PS->>R2: uploadImage(file)
+    R2-->>PS: imageUrl
+    PS-->>GW: Product created
+    GW-->>S: สร้างสินค้าใหม่สำเร็จ
+
+    %% Manage Product — Edit
+    S->>GW: PUT /products/:productId  {price, skillLevel, ...}
+    GW->>PS: updateProduct(id, data)
+    PS-->>GW: Product updated
+    GW-->>S: อัปเดตข้อมูลสินค้าสำเร็จ
+
 ```
 
 ### 3. Admin
@@ -933,70 +957,24 @@ sequenceDiagram
     actor A as Admin
     participant GW as API Gateway
     participant US as user-svc
-    participant PS as product-svc
-    participant InvS as inventory-svc
     participant Rep as report-svc
-    participant R2 as Cloudflare R2
 
     %% Login
     A->>GW: POST /auth/verify  {email, password}
-    GW->>US: verifyCredentials → JWT (role=admin)
+    GW->>US: verifyCredentials ➔ JWT (role=admin)
     GW-->>A: Login สำเร็จ
 
-    %% Admin Dashboard
+    %% Admin Dashboard & Reports
     A->>GW: GET /reports/dashboard
     GW->>Rep: getDashboardSummary()
     Rep-->>GW: totalOrders, totalRevenue, topProducts
     GW-->>A: แสดง Dashboard สรุปภาพรวม
 
-    %% Manage Product — Create
-    A->>GW: POST /products  {productData + imageFile}
-    GW->>PS: createProduct(data)
-    PS->>R2: uploadImage(file)
-    R2-->>PS: imageUrl
-    PS-->>GW: Product created
-    GW-->>A: บันทึกสินค้าแล้ว
-
-    %% Manage Product — Edit (รวม skillLevel)
-    A->>GW: PUT /products/:productId  {price, skillLevel, ...}
-    GW->>PS: updateProduct(productId, data)
-    PS-->>GW: Product updated
-    GW-->>A: อัปเดตแล้ว
-
-    %% Manage Category / Brand
-    A->>GW: POST /products/categories  {name}
-    GW->>PS: createCategory(data)
-    PS-->>GW: Category created
-    GW-->>A: บันทึกหมวดหมู่แล้ว
-
-    %% Manage Users
-    A->>GW: GET /users
-    GW->>US: getAllUsers()
-    US-->>GW: User list (all roles)
-    GW-->>A: แสดงรายชื่อผู้ใช้
-
-    A->>GW: PUT /users/:userId  {status: banned}
+    %% Manage Users (Suspend/Ban)
+    A->>GW: PUT /users/:userId/status {status: banned}
     GW->>US: updateUserStatus(userId, banned)
-    US-->>GW: Updated
-    GW-->>A: ยืนยันแล้ว
-
-    %% Sales Report
-    A->>GW: GET /reports/sales?start=&end=
-    GW->>Rep: getSalesReport(dateRange)
-    Rep-->>GW: DailySalesReport + ProductSalesSnapshot
-    GW-->>A: แสดงรายงานยอดขาย
-
-    %% Inventory Report
-    A->>GW: GET /reports/inventory
-    GW->>Rep: getInventoryReport()
-    Rep-->>GW: InventorySnapshot (stockLevel, status)
-    GW-->>A: แสดงรายงานสต็อก
-
-    %% Financial Report
-    A->>GW: GET /reports/financial
-    GW->>Rep: getFinancialReport()
-    Rep-->>GW: Revenue summary (จาก DailySalesReport)
-    GW-->>A: แสดงรายงานการเงิน
+    US-->>GW: User banned
+    GW-->>A: อัปเดตสถานะผู้ใช้สำเร็จ
 ```
 
 ---
@@ -1441,7 +1419,6 @@ flowchart TB
 | CUS-15 | Payment — ล้มเหลว (negative) | ใช้บัตรที่ถูก decline โดย sandbox | Omise decline test card | แสดง error, order ไม่เปลี่ยนสถานะ, สต็อกที่ reserve ไว้ถูกคืน (releaseStock) | | |
 | CUS-16 | Order Tracking | เข้าหน้า "My Orders" ดูสถานะ order ที่สั่งไว้ | order ที่ confirm แล้ว | แสดงสถานะปัจจุบันถูกต้อง (pending/packed/shipped/delivered) | | |
 | CUS-17 | Order History | เข้าดูประวัติคำสั่งซื้อทั้งหมด | account ที่มี order เก่า | แสดงรายการ order ย้อนหลังครบถ้วน เรียงตามวันที่ | | |
-| CUS-18 | Write Review | ให้คะแนนดาว + เขียนคอมเมนต์สินค้า | rating: 5, comment: "เสียงดีมาก" | รีวิวถูกบันทึกและแสดงในหน้าสินค้า | | |
 
 ## 🔧 UAT — Staff (ผู้ทดสอบ: เดียร์)
 
@@ -1461,6 +1438,12 @@ flowchart TB
 | STF-12 | Manage Bundle — Edit | แก้ไข discount หรือรายการสินค้าใน bundle ที่มีอยู่ | bundle ที่สร้างไว้ | ข้อมูล bundle อัปเดตสำเร็จ | | |
 | STF-13 | Manage Bundle — Delete | ลบ bundle ออกจากรายการ | bundle ที่สร้างไว้ | bundle ถูกลบ ไม่ปรากฏในรายการอีก | | |
 | STF-14 | Staff Dashboard | เข้าหน้า Dashboard | - | แสดงสรุป: order รอจัดเตรียม, สต็อก Low/Critical, ยอด order วันนี้ | | |
+| STF-15 | Manage Category — Create | สร้างหมวดหมู่ใหม่ | name: "Guitar Accessories" | บันทึกสำเร็จ, เลือกใช้ตอนสร้างสินค้าได้ | | |
+| STF-16 | Manage Category — Edit/Delete | แก้ไขชื่อ / ลบ category ที่ไม่มีสินค้าผูก | category ทดสอบ | แก้ไข/ลบสำเร็จ | | |
+| STF-17 | Manage Category — Delete (negative) | ลบ category ที่ยังมีสินค้าผูกอยู่ | category ที่มี product | ระบบ block การลบ พร้อมแจ้งเตือน | | |
+| STF-18 | Manage Product — Create | เพิ่มสินค้าใหม่ พร้อมอัปโหลดรูปภาพ | productData + รูป 1 ไฟล์ | สินค้าถูกสร้าง, รูปอัปโหลดขึ้น Cloudflare R2 สำเร็จ | | |
+| STF-19 | Manage Product — Edit | แก้ไขราคา/รายละเอียด/skillLevel สินค้าเดิม | product เดิม | ข้อมูลอัปเดต ราคาที่แสดงฝั่ง customer เปลี่ยนตาม แต่ order เก่าไม่เปลี่ยน (snapshot) | | |
+| STF-20 | Manage Product — Set SkillLevel | ตั้งค่า skillLevel = beginner ให้สินค้า | product 1 ชิ้น | สินค้าถูก tag beginner, ฝั่ง customer filter ด้วย skillLevel=beginner เจอสินค้านี้ | | |
 
 ## 📊 UAT — Admin (ผู้ทดสอบ: เขต)
 
@@ -1469,14 +1452,8 @@ flowchart TB
 | ADM-01 | Login | login ด้วย account role=admin | admin account | login สำเร็จ, เข้าสู่ Admin Portal | | |
 | ADM-02 | Access Control | ลอง login ด้วย customer/staff account แล้วเข้า URL ของ Admin ตรงๆ | non-admin JWT | ระบบ block ไม่ให้เข้าถึง route admin ใดๆ | | |
 | ADM-03 | View Dashboard | เข้าหน้า dashboard หลัก | - | แสดงสรุป totalOrders, totalRevenue, topProducts ภาพรวม | | |
-| ADM-04 | Manage Category — Create | สร้างหมวดหมู่ใหม่ | name: "Guitar Accessories" | บันทึกสำเร็จ, เลือกใช้ตอนสร้างสินค้าได้ | | |
-| ADM-05 | Manage Category — Edit/Delete | แก้ไขชื่อ / ลบ category ที่ไม่มีสินค้าผูก | category ทดสอบ | แก้ไข/ลบสำเร็จ | | |
-| ADM-06 | Manage Category — Delete (negative) | ลบ category ที่ยังมีสินค้าผูกอยู่ | category ที่มี product | ระบบ block การลบ พร้อมแจ้งเตือน | | |
-| ADM-07 | Manage Product — Create | เพิ่มสินค้าใหม่ พร้อมอัปโหลดรูปภาพ | productData + รูป 1 ไฟล์ | สินค้าถูกสร้าง, รูปอัปโหลดขึ้น Cloudflare R2 สำเร็จ | | |
-| ADM-08 | Manage Product — Edit | แก้ไขราคา/รายละเอียด/skillLevel สินค้าเดิม | product เดิม | ข้อมูลอัปเดต ราคาที่แสดงฝั่ง customer เปลี่ยนตาม แต่ order เก่าไม่เปลี่ยน (snapshot) | | |
-| ADM-09 | Manage Product — Set SkillLevel | ตั้งค่า skillLevel = beginner ให้สินค้า | product 1 ชิ้น | สินค้าถูก tag beginner, ฝั่ง customer filter ด้วย skillLevel=beginner เจอสินค้านี้ | | |
-| ADM-10 | Manage User — View List | เข้าหน้ารายชื่อผู้ใช้ทั้งหมด | - | แสดงรายชื่อ user ทุก role พร้อมสถานะ | | |
-| ADM-11 | Manage User — Suspend/Ban | เปลี่ยนสถานะ user เป็น banned | customer account ทดสอบ | user ไม่สามารถ login ได้อีก จนกว่าจะถูกปลด ban | | |
-| ADM-12 | Sales Report | เข้าหน้ารายงานยอดขาย เลือกช่วงวันที่ | date range 1 เดือน | แสดงยอดขายรวม, สินค้าขายดี ตรงกับข้อมูล order จริงในระบบ | | |
-| ADM-13 | Inventory Report | เข้าหน้ารายงานสต็อก | - | แสดง InventorySnapshot รายสินค้า (stockLevel, status In Stock/Low/Critical) | | |
-| ADM-14 | Financial Report | เข้าหน้ารายงานการเงิน | - | แสดงรายรับรวม (จาก DailySalesReport) ตรงกับยอดขายใน Sales Report | | |
+| ADM-04 | Manage User — View List | เข้าหน้ารายชื่อผู้ใช้ทั้งหมด | - | แสดงรายชื่อ user ทุก role พร้อมสถานะ | | |
+| ADM-05 | Manage User — Suspend/Ban | เปลี่ยนสถานะ user เป็น banned | customer account ทดสอบ | user ไม่สามารถ login ได้อีก จนกว่าจะถูกปลด ban | | |
+| ADM-06 | Sales Report | เข้าหน้ารายงานยอดขาย เลือกช่วงวันที่ | date range 1 เดือน | แสดงยอดขายรวม, สินค้าขายดี ตรงกับข้อมูล order จริงในระบบ | | |
+| ADM-07 | Inventory Report | เข้าหน้ารายงานสต็อก | - | แสดง InventorySnapshot รายสินค้า (stockLevel, status In Stock/Low/Critical) | | |
+| ADM-08 | Financial Report | เข้าหน้ารายงานการเงิน | - | แสดงรายรับรวม (จาก DailySalesReport) ตรงกับยอดขายใน Sales Report | | |
