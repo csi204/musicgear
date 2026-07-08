@@ -1430,7 +1430,3 @@ flowchart TB
 | ADM-13 | Sales Report | เข้าหน้ารายงานยอดขาย เลือกช่วงวันที่ | date range 1 เดือน | แสดงยอดขายรวม, สินค้าขายดี ตรงกับข้อมูล order จริงในระบบ | | |
 | ADM-14 | Financial Report | เข้าหน้ารายงานผลลัพธ์ทางการเงิน | - | แสดงรายงานรายรับ-ค่าธรรมเนียม payment ถูกต้อง, ตัวเลขสอดคล้องกับ Sales Report | | |
 | ADM-15 | Manager-level Restriction (ถ้ามี role manager แยก) | login ด้วย manager account ดู revenue summary | manager account | เห็น top-line sales summary แต่ไม่เห็น margin/cost จริงของ admin | | |
-
----
-
-> 💡 **Tip:** เมื่อได้ผลลัพธ์จาก Stitch แล้ว สามารถ copy โทนสี (`#0B0B0E`, `#2F5DFF`, `#FF8A3D`, `#F5F3EE`) ไปตั้งเป็น CSS variables ใน Tailwind config เพื่อให้ดีไซน์ทุกหน้าจอสอดคล้องกันทั้งระบบ
