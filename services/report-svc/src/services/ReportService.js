@@ -255,4 +255,29 @@ export class ReportService {
       }
     };
   }
+
+  /**
+   * อัปเดตยอดคงคลัง (InventorySnapshot)
+   */
+  async upsertInventorySnapshot(data) {
+    return await this.db.inventorySnapshot.upsert({
+      where: { productId: data.productId },
+      update: {
+        productName: data.productName,
+        category: data.category,
+        stockLevel: data.stockLevel,
+        reorderPoint: data.reorderPoint,
+        status: data.status,
+        updatedAt: new Date(),
+      },
+      create: {
+        productId: data.productId,
+        productName: data.productName,
+        category: data.category,
+        stockLevel: data.stockLevel,
+        reorderPoint: data.reorderPoint,
+        status: data.status,
+      },
+    });
+  }
 }

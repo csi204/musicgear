@@ -76,6 +76,7 @@ export const InventoryScalarFieldEnum = {
   productId: 'productId',
   quantity: 'quantity',
   reservedQuantity: 'reservedQuantity',
+  reorderPoint: 'reorderPoint',
   updatedAt: 'updatedAt'
 } as const
 

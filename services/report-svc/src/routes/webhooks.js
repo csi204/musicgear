@@ -32,6 +32,8 @@ export class WebhookController {
         // Specific business logic for payment.success
         if (event.event === "payment.success" && event.amount) {
           await reportService.updateDailySales(event.amount);
+        } else if (event.event === "stock.updated") {
+          await reportService.upsertInventorySnapshot(event);
         }
 
         return c.json({ success: true, message: "Webhook processed" }, 200);
