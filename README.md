@@ -355,6 +355,9 @@ flowchart LR
     UC_ManageBundle -.->|"<<extend>>"| UC_ManageStock
     UC_ConfirmOrder -.->|"<<include>>"| UC_ViewOrders
     UC_PrepareOrder -.->|"<<include>>"| UC_CheckStock
+    UC_ManageCategory -.->|"<<extend>>"| UC_ManageProduct
+    UC_ManageBrand -.->|"<<extend>>"| UC_ManageProduct
+    UC_UpdateOrderStatus -.->|"<<include>>"| UC_ViewOrders
 
     %% ── Admin Use Cases ──
     subgraph AdminUC["Admin"]
