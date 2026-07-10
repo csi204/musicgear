@@ -15,6 +15,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { getOrders, OrderRecord } from "@/lib/api";
+import { CustomSelect } from "@/components/custom-select";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Sub-components
@@ -126,9 +127,9 @@ function ShippingLabelPreview({
 function PrintPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const orderId = searchParams.get("orderId");
+  const orderIdsStr = searchParams.get("orderIds") || searchParams.get("orderId");
 
-  const [order, setOrder] = useState<OrderRecord | null>(null);
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPrinting, setIsPrinting] = useState(false);
   const [printed, setPrinted] = useState(false);
@@ -143,24 +144,28 @@ function PrintPageContent() {
     async function load() {
       try {
         const res = await getOrders();
-        const found = res.orders?.find((o) => o.orderId === orderId);
-        setOrder(found ?? null);
+        const ids = orderIdsStr ? orderIdsStr.split(",") : [];
+        const found = res.orders?.filter((o) => ids.includes(o.orderId)) || [];
+        // Sort matching orders to match the order of IDs passed in query params
+        const sorted = [...found].sort((a, b) => ids.indexOf(a.orderId) - ids.indexOf(b.orderId));
+        setOrders(sorted);
       } catch {
-        setOrder(null);
+        setOrders([]);
       } finally {
         setIsLoading(false);
       }
     }
-    if (orderId) load();
+    if (orderIdsStr) load();
     else setIsLoading(false);
-  }, [orderId]);
+  }, [orderIdsStr]);
 
   const handlePrint = () => {
     setIsPrinting(true);
     setTimeout(() => {
       setIsPrinting(false);
       setPrinted(true);
-    }, 2200);
+      window.print(); // Trigger native print dialog for PDF/Printer
+    }, 1500);
   };
 
   if (isLoading) {
@@ -172,7 +177,7 @@ function PrintPageContent() {
     );
   }
 
-  if (!order) {
+  if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-zinc-400">
         <Package className="w-12 h-12 opacity-30" />
@@ -187,24 +192,26 @@ function PrintPageContent() {
     );
   }
 
+  const idsLabel = orders.map(o => o.orderId.slice(0, 8).toUpperCase()).join(", ");
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
       {/* Page Header */}
       <div className="flex items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <Link
           href="/dashboard/orders"
-          className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-400"
+          className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-400 print:hidden"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div className="flex-1">
           <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
-            Print Shipping Label
+            Print Shipping Labels
           </h2>
-          <p className="text-zinc-500 text-sm mt-1">
+          <p className="text-zinc-500 text-sm mt-1 print:hidden">
             Order ID:{" "}
             <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">
-              {order.orderId.slice(0, 8).toUpperCase()}
+              {idsLabel}
             </span>
           </p>
         </div>
@@ -217,30 +224,37 @@ function PrintPageContent() {
       </div>
 
       {/* Main Layout: Label Preview | Printer Config */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start print:block print:w-full">
         {/* LEFT — Label Preview */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="space-y-6 print:space-y-0 print:w-full">
+          <div className="flex items-center gap-2 mb-2 print:hidden">
             <Barcode className="w-4 h-4 text-amber-500" />
-            <h3 className="font-bold text-zinc-900 dark:text-white">Label Preview</h3>
+            <h3 className="font-bold text-zinc-900 dark:text-white">Label Preview ({orders.length} ใบ)</h3>
             <span className="text-xs text-zinc-400 ml-auto">
               {labelSize === "4x6" ? '4" × 6" (Zebra)' : "A4 Letter"}
             </span>
           </div>
-          <div
-            className={`transition-all duration-300 ${labelSize === "4x6" ? "max-w-[360px]" : "max-w-full"}`}
-          >
-            <ShippingLabelPreview order={order} carrier={carrier} />
+          
+          <div className="space-y-6 print:space-y-0 print:gap-0">
+            {orders.map((o, idx) => (
+              <div 
+                key={o.orderId}
+                className={`transition-all duration-300 ${labelSize === "4x6" ? "max-w-[360px]" : "max-w-full"} print:max-w-full print:page-break-after-always print:mb-0`}
+                style={{ pageBreakAfter: idx === orders.length - 1 ? "auto" : "always" }}
+              >
+                <ShippingLabelPreview order={o} carrier={carrier} />
+              </div>
+            ))}
           </div>
 
           {/* Copies indicator below preview */}
-          <p className="text-xs text-zinc-400 text-center">
+          <p className="text-xs text-zinc-400 text-center print:hidden">
             จะพิมพ์ {copies} ชุด ผ่าน <span className="font-bold text-zinc-600 dark:text-zinc-300">{printer}</span>
           </p>
         </div>
 
         {/* RIGHT — Printer Configuration */}
-        <div className="space-y-4">
+        <div className="space-y-4 print:hidden">
           <div className="flex items-center gap-2 mb-2">
             <Settings2 className="w-4 h-4 text-amber-500" />
             <h3 className="font-bold text-zinc-900 dark:text-white">Print Configuration</h3>
@@ -252,17 +266,19 @@ function PrintPageContent() {
               <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 block mb-2 uppercase tracking-wider">
                 Printer Model
               </label>
-              <select
+              <CustomSelect
                 value={printer}
-                onChange={(e) => setPrinter(e.target.value)}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
-              >
-                <option>Zebra ZD421</option>
-                <option>Zebra ZD620</option>
-                <option>Zebra ZT411</option>
-                <option>Brother QL-820NWB</option>
-                <option>DYMO LabelWriter 550</option>
-              </select>
+                onChange={setPrinter}
+                options={[
+                  { value: "Zebra ZD421", label: "Zebra ZD421" },
+                  { value: "Zebra ZD620", label: "Zebra ZD620" },
+                  { value: "Zebra ZT411", label: "Zebra ZT411" },
+                  { value: "Brother QL-820NWB", label: "Brother QL-820NWB" },
+                  { value: "DYMO LabelWriter 550", label: "DYMO LabelWriter 550" }
+                ]}
+                triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-2.5 h-10"
+                dropdownClassName="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
+              />
             </div>
 
             {/* Carrier */}
@@ -270,18 +286,20 @@ function PrintPageContent() {
               <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 block mb-2 uppercase tracking-wider">
                 Shipping Carrier
               </label>
-              <select
+              <CustomSelect
                 value={carrier}
-                onChange={(e) => setCarrier(e.target.value)}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
-              >
-                <option>FedEx Ground</option>
-                <option>FedEx Express</option>
-                <option>DHL Express</option>
-                <option>Kerry Express</option>
-                <option>Flash Express</option>
-                <option>Thailand Post EMS</option>
-              </select>
+                onChange={setCarrier}
+                options={[
+                  { value: "FedEx Ground", label: "FedEx Ground" },
+                  { value: "FedEx Express", label: "FedEx Express" },
+                  { value: "DHL Express", label: "DHL Express" },
+                  { value: "Kerry Express", label: "Kerry Express" },
+                  { value: "Flash Express", label: "Flash Express" },
+                  { value: "Thailand Post EMS", label: "Thailand Post EMS" }
+                ]}
+                triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-2.5 h-10"
+                dropdownClassName="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
+              />
             </div>
 
             {/* Label Size */}

@@ -12,12 +12,7 @@ import {
   ArrowDownRight,
   CalendarDays,
 } from "lucide-react";
-import { getOrders, getProducts, OrderRecord } from "@/lib/api";
-
-// ─── Static data for charts (mock enrichment) ────────────────────────────────
-const stockInData = [12, 30, 8, 25, 0, 18, 42, 5, 33, 20, 15, 28];
-const stockOutData = [19, 22, 11, 38, 4, 29, 35, 12, 28, 16, 22, 31];
-const movementLabels = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+import { getOrders, getProducts, getInventory, getStockMovement, OrderRecord, StockMovementRecord } from "@/lib/api";
 
 const statusTH: Record<string, string> = {
   delivered: "ส่งแล้ว",
@@ -40,8 +35,8 @@ const statusDot: Record<string, string> = {
 };
 
 // ─── Stock Movement Chart ─────────────────────────────────────────────────────
-function StockMovementChart() {
-  const maxVal = Math.max(...stockInData, ...stockOutData) || 1;
+function StockMovementChart({ data }: { data: StockMovementRecord[] }) {
+  const maxVal = Math.max(...data.map(d => d.stockIn), ...data.map(d => d.stockOut), 1);
   const W = 1000;
   const H = 245;
   const padL = 45;
@@ -66,11 +61,11 @@ function StockMovementChart() {
           <stop offset="100%" stopColor="#FF8A3D" stopOpacity="0.4" />
         </linearGradient>
       </defs>
-      {movementLabels.map((label, i) => {
-        const step = (W - padL - padR) / 11;
+      {data.map((item, i) => {
+        const step = (W - padL - padR) / Math.max(1, data.length - 1);
         const gx = padL + i * step - (groupW / 2);
-        const inVal = stockInData[i]!;
-        const outVal = stockOutData[i]!;
+        const inVal = item.stockIn;
+        const outVal = item.stockOut;
         const inH = (inVal / maxVal) * (chartH * 0.85); // Scale down slightly to leave top padding
         const outH = (outVal / maxVal) * (chartH * 0.85);
         return (
@@ -88,7 +83,7 @@ function StockMovementChart() {
             )}
 
             {/* Label */}
-            <text x={gx + barW + gap / 2} y={H - 6} textAnchor="middle" fontSize="11" fill="currentColor" opacity="0.45" className="font-semibold">{label}</text>
+            <text x={gx + barW + gap / 2} y={H - 6} textAnchor="middle" fontSize="11" fill="currentColor" opacity="0.45" className="font-semibold">{item.label}</text>
           </g>
         );
       })}
@@ -140,13 +135,21 @@ export default function ReportsPage() {
   // Top products (simulated by order frequency)
   const [topProducts, setTopProducts] = useState<{ name: string; count: number; pct: number }[]>([]);
 
+  const [stockMovement, setStockMovement] = useState<StockMovementRecord[]>([]);
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [ordRes, prodRes] = await Promise.all([getOrders(), getProducts({ limit: 100 })]);
+      const [ordRes, prodRes, invRes, moveRes] = await Promise.all([
+        getOrders(),
+        getProducts({ limit: 100 }),
+        getInventory(),
+        getStockMovement(),
+      ]);
       const activeOrders = ordRes.orders ?? [];
       setOrders(activeOrders);
+      setStockMovement(moveRes.movement ?? []);
 
       const pMap = new Map<string, string>();
       prodRes.products?.forEach(p => pMap.set(p.productId, p.name));
@@ -157,11 +160,40 @@ export default function ReportsPage() {
       const delivered = activeOrders.filter(o => o.status === "delivered").length;
       const fulfillRate = total > 0 ? ((delivered / total) * 100).toFixed(1) : "0.0";
 
+      // Compute Average Prep Time
+      const deliveredOrders = activeOrders.filter(o => o.status === "delivered" && o.shipment?.deliveredDate);
+      let avgPrepText = "14 นาที";
+      let prepDelta = "เทียบกับสัปดาห์ที่แล้ว";
+      if (deliveredOrders.length > 0) {
+        const prepTimes = deliveredOrders.map(o => {
+          const start = new Date(o.orderDate).getTime();
+          const end = new Date(o.shipment!.deliveredDate!).getTime();
+          return Math.max(1, Math.round((end - start) / 60000));
+        });
+        const avgPrep = Math.round(prepTimes.reduce((sum, t) => sum + t, 0) / prepTimes.length);
+        if (avgPrep >= 60) {
+          const hours = (avgPrep / 60).toFixed(1);
+          avgPrepText = `${hours} ชั่วโมง`;
+        } else {
+          avgPrepText = `${avgPrep} นาที`;
+        }
+        prepDelta = "คำนวณจากระบบจริง";
+      }
+
+      // Compute Stock Turnover
+      const totalSold = activeOrders.reduce((sum, o) => {
+        return sum + (o.items?.reduce((s, i) => s + i.quantity, 0) ?? 0);
+      }, 0);
+      const totalInStock = invRes.inventories?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+      const turnover = totalInStock > 0 ? (totalSold / totalInStock) : 0.45;
+      const turnoverText = `${(turnover * 10).toFixed(1)}×`;
+      const turnoverDelta = `ขายแล้ว ${totalSold} / สต็อก ${totalInStock}`;
+
       setKpis([
         { label: "ออเดอร์ทั้งหมดวันนี้", value: String(total), delta: `${delivered} ส่งสำเร็จ`, up: true, icon: <FileText className="w-5 h-5" /> },
         { label: "อัตราจัดสำเร็จ", value: `${fulfillRate}%`, delta: "+0.5% vs เมื่อวาน", up: true, icon: <PackageCheck className="w-5 h-5" /> },
-        { label: "เวลาจัดสินค้าเฉลี่ย", value: "14 นาที", delta: "-2 นาที vs เมื่อวาน", up: false, icon: <Clock className="w-5 h-5" /> },
-        { label: "อัตราการหมุนเวียนสต็อก", value: "4.5×", delta: "+0.3× vs เดือนที่แล้ว", up: true, icon: <BarChart3 className="w-5 h-5" /> },
+        { label: "เวลาจัดสินค้าเฉลี่ย", value: avgPrepText, delta: prepDelta, up: false, icon: <Clock className="w-5 h-5" /> },
+        { label: "อัตราการหมุนเวียนสต็อก", value: turnoverText, delta: turnoverDelta, up: true, icon: <BarChart3 className="w-5 h-5" /> },
       ]);
 
       // Compute top products
@@ -197,8 +229,59 @@ export default function ReportsPage() {
     return (snap.name ?? `${snap.firstName ?? ""} ${snap.lastName ?? ""}`.trim()) || "ไม่ทราบชื่อ";
   };
 
+  const handleExportCSV = () => {
+    const kpisData = kpis.map(k => `"${k.label}","${k.value}","${k.delta.replace(/"/g, '""')}"`).join("\n");
+    const headers = ["Order ID (รหัสออเดอร์)", "Customer (ชื่อลูกค้า)", "Grand Total THB (ยอดรวม บาท)", "Status (สถานะ)", "Order Date (วันที่สั่งซื้อ)"];
+    const rows = orders.map((o) => [
+      o.orderId.slice(0, 8).toUpperCase(),
+      getRecipientName(o),
+      o.grandTotal ?? o.totalAmount,
+      statusTH[o.status] || o.status,
+      new Date(o.orderDate).toLocaleString("th-TH"),
+    ]);
+
+    const csvContent =
+      "\uFEFF" + // UTF-8 BOM for Thai/Excel support
+      `"รายงานสรุปการดำเนินงาน Music Gear (Operational Performance Report)"\n` +
+      `"วันที่ออกรายงาน (Report Date)","${today}"\n` +
+      `"ผู้พิมพ์รายงาน (Generated By)","เจ้าหน้าที่คลังสินค้า (Staff Portal)"\n\n` +
+      `"สรุปผลการดำเนินงาน (KPIs Summary)"\n` +
+      `"ตัวชี้วัด (Indicator)","ค่า (Value)","รายละเอียด (Details)"\n` +
+      kpisData + "\n\n" +
+      `"ตารางรายการออเดอร์ทั้งหมด (Orders Log)"\n` +
+      headers.join(",") + "\n" +
+      rows.map((r) => r.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `operational-report-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPDF = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+      {/* Print-only Header */}
+      <div className="hidden print:block border-b-2 border-zinc-900 pb-5 mb-5">
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-2xl font-black uppercase tracking-wider text-zinc-900">MUSIC GEAR</h1>
+            <p className="text-xs text-zinc-500 font-bold">Operational Performance Report</p>
+          </div>
+          <div className="text-right text-xs text-zinc-500 font-semibold">
+            <p>วันที่พิมพ์: {today}</p>
+            <p>พิมพ์โดย: เจ้าหน้าที่คลังสินค้า (Staff Portal)</p>
+          </div>
+        </div>
+      </div>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
@@ -208,12 +291,18 @@ export default function ReportsPage() {
             <span>{today}</span>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-sm font-semibold transition-colors">
+        <div className="flex gap-2 print:hidden">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-sm font-semibold transition-colors cursor-pointer"
+          >
             <Download className="w-4 h-4" />
             Export CSV
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors shadow-md shadow-amber-500/20">
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors shadow-md shadow-amber-500/20 cursor-pointer"
+          >
             <Download className="w-4 h-4" />
             Export PDF
           </button>
@@ -365,7 +454,7 @@ export default function ReportsPage() {
                 </div>
               </div>
               <div className="p-5 h-[260px] flex items-center justify-center relative">
-                <StockMovementChart />
+                <StockMovementChart data={stockMovement} />
               </div>
             </div>
 
@@ -378,7 +467,7 @@ export default function ReportsPage() {
                 { label: "ยกเลิก/คืนเงิน", value: orders.filter(o => o.status === "cancelled" || o.status === "refunded").length, color: "text-red-600 dark:text-red-400" },
               ].map((stat, i) => (
                 <div key={i} className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm flex flex-col justify-center items-center text-center transition-all duration-300 hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700">
-                  <p className="text-[10px] font-bold text-zinc-400 tracking-wider mb-2.5 uppercase leading-tight">{stat.label}</p>
+                  <p className="text-[12px] font-bold text-zinc-400 tracking-wider mb-2.5 uppercase leading-tight">{stat.label}</p>
                   <p className={`text-3xl font-black ${stat.color}`}>{stat.value}</p>
                 </div>
               ))}
@@ -386,6 +475,51 @@ export default function ReportsPage() {
           </div>
         </>
       )}
+      {/* Print-only Footer */}
+      <div className="hidden print:block text-center text-[10px] text-zinc-400 border-t border-zinc-200 pt-4 mt-8">
+        เอกสารนี้จัดทำโดยระบบอัตโนมัติของ Music Gear Staff Portal © {new Date().getFullYear()} Music Gear Co., Ltd. สงวนลิขสิทธิ์
+      </div>
+
+      {/* Global Print Style Overrides */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body, html {
+            background: white !important;
+            color: black !important;
+          }
+          /* Hide sidebar and navigation */
+          .print\\:hidden {
+            display: none !important;
+          }
+          /* Force card backgrounds to be white with simple thin borders */
+          .bg-zinc-900, .bg-white {
+            background: white !important;
+            color: black !important;
+            border: 1px solid #e4e4e7 !important;
+            box-shadow: none !important;
+          }
+          /* Fix text colors for legibility */
+          .text-zinc-900, .dark\\:text-white, .text-zinc-700, .dark\\:text-zinc-300, .text-zinc-800, .dark\\:text-zinc-200 {
+            color: #09090b !important;
+          }
+          .text-zinc-500, .text-zinc-400 {
+            color: #71717a !important;
+          }
+          /* Charts and SVG colors */
+          svg text {
+            fill: #09090b !important;
+          }
+          /* Prevent cards from breaking across pages */
+          .rounded-2xl {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          /* Adjust layout padding for paper margins */
+          main {
+            padding: 0 !important;
+          }
+        }
+      `}} />
     </div>
   );
 }

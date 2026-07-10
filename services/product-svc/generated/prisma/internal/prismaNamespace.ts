@@ -390,7 +390,8 @@ export const ModelName = {
   ProductImage: 'ProductImage',
   Bundle: 'Bundle',
   BundleItem: 'BundleItem',
-  Review: 'Review'
+  Review: 'Review',
+  ProductRecommendation: 'ProductRecommendation'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -406,7 +407,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "brand" | "category" | "product" | "productImage" | "bundle" | "bundleItem" | "review"
+    modelProps: "brand" | "category" | "product" | "productImage" | "bundle" | "bundleItem" | "review" | "productRecommendation"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -928,6 +929,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ProductRecommendation: {
+      payload: Prisma.$ProductRecommendationPayload<ExtArgs>
+      fields: Prisma.ProductRecommendationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProductRecommendationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductRecommendationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProductRecommendationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductRecommendationPayload>
+        }
+        findFirst: {
+          args: Prisma.ProductRecommendationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductRecommendationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProductRecommendationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductRecommendationPayload>
+        }
+        findMany: {
+          args: Prisma.ProductRecommendationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductRecommendationPayload>[]
+        }
+        create: {
+          args: Prisma.ProductRecommendationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductRecommendationPayload>
+        }
+        createMany: {
+          args: Prisma.ProductRecommendationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProductRecommendationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductRecommendationPayload>[]
+        }
+        delete: {
+          args: Prisma.ProductRecommendationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductRecommendationPayload>
+        }
+        update: {
+          args: Prisma.ProductRecommendationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductRecommendationPayload>
+        }
+        deleteMany: {
+          args: Prisma.ProductRecommendationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProductRecommendationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProductRecommendationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductRecommendationPayload>[]
+        }
+        upsert: {
+          args: Prisma.ProductRecommendationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProductRecommendationPayload>
+        }
+        aggregate: {
+          args: Prisma.ProductRecommendationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProductRecommendation>
+        }
+        groupBy: {
+          args: Prisma.ProductRecommendationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProductRecommendationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProductRecommendationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProductRecommendationCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1048,6 +1123,17 @@ export const ReviewScalarFieldEnum = {
 } as const
 
 export type ReviewScalarFieldEnum = (typeof ReviewScalarFieldEnum)[keyof typeof ReviewScalarFieldEnum]
+
+
+export const ProductRecommendationScalarFieldEnum = {
+  recommendationId: 'recommendationId',
+  productId: 'productId',
+  recommendedId: 'recommendedId',
+  score: 'score',
+  createdAt: 'createdAt'
+} as const
+
+export type ProductRecommendationScalarFieldEnum = (typeof ProductRecommendationScalarFieldEnum)[keyof typeof ProductRecommendationScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1315,6 +1401,7 @@ export type GlobalOmitConfig = {
   bundle?: Prisma.BundleOmit
   bundleItem?: Prisma.BundleItemOmit
   review?: Prisma.ReviewOmit
+  productRecommendation?: Prisma.ProductRecommendationOmit
 }
 
 /* Types for Logging */

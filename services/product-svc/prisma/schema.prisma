@@ -62,6 +62,9 @@ model Product {
   images        ProductImage[]
   bundleItems   BundleItem[]
   reviews       Review[]
+
+  recommendations ProductRecommendation[] @relation("ProductRecommendations")
+  recommendedBy   ProductRecommendation[] @relation("RecommendedProducts")
 }
 
 model ProductImage {
@@ -105,4 +108,17 @@ model Review {
   createdAt  DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [productId])
+}
+
+model ProductRecommendation {
+  recommendationId String   @id @default(uuid()) @db.Uuid
+  productId        String   @db.Uuid
+  recommendedId    String   @db.Uuid
+  score            Float    @default(1.0)
+  createdAt        DateTime @default(now())
+
+  product          Product  @relation("ProductRecommendations", fields: [productId], references: [productId], onDelete: Cascade)
+  recommended      Product  @relation("RecommendedProducts", fields: [recommendedId], references: [productId], onDelete: Cascade)
+
+  @@unique([productId, recommendedId])
 }

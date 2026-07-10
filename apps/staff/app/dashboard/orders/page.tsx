@@ -7,6 +7,7 @@ import { Search, ScanLine, TrendingDown, TrendingUp, Clock, X, Check, Loader2, P
 import { Badge } from "@workspace/ui/components/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { getOrders, getProducts, updateOrderStatus, OrderRecord } from "@/lib/api";
+import { Pagination } from "@/components/pagination";
 
 type OrderStatus = "pending" | "confirmed" | "packed" | "shipped" | "delivered" | "cancelled" | "refunded";
 
@@ -85,6 +86,19 @@ export default function OrdersPage() {
   const [pickedItems, setPickedItems] = useState<Record<string, boolean>>({});
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Batch selection state
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [isBatchUpdating, setIsBatchUpdating] = useState(false);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedOrderIds([]);
+  }, [activeTab, search]);
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -124,6 +138,37 @@ export default function OrdersPage() {
     }
   };
 
+  const handleBatchTransition = async (targetStatus: OrderStatus) => {
+    setIsBatchUpdating(true);
+    try {
+      const transitionMap: Record<string, string> = {
+        confirmed: "pending",
+        packed: "confirmed",
+        shipped: "packed",
+      };
+
+      const eligibleOrders = orders.filter(
+        o => selectedOrderIds.includes(o.orderId) && o.status === transitionMap[targetStatus]
+      );
+
+      if (eligibleOrders.length === 0) {
+        alert("ไม่มีออเดอร์ใดอยู่ในสถานะที่เหมาะสมสำหรับการปรับเป็นสถานะนี้");
+        return;
+      }
+
+      const confirmMsg = `คุณต้องการเปลี่ยนสถานะออเดอร์จำนวน ${eligibleOrders.length} รายการ เป็น '${statusConfig[targetStatus].label}' ใช่หรือไม่?`;
+      if (!window.confirm(confirmMsg)) return;
+
+      await Promise.all(eligibleOrders.map(o => updateOrderStatus(o.orderId, targetStatus)));
+      setSelectedOrderIds([]);
+      await loadData();
+    } catch (e: any) {
+      alert(`ไม่สามารถปรับปรุงสถานะรายการกลุ่มได้: ${e.message}`);
+    } finally {
+      setIsBatchUpdating(false);
+    }
+  };
+
   const getRecipientName = (order: OrderRecord) => {
     const snap = order.shippingAddressSnapshot;
     if (!snap) return "ไม่ทราบชื่อ";
@@ -150,6 +195,12 @@ export default function OrdersPage() {
       customer.includes(search.toLowerCase());
     return matchTab && matchSearch;
   });
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedOrders = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // KPI Calculations
   const pendingCount = orders.filter((o) => o.status === "pending").length;
@@ -256,7 +307,27 @@ export default function OrdersPage() {
               <Table>
                 <TableHeader className="bg-zinc-50/50 dark:bg-zinc-900/50">
                   <TableRow>
-                    <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider text-zinc-500 h-12">รหัสออเดอร์</TableHead>
+                    <TableHead className="w-12 pl-6">
+                      <input
+                        type="checkbox"
+                        checked={paginatedOrders.length > 0 && paginatedOrders.every(o => selectedOrderIds.includes(o.orderId))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedOrderIds(prev => {
+                              const newIds = paginatedOrders.map(o => o.orderId);
+                              return Array.from(new Set([...prev, ...newIds]));
+                            });
+                          } else {
+                            setSelectedOrderIds(prev => {
+                              const idsToExclude = paginatedOrders.map(o => o.orderId);
+                              return prev.filter(id => !idsToExclude.includes(id));
+                            });
+                          }
+                        }}
+                        className="rounded border-zinc-300 dark:border-zinc-700 accent-amber-500 cursor-pointer w-4 h-4"
+                      />
+                    </TableHead>
+                    <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500 h-12">รหัสออเดอร์</TableHead>
                     <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500">ลูกค้า</TableHead>
                     <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500">รายการสินค้า</TableHead>
                     <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500">สถานะ</TableHead>
@@ -267,16 +338,31 @@ export default function OrdersPage() {
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-16 text-zinc-400">ไม่พบออเดอร์ในหมวดหมู่นี้</TableCell>
+                      <TableCell colSpan={7} className="text-center py-16 text-zinc-400">ไม่พบออเดอร์ในหมวดหมู่นี้</TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((order) => {
+                    paginatedOrders.map((order) => {
                       const sc = statusConfig[order.status as OrderStatus] ?? statusConfig.pending;
                       const recipient = getRecipientName(order);
                       const address = getAddressText(order);
+                      const isSelected = selectedOrderIds.includes(order.orderId);
                       return (
-                        <TableRow key={order.orderId} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                          <TableCell className="font-bold text-zinc-900 dark:text-white pl-6 font-mono text-sm py-4">
+                        <TableRow key={order.orderId} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors ${isSelected ? "bg-amber-500/5 dark:bg-amber-500/5" : ""}`}>
+                          <TableCell className="pl-6 w-12">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedOrderIds(prev => [...prev, order.orderId]);
+                                } else {
+                                  setSelectedOrderIds(prev => prev.filter(id => id !== order.orderId));
+                                }
+                              }}
+                              className="rounded border-zinc-300 dark:border-zinc-700 accent-amber-500 cursor-pointer w-4 h-4"
+                            />
+                          </TableCell>
+                          <TableCell className="font-bold text-zinc-900 dark:text-white font-mono text-sm py-4">
                             {order.orderId.slice(0, 8).toUpperCase()}
                           </TableCell>
                           <TableCell>
@@ -331,7 +417,60 @@ export default function OrdersPage() {
                 </TableBody>
               </Table>
             </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalEntries={filtered.length}
+              itemsPerPage={itemsPerPage}
+            />
           </div>
+          {/* Batch Action Toolbar */}
+          {selectedOrderIds.length > 0 && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-900/95 dark:bg-zinc-950/95 border border-zinc-200 dark:border-zinc-800 backdrop-blur-xl px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 z-40 animate-in slide-in-from-bottom-4 duration-300">
+              <div className="text-zinc-800 dark:text-zinc-200 text-xs font-semibold whitespace-nowrap">
+                เลือกออเดอร์แล้ว <span className="text-amber-500 font-extrabold text-sm">{selectedOrderIds.length}</span> รายการ
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleBatchTransition("confirmed")}
+                  disabled={isBatchUpdating}
+                  className="px-3.5 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-bold text-zinc-700 dark:text-zinc-300 disabled:opacity-40 transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-250 dark:border-zinc-700"
+                >
+                  รับออเดอร์ (Confirm)
+                </button>
+                <button
+                  onClick={() => handleBatchTransition("packed")}
+                  disabled={isBatchUpdating}
+                  className="px-3.5 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-bold text-zinc-700 dark:text-zinc-300 disabled:opacity-40 transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-250 dark:border-zinc-700"
+                >
+                  แพ็คเสร็จ (Pack)
+                </button>
+                <button
+                  onClick={() => handleBatchTransition("shipped")}
+                  disabled={isBatchUpdating}
+                  className="px-3.5 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-bold text-zinc-700 dark:text-zinc-300 disabled:opacity-40 transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-250 dark:border-zinc-700"
+                >
+                  กำลังส่ง (Ship)
+                </button>
+                <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-800 mx-1" />
+                <Link
+                  href={`/dashboard/orders/print?orderIds=${selectedOrderIds.join(",")}`}
+                  className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-xs font-bold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/15"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  พิมพ์ใบปะหน้าสินค้า ({selectedOrderIds.length})
+                </Link>
+                <button
+                  onClick={() => setSelectedOrderIds([])}
+                  className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-white transition-colors cursor-pointer"
+                  title="ยกเลิกการเลือก"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 

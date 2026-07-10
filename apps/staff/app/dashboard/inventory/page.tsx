@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Search, SlidersHorizontal, PackagePlus, ChevronDown, X } from "lucide-react";
+import { Search, SlidersHorizontal, PackagePlus, ChevronDown, X, Loader2 } from "lucide-react";
 import { Badge } from "@workspace/ui/components/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
-import { getProducts, getInventory } from "@/lib/api";
+import { getProducts, getInventory, getInventoryLogs, InventoryLogRecord } from "@/lib/api";
+import { CustomSelect } from "@/components/custom-select";
+import { Pagination } from "@/components/pagination";
 
 type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
 
@@ -16,6 +18,7 @@ const statusConfig: Record<StockStatus, { label: string; badge: string; dot: str
 };
 
 interface DisplayInventory {
+  id: string;
   sku: string;
   name: string;
   category: string;
@@ -52,6 +55,14 @@ export default function InventoryPage() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, search, selectedStatus]);
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -75,6 +86,7 @@ export default function InventoryPage() {
         }
 
         return {
+          id: p.productId,
           sku: p.sku,
           name: p.name,
           category: p.category?.name ?? "ทั่วไป",
@@ -110,6 +122,12 @@ export default function InventoryPage() {
 
     return matchCat && matchSearch && matchStatus;
   });
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedInventory = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
@@ -162,19 +180,18 @@ export default function InventoryPage() {
             <div className="mb-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 animate-in fade-in duration-200">
               <div className="max-w-xs">
                 <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 block mb-1.5">สถานะสินค้า</label>
-                <div className="relative group">
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="w-full pl-3 pr-8 py-2 text-xs rounded-xl border border-zinc-250 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 cursor-pointer appearance-none"
-                  >
-                    <option value="all">สถานะทั้งหมด</option>
-                    <option value="in_stock">มีสินค้า</option>
-                    <option value="low_stock">สต็อกใกล้หมด</option>
-                    <option value="out_of_stock">สินค้าหมด</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none transition-transform duration-200 group-focus-within:rotate-180" />
-                </div>
+                <CustomSelect
+                  value={selectedStatus}
+                  onChange={setSelectedStatus}
+                  options={[
+                    { value: "all", label: "สถานะทั้งหมด" },
+                    { value: "in_stock", label: "มีสินค้า" },
+                    { value: "low_stock", label: "สต็อกใกล้หมด" },
+                    { value: "out_of_stock", label: "สินค้าหมด" }
+                  ]}
+                  triggerClassName="bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-250 dark:border-zinc-700 text-xs py-2 px-3 h-9"
+                  dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 divide-y divide-zinc-100 dark:divide-zinc-800"
+                />
               </div>
             </div>
           )}
@@ -224,7 +241,7 @@ export default function InventoryPage() {
                 <TableCell colSpan={7} className="text-center py-16 text-zinc-400">ไม่พบสินค้าที่ตรงกับเงื่อนไข</TableCell>
               </TableRow>
             ) : (
-              filtered.map((item) => {
+              paginatedInventory.map((item) => {
                 const available = item.currentQty - item.reserved;
                 const sc = statusConfig[item.status];
                 return (
@@ -258,6 +275,13 @@ export default function InventoryPage() {
             )}
           </TableBody>
         </Table>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalEntries={filtered.length}
+          itemsPerPage={itemsPerPage}
+        />
       </div>
 
       {selectedHistoryItem && (
@@ -276,54 +300,65 @@ interface StockHistoryModalProps {
 }
 
 function StockHistoryModal({ item, onClose }: StockHistoryModalProps) {
-  // Generate realistic stock log data dynamically based on the current SKU and quantity
-  const generateHistoryLogs = () => {
-    const logs = [];
-    const dateStr = (offsetDays: number, hourStr: string) => {
-      const d = new Date();
-      d.setDate(d.getDate() - offsetDays);
-      return d.toLocaleDateString("th-TH") + " " + hourStr;
-    };
+  const [logs, setLogs] = useState<InventoryLogRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    if (item.currentQty > 0) {
-      logs.push({
-        date: dateStr(0, "10:15 น."),
-        action: "ตรวจรับและเพิ่มเข้าคลังสินค้าสำเร็จ (Goods Received)",
-        ref: "PO-2026-07-08-A",
-        qtyChange: `+${item.currentQty}`,
-        operator: "Miller Wise (Staff)",
-        color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-250 dark:border-emerald-900/50",
-        badge: "รับสินค้าเข้า"
-      });
+  useEffect(() => {
+    async function loadLogs() {
+      try {
+        setLoading(true);
+        const res = await getInventoryLogs(item.id);
+        setLogs(res.logs ?? []);
+      } catch (err: any) {
+        setError(err.message ?? "ไม่สามารถโหลดประวัติสต็อกได้");
+      } finally {
+        setLoading(false);
+      }
     }
+    loadLogs();
+  }, [item.id]);
 
-    if (item.reserved > 0) {
-      logs.push({
-        date: dateStr(1, "16:40 น."),
-        action: "ระบบจองสินค้าชั่วคราว (ชำระเงินออนไลน์เสร็จสิ้น)",
-        ref: `ORD-${item.sku.substring(0, 4)}-7715`,
-        qtyChange: `-${item.reserved}`,
-        operator: "System (Auto-reserve)",
-        color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-250 dark:border-amber-900/50",
-        badge: "จองสินค้า"
-      });
+  const getActionDetails = (action: string) => {
+    switch (action) {
+      case "receive":
+        return {
+          label: "รับสินค้าเข้า",
+          actionText: "ตรวจรับและเพิ่มเข้าคลังสินค้าสำเร็จ (Goods Received)",
+          color: "text-emerald-600 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-250 dark:border-emerald-900/50",
+        };
+      case "adjust":
+        return {
+          label: "ปรับยอดมือ",
+          actionText: "ปรับปรุงยอดสต็อกสินค้าด้วยมือ (Manual Adjust)",
+          color: "text-zinc-650 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-850",
+        };
+      case "reserve":
+        return {
+          label: "จองสินค้า",
+          actionText: "ระบบจองสินค้าชั่วคราว (ชำระเงินออนไลน์เสร็จสิ้น)",
+          color: "text-amber-600 dark:text-amber-450 bg-amber-50 dark:bg-amber-950/40 border-amber-250 dark:border-amber-900/50",
+        };
+      case "release":
+        return {
+          label: "คืนสต็อก",
+          actionText: "คืนสินค้าเข้าสต็อกเนื่องจากยกเลิก/ชำระเงินไม่สำเร็จ",
+          color: "text-sky-600 dark:text-sky-450 bg-sky-50 dark:bg-sky-950/40 border-sky-250 dark:border-sky-900/50",
+        };
+      case "sale_deduct":
+        return {
+          label: "ตัดขายจริง",
+          actionText: "ตัดสต็อกสินค้าจริงออกเนื่องจากจัดส่งสำเร็จ (Sale Deducted)",
+          color: "text-rose-600 dark:text-rose-450 bg-rose-50 dark:bg-rose-950/40 border-rose-250 dark:border-rose-900/50",
+        };
+      default:
+        return {
+          label: "การเคลื่อนไหว",
+          actionText: "การเคลื่อนไหวคลังสินค้า",
+          color: "text-zinc-600 dark:text-zinc-450 bg-zinc-50 dark:bg-zinc-800",
+        };
     }
-
-    // Default base stock creation log
-    logs.push({
-      date: dateStr(5, "09:00 น."),
-      action: "ระบบปรับปรุงยอดเริ่มต้น/ตรวจเช็คระดับคลังสินค้าประจำสัปดาห์",
-      ref: "SYS-INIT-STOCK",
-      qtyChange: "+50",
-      operator: "Administrator (Stock-sync)",
-      color: "text-zinc-600 dark:text-zinc-450 bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-800/60",
-      badge: "อัปเดตระบบ"
-    });
-
-    return logs;
   };
-
-  const logs = generateHistoryLogs();
 
   return (
     <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -346,15 +381,15 @@ function StockHistoryModal({ item, onClose }: StockHistoryModalProps) {
           {/* Current Stock Snapshot */}
           <div className="grid grid-cols-3 gap-3 bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-2xl border border-zinc-150 dark:border-zinc-800">
             <div className="text-center">
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">สต็อกในคลัง</span>
+              <span className="text-[12px] text-zinc-400 font-bold uppercase tracking-wider block">สต็อกในคลัง</span>
               <span className="text-xl font-extrabold text-zinc-850 dark:text-zinc-200">{item.currentQty}</span>
             </div>
             <div className="text-center border-l border-r border-zinc-200 dark:border-zinc-800">
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">จองจัดส่ง</span>
+              <span className="text-[12px] text-zinc-400 font-bold uppercase tracking-wider block">จองจัดส่ง</span>
               <span className="text-xl font-extrabold text-amber-500">{item.reserved}</span>
             </div>
             <div className="text-center">
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">พร้อมใช้งาน</span>
+              <span className="text-[12px] text-zinc-400 font-bold uppercase tracking-wider block">พร้อมใช้งาน</span>
               <span className="text-xl font-extrabold text-emerald-500">{Math.max(0, item.currentQty - item.reserved)}</span>
             </div>
           </div>
@@ -362,31 +397,57 @@ function StockHistoryModal({ item, onClose }: StockHistoryModalProps) {
           {/* Timeline */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">บันทึกกิจกรรมล่าสุด (Timeline Logs)</h4>
-            <div className="relative border-l-2 border-zinc-200 dark:border-zinc-800 pl-6 ml-3 space-y-6">
-              {logs.map((log, idx) => (
-                <div key={idx} className="relative">
-                  {/* Circle dot on line */}
-                  <span className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-white dark:bg-zinc-900 border-2 border-amber-500 shadow-sm" />
-                  
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-zinc-400 font-mono font-semibold">{log.date}</span>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${log.color}`}>
-                        {log.badge}
-                      </span>
-                      <span className="ml-auto font-mono text-sm font-black text-zinc-800 dark:text-zinc-200">
-                        {log.qtyChange} ชิ้น
-                      </span>
+            
+            {loading ? (
+              <div className="flex items-center justify-center py-12 gap-2 text-zinc-450">
+                <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
+                กำลังโหลดบันทึกประวัติสต็อก...
+              </div>
+            ) : error ? (
+              <div className="text-center py-12 text-red-500 font-semibold">{error}</div>
+            ) : logs.length === 0 ? (
+              <div className="text-center py-12 text-zinc-400 italic text-sm">
+                ไม่มีประวัติการเคลื่อนไหวสต็อกสำหรับสินค้านี้
+              </div>
+            ) : (
+              <div className="relative border-l-2 border-zinc-200 dark:border-zinc-800 pl-6 ml-3 space-y-6">
+                {logs.map((log) => {
+                  const details = getActionDetails(log.action);
+                  const isPositive = ["receive", "release"].includes(log.action);
+                  return (
+                    <div key={log.id} className="relative">
+                      {/* Circle dot on line */}
+                      <span className={`absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-white dark:bg-zinc-900 border-2 shadow-sm ${
+                        isPositive ? "border-emerald-500" : log.action === "reserve" ? "border-amber-500" : "border-rose-500"
+                      }`} />
+                      
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs text-zinc-400 font-mono font-semibold">
+                            {new Date(log.createdAt).toLocaleString("th-TH")}
+                          </span>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${details.color}`}>
+                            {details.label}
+                          </span>
+                          <span className={`ml-auto font-mono text-sm font-black ${isPositive ? "text-emerald-500" : "text-rose-500"}`}>
+                            {isPositive ? "+" : "-"}{Math.abs(log.changeQty)} ชิ้น
+                          </span>
+                        </div>
+                        <p className="text-sm font-bold leading-snug">{details.actionText}</p>
+                        <div className="flex items-center gap-4 text-xs text-zinc-400">
+                          {log.orderId && (
+                            <span>ออเดอร์อ้างอิง: <strong className="font-mono text-zinc-600 dark:text-zinc-350">{log.orderId.slice(0, 8).toUpperCase()}</strong></span>
+                          )}
+                          {log.staffId && (
+                            <span>ผู้ดำเนินการ: <strong className="text-zinc-650 dark:text-zinc-300">{log.staffId.slice(0, 8).toUpperCase()}</strong></span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm font-bold leading-snug">{log.action}</p>
-                    <div className="flex items-center gap-4 text-xs text-zinc-400">
-                      <span>เลขเอกสารอ้างอิง: <strong className="font-mono text-zinc-600 dark:text-zinc-350">{log.ref}</strong></span>
-                      <span>ดำเนินการโดย: <strong className="text-zinc-650 dark:text-zinc-300">{log.operator}</strong></span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

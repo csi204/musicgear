@@ -52,3 +52,8 @@ export type BundleItem = Prisma.BundleItemModel
  * 
  */
 export type Review = Prisma.ReviewModel
+/**
+ * Model ProductRecommendation
+ * 
+ */
+export type ProductRecommendation = Prisma.ProductRecommendationModel

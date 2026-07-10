@@ -190,6 +190,29 @@ stockRoutes.get("/:productId", async (c) => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// GET /stock/:productId/logs — ดูประวัติการเคลื่อนไหวสต็อกสินค้าเฉพาะชิ้น
+// ──────────────────────────────────────────────────────────────────────────────
+stockRoutes.get(
+  "/:productId/logs",
+  createRoleMiddleware(["staff", "admin"]),
+  async (c) => {
+    const productId = c.req.param("productId");
+    const db = createClient(c.env.DATABASE_URL);
+    try {
+      const logs = await db.inventoryLog.findMany({
+        where: { productId },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      });
+      return c.json({ status: "ok", logs }, 200);
+    } catch (err) {
+      console.error("[GET /stock/:productId/logs]", err);
+      return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch stock logs" } }, 500);
+    }
+  }
+);
+
+// ──────────────────────────────────────────────────────────────────────────────
 // PATCH /stock/:productId/reorder-point — Staff/Admin ตั้งค่าจุด reorder
 // เมื่อสต็อกลงถึง reorderPoint จะถูก mark เป็น "Low" → trigger แจ้งเตือน
 // ──────────────────────────────────────────────────────────────────────────────
