@@ -44,18 +44,19 @@ model Category {
 }
 
 model Product {
-  productId   String        @id @default(uuid()) @db.Uuid
-  name        String
-  slug        String        @unique
-  description String?
-  price       Decimal       @db.Decimal(10,2)
-  sku         String        @unique
-  status      ProductStatus @default(active)
-  skillLevel  SkillLevel?
-  brandId     String        @db.Uuid
-  categoryId  String        @db.Uuid
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @default(now()) @updatedAt
+  productId     String        @id @default(uuid()) @db.Uuid
+  name          String
+  slug          String        @unique
+  description   String?
+  price         Decimal       @db.Decimal(10,2)
+  originalPrice Decimal?      @db.Decimal(10,2) // original undiscounted price
+  sku           String        @unique
+  status        ProductStatus @default(active)
+  skillLevel    SkillLevel?
+  brandId       String        @db.Uuid
+  categoryId    String        @db.Uuid
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now()) @updatedAt
 
   brand         Brand          @relation(fields: [brandId], references: [brandId])
   category      Category       @relation(fields: [categoryId], references: [categoryId])

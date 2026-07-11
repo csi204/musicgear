@@ -50,6 +50,51 @@ const qstashHandler = async (c) => {
     if (payload.event === "product.created") {
       await initializeInventory(db, payload.productId);
       console.info(`[QStash] product.created — Initialized inventory for productId=${payload.productId}`);
+    } else if (payload.event === "product.deleted") {
+      // 1. ลบสต็อกและประวัติคงคลังในฝั่ง inventory-svc
+      await db.inventoryLog.deleteMany({ where: { productId: payload.productId } });
+      await db.inventory.deleteMany({ where: { productId: payload.productId } });
+      console.info(`[QStash] product.deleted — Deleted inventory for productId=${payload.productId}`);
+
+      // 2. ส่งต่อ Event นี้ไปยัง report-svc และ notification-svc
+      const qstashUrl = c.env.QSTASH_URL;
+      const qstashToken = c.env.QSTASH_TOKEN;
+      const subscribers = [];
+      if (c.env.NOTIFICATION_SVC_URL) {
+        subscribers.push(`${c.env.NOTIFICATION_SVC_URL.replace(/\/$/, "")}/webhooks/qstash`);
+      }
+      if (c.env.REPORT_SVC_URL) {
+        subscribers.push(`${c.env.REPORT_SVC_URL.replace(/\/$/, "")}/webhooks/qstash`);
+      }
+
+      if (qstashUrl && qstashToken && subscribers.length > 0) {
+        c.executionCtx.waitUntil(
+          Promise.all(
+            subscribers.map((subscriberUrl) =>
+              fetch(`${qstashUrl}/v2/publish/${subscriberUrl}`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${qstashToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  event: "product.deleted",
+                  productId: payload.productId,
+                }),
+              }).then(async (res) => {
+                if (!res.ok) {
+                  const text = await res.text();
+                  console.error(`[inventory-svc] QStash relay error for ${subscriberUrl}: ${text}`);
+                } else {
+                  console.info(`[inventory-svc] QStash event product.deleted relaid successfully to ${subscriberUrl}`);
+                }
+              }).catch(err => {
+                console.error(`[inventory-svc] QStash relay to ${subscriberUrl} failed:`, err);
+              })
+            )
+          )
+        );
+      }
     } else {
       console.info(`[QStash] Ignored event: ${payload.event}`);
     }

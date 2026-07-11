@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Barcode, CheckCircle, AlertTriangle, XCircle, Plus, Loader2, X, ScanLine, Zap, ChevronDown } from "lucide-react";
+import { ArrowLeft, Barcode, CheckCircle, AlertTriangle, XCircle, Plus, Loader2, X, ScanLine, Zap, ChevronDown, Check } from "lucide-react";
 import { getProducts, adjustStock, ProductRecord } from "@/lib/api";
 import { CustomSelect } from "@/components/custom-select";
 
@@ -16,6 +16,7 @@ interface LineItem {
   expected: number;
   received: number | string;
   condition: Condition;
+  damagedQty: number | string;
 }
 
 function getMatchStatus(item: LineItem): MatchStatus {
@@ -88,6 +89,7 @@ export default function ReceiveStockPage() {
           expected: 1,
           received: 1,
           condition: "good",
+          damagedQty: 0,
         }]);
         setShowScanModal(false);
         setScanResult(null);
@@ -115,8 +117,46 @@ export default function ReceiveStockPage() {
   const totalReceived = items.reduce((s, i) => s + (typeof i.received === "string" ? (parseInt(i.received, 10) || 0) : i.received), 0);
   const discrepancies = items.filter((i) => getMatchStatus(i) !== "full_match").length;
 
-  const updateItem = (id: string, field: keyof LineItem, value: string | number) => {
-    setItems((prev) => prev.map((item) => item.id === id ? { ...item, [field]: value } : item));
+  const updateItem = (id: string, field: keyof LineItem, value: any) => {
+    setItems((prev) => prev.map((item) => {
+      if (item.id !== id) return item;
+      
+      let updated = { ...item, [field]: value };
+      
+      // Smart Logic when changing condition
+      if (field === "condition") {
+        const cond = value as Condition;
+        if (cond === "good") {
+          updated.damagedQty = 0;
+          updated.received = item.expected;
+        } else if (cond === "missing") {
+          updated.damagedQty = 0;
+          updated.received = 0;
+        } else if (cond === "damaged") {
+          updated.damagedQty = 1;
+          updated.received = Math.max(0, item.expected - 1);
+        }
+      }
+      
+      // Smart Logic when changing damagedQty
+      if (field === "damagedQty") {
+        if (value === "") {
+          updated.damagedQty = "";
+        } else {
+          const dmg = typeof value === "number" ? value : (parseInt(value, 10) || 0);
+          updated.damagedQty = dmg;
+          updated.received = Math.max(0, item.expected - dmg);
+        }
+      }
+      
+      // Smart Logic when changing received
+      if (field === "received" && item.condition === "damaged") {
+        const rec = typeof value === "number" ? value : (parseInt(value, 10) || 0);
+        updated.damagedQty = Math.max(0, item.expected - rec);
+      }
+      
+      return updated;
+    }));
   };
 
   const handleRemoveItem = (id: string) => {
@@ -140,7 +180,8 @@ export default function ReceiveStockPage() {
       sku: prod.sku,
       expected: expectedQty,
       received: expectedQty,
-      condition: "good"
+      condition: "good",
+      damagedQty: 0
     }]);
     setSelectedProductId("");
   };
@@ -368,6 +409,7 @@ export default function ReceiveStockPage() {
                           />
                         </td>
                         <td className="py-4 px-4">
+                          <div className="flex flex-col gap-1.5 w-full">
                             <CustomSelect
                               value={item.condition}
                               onChange={(val) => updateItem(item.id, "condition", val as Condition)}
@@ -375,12 +417,51 @@ export default function ReceiveStockPage() {
                               triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-1 px-2.5 h-8 text-xs"
                               dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
                             />
+                            {item.condition === "damaged" && (
+                              <div className="flex items-center gap-1.5 mt-1 animate-in slide-in-from-top-1 duration-150">
+                                <span className="text-[11px] text-red-500 font-bold whitespace-nowrap">ชำรุด (ชิ้น):</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={item.expected}
+                                  value={item.damagedQty}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === "") {
+                                      updateItem(item.id, "damagedQty", "");
+                                    } else {
+                                      const parsed = parseInt(val, 10);
+                                      updateItem(item.id, "damagedQty", isNaN(parsed) ? 0 : parsed);
+                                    }
+                                  }}
+                                  className="w-14 text-center px-1.5 py-0.5 text-xs font-bold rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-red-600 focus:outline-none focus:ring-1 focus:ring-red-500"
+                                />
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="py-4 px-4">
-                          <span className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${mb.class}`}>
-                            {mb.icon}
-                            {mb.label}
-                          </span>
+                          <div className="flex flex-col items-center justify-center gap-1">
+                            <span className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${mb.class}`}>
+                              {mb.icon}
+                              {mb.label}
+                            </span>
+                            {item.condition !== "missing" && Number(item.received) !== item.expected && (
+                              <button
+                                onClick={() => {
+                                  updateItem(item.id, "received", item.expected);
+                                  if (item.condition === "damaged") {
+                                    updateItem(item.id, "damagedQty", 0);
+                                    updateItem(item.id, "condition", "good");
+                                  }
+                                }}
+                                className="mt-1 flex items-center justify-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 rounded-lg shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer border-none whitespace-nowrap"
+                              >
+                                <Check className="w-3.5 h-3.5 text-white" />
+                                ปรับรับเต็ม
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="py-4 px-4 pr-6 text-right">
                           <button

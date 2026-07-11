@@ -71,30 +71,32 @@ export default function InventoryPage() {
       const invRes = await getInventory();
       
       const invMap = new Map(invRes.inventories?.map((i) => [i.productId, i]) ?? []);
-      const mapped: DisplayInventory[] = prodRes.products.map((p) => {
-        const inv = invMap.get(p.productId);
-        const currentQty = inv?.quantity ?? 0;
-        const reserved = inv?.reservedQuantity ?? 0;
-        const available = currentQty - reserved;
-        const reorderPoint = inv?.reorderPoint ?? 0;
-        
-        let status: StockStatus = "in_stock";
-        if (available === 0) {
-          status = "out_of_stock";
-        } else if (available <= reorderPoint || available <= 5) {
-          status = "low_stock";
-        }
+      const mapped: DisplayInventory[] = prodRes.products
+        .filter((p) => p.status !== "discontinued" || (invMap.get(p.productId)?.quantity ?? 0) > 0)
+        .map((p) => {
+          const inv = invMap.get(p.productId);
+          const currentQty = inv?.quantity ?? 0;
+          const reserved = inv?.reservedQuantity ?? 0;
+          const available = currentQty - reserved;
+          const reorderPoint = inv?.reorderPoint ?? 0;
+          
+          let status: StockStatus = "in_stock";
+          if (available === 0) {
+            status = "out_of_stock";
+          } else if (available <= reorderPoint || available <= 5) {
+            status = "low_stock";
+          }
 
-        return {
-          id: p.productId,
-          sku: p.sku,
-          name: p.name,
-          category: p.category?.name ?? "ทั่วไป",
-          currentQty,
-          reserved,
-          status,
-        };
-      });
+          return {
+            id: p.productId,
+            sku: p.sku,
+            name: p.name,
+            category: p.category?.name ?? "ทั่วไป",
+            currentQty,
+            reserved,
+            status,
+          };
+        });
       setInventory(mapped);
     } catch (e: any) {
       setError(e.message ?? "ไม่สามารถโหลดข้อมูลคลังสินค้าได้");
