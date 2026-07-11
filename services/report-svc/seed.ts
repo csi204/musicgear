@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import crypto from 'crypto';
 
-const sql = neon(process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_CkXVgUoGvS69@ep-sparkling-leaf-a7utdbyk-pooler.ap-southeast-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require');
+const sql = neon(process.env.DATABASE_URL || '');
 
 async function main() {
   console.log('Clearing existing data...');
@@ -79,6 +79,34 @@ async function main() {
       INSERT INTO "InventorySnapshot" (id, "productId", "productName", "category", "stockLevel", "reorderPoint", "status", "updatedAt")
       VALUES (${crypto.randomUUID()}, ${crypto.randomUUID()}, ${p.name}, ${p.category}, ${stock}, ${reorder}, ${status}, NOW())
     `;
+  }
+
+  console.log('Seeding SystemAuditLog for stock movements...');
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(today);
+    d.setMonth(d.getMonth() - i);
+    const logCount = Math.floor(Math.random() * 10) + 5;
+    for (let j = 0; j < logCount; j++) {
+      const logDate = new Date(d);
+      logDate.setDate(Math.floor(Math.random() * 28) + 1);
+      logDate.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60));
+      
+      const isStockIn = Math.random() > 0.4;
+      const beforeQty = Math.floor(Math.random() * 50) + 10;
+      const diff = Math.floor(Math.random() * 30) + 5;
+      const afterQty = isStockIn ? beforeQty + diff : Math.max(0, beforeQty - diff);
+      
+      await sql`
+        INSERT INTO "SystemAuditLog" ("logId", "eventType", "referenceId", "payload", "createdAt")
+        VALUES (
+          ${crypto.randomUUID()}, 
+          'stock.updated', 
+          ${crypto.randomUUID()}, 
+          ${JSON.stringify({ beforeQty, afterQty })}, 
+          ${logDate.toISOString()}
+        )
+      `;
+    }
   }
 
   console.log('Seeding completed successfully!');

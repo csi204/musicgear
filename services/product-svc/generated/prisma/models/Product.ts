@@ -28,10 +28,12 @@ export type AggregateProduct = {
 
 export type ProductAvgAggregateOutputType = {
   price: runtime.Decimal | null
+  originalPrice: runtime.Decimal | null
 }
 
 export type ProductSumAggregateOutputType = {
   price: runtime.Decimal | null
+  originalPrice: runtime.Decimal | null
 }
 
 export type ProductMinAggregateOutputType = {
@@ -40,6 +42,7 @@ export type ProductMinAggregateOutputType = {
   slug: string | null
   description: string | null
   price: runtime.Decimal | null
+  originalPrice: runtime.Decimal | null
   sku: string | null
   status: $Enums.ProductStatus | null
   skillLevel: $Enums.SkillLevel | null
@@ -55,6 +58,7 @@ export type ProductMaxAggregateOutputType = {
   slug: string | null
   description: string | null
   price: runtime.Decimal | null
+  originalPrice: runtime.Decimal | null
   sku: string | null
   status: $Enums.ProductStatus | null
   skillLevel: $Enums.SkillLevel | null
@@ -70,6 +74,7 @@ export type ProductCountAggregateOutputType = {
   slug: number
   description: number
   price: number
+  originalPrice: number
   sku: number
   status: number
   skillLevel: number
@@ -83,10 +88,12 @@ export type ProductCountAggregateOutputType = {
 
 export type ProductAvgAggregateInputType = {
   price?: true
+  originalPrice?: true
 }
 
 export type ProductSumAggregateInputType = {
   price?: true
+  originalPrice?: true
 }
 
 export type ProductMinAggregateInputType = {
@@ -95,6 +102,7 @@ export type ProductMinAggregateInputType = {
   slug?: true
   description?: true
   price?: true
+  originalPrice?: true
   sku?: true
   status?: true
   skillLevel?: true
@@ -110,6 +118,7 @@ export type ProductMaxAggregateInputType = {
   slug?: true
   description?: true
   price?: true
+  originalPrice?: true
   sku?: true
   status?: true
   skillLevel?: true
@@ -125,6 +134,7 @@ export type ProductCountAggregateInputType = {
   slug?: true
   description?: true
   price?: true
+  originalPrice?: true
   sku?: true
   status?: true
   skillLevel?: true
@@ -227,6 +237,7 @@ export type ProductGroupByOutputType = {
   slug: string
   description: string | null
   price: runtime.Decimal
+  originalPrice: runtime.Decimal | null
   sku: string
   status: $Enums.ProductStatus
   skillLevel: $Enums.SkillLevel | null
@@ -265,6 +276,7 @@ export type ProductWhereInput = {
   slug?: Prisma.StringFilter<"Product"> | string
   description?: Prisma.StringNullableFilter<"Product"> | string | null
   price?: Prisma.DecimalFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.DecimalNullableFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFilter<"Product"> | string
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
   skillLevel?: Prisma.EnumSkillLevelNullableFilter<"Product"> | $Enums.SkillLevel | null
@@ -287,6 +299,7 @@ export type ProductOrderByWithRelationInput = {
   slug?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   price?: Prisma.SortOrder
+  originalPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   sku?: Prisma.SortOrder
   status?: Prisma.SortOrder
   skillLevel?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -313,6 +326,7 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   name?: Prisma.StringFilter<"Product"> | string
   description?: Prisma.StringNullableFilter<"Product"> | string | null
   price?: Prisma.DecimalFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.DecimalNullableFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
   skillLevel?: Prisma.EnumSkillLevelNullableFilter<"Product"> | $Enums.SkillLevel | null
   brandId?: Prisma.UuidFilter<"Product"> | string
@@ -334,6 +348,7 @@ export type ProductOrderByWithAggregationInput = {
   slug?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   price?: Prisma.SortOrder
+  originalPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   sku?: Prisma.SortOrder
   status?: Prisma.SortOrder
   skillLevel?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -357,6 +372,7 @@ export type ProductScalarWhereWithAggregatesInput = {
   slug?: Prisma.StringWithAggregatesFilter<"Product"> | string
   description?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   price?: Prisma.DecimalWithAggregatesFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.DecimalNullableWithAggregatesFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringWithAggregatesFilter<"Product"> | string
   status?: Prisma.EnumProductStatusWithAggregatesFilter<"Product"> | $Enums.ProductStatus
   skillLevel?: Prisma.EnumSkillLevelNullableWithAggregatesFilter<"Product"> | $Enums.SkillLevel | null
@@ -372,6 +388,7 @@ export type ProductCreateInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -392,6 +409,7 @@ export type ProductUncheckedCreateInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -412,6 +430,7 @@ export type ProductUpdateInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -432,6 +451,7 @@ export type ProductUncheckedUpdateInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -452,6 +472,7 @@ export type ProductCreateManyInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -467,6 +488,7 @@ export type ProductUpdateManyMutationInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -480,6 +502,7 @@ export type ProductUncheckedUpdateManyInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -505,6 +528,7 @@ export type ProductCountOrderByAggregateInput = {
   slug?: Prisma.SortOrder
   description?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  originalPrice?: Prisma.SortOrder
   sku?: Prisma.SortOrder
   status?: Prisma.SortOrder
   skillLevel?: Prisma.SortOrder
@@ -516,6 +540,7 @@ export type ProductCountOrderByAggregateInput = {
 
 export type ProductAvgOrderByAggregateInput = {
   price?: Prisma.SortOrder
+  originalPrice?: Prisma.SortOrder
 }
 
 export type ProductMaxOrderByAggregateInput = {
@@ -524,6 +549,7 @@ export type ProductMaxOrderByAggregateInput = {
   slug?: Prisma.SortOrder
   description?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  originalPrice?: Prisma.SortOrder
   sku?: Prisma.SortOrder
   status?: Prisma.SortOrder
   skillLevel?: Prisma.SortOrder
@@ -539,6 +565,7 @@ export type ProductMinOrderByAggregateInput = {
   slug?: Prisma.SortOrder
   description?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  originalPrice?: Prisma.SortOrder
   sku?: Prisma.SortOrder
   status?: Prisma.SortOrder
   skillLevel?: Prisma.SortOrder
@@ -550,6 +577,7 @@ export type ProductMinOrderByAggregateInput = {
 
 export type ProductSumOrderByAggregateInput = {
   price?: Prisma.SortOrder
+  originalPrice?: Prisma.SortOrder
 }
 
 export type ProductScalarRelationFilter = {
@@ -649,6 +677,14 @@ export type DecimalFieldUpdateOperationsInput = {
   divide?: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
+export type NullableDecimalFieldUpdateOperationsInput = {
+  set?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  decrement?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  multiply?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  divide?: runtime.Decimal | runtime.DecimalJsLike | number | string
+}
+
 export type EnumProductStatusFieldUpdateOperationsInput = {
   set?: $Enums.ProductStatus
 }
@@ -737,6 +773,7 @@ export type ProductCreateWithoutBrandInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -756,6 +793,7 @@ export type ProductUncheckedCreateWithoutBrandInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -804,6 +842,7 @@ export type ProductScalarWhereInput = {
   slug?: Prisma.StringFilter<"Product"> | string
   description?: Prisma.StringNullableFilter<"Product"> | string | null
   price?: Prisma.DecimalFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.DecimalNullableFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFilter<"Product"> | string
   status?: Prisma.EnumProductStatusFilter<"Product"> | $Enums.ProductStatus
   skillLevel?: Prisma.EnumSkillLevelNullableFilter<"Product"> | $Enums.SkillLevel | null
@@ -819,6 +858,7 @@ export type ProductCreateWithoutCategoryInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -838,6 +878,7 @@ export type ProductUncheckedCreateWithoutCategoryInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -883,6 +924,7 @@ export type ProductCreateWithoutImagesInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -902,6 +944,7 @@ export type ProductUncheckedCreateWithoutImagesInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -937,6 +980,7 @@ export type ProductUpdateWithoutImagesInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -956,6 +1000,7 @@ export type ProductUncheckedUpdateWithoutImagesInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -975,6 +1020,7 @@ export type ProductCreateWithoutBundleItemsInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -994,6 +1040,7 @@ export type ProductUncheckedCreateWithoutBundleItemsInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -1029,6 +1076,7 @@ export type ProductUpdateWithoutBundleItemsInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1048,6 +1096,7 @@ export type ProductUncheckedUpdateWithoutBundleItemsInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1067,6 +1116,7 @@ export type ProductCreateWithoutReviewsInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -1086,6 +1136,7 @@ export type ProductUncheckedCreateWithoutReviewsInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -1121,6 +1172,7 @@ export type ProductUpdateWithoutReviewsInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1140,6 +1192,7 @@ export type ProductUncheckedUpdateWithoutReviewsInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1159,6 +1212,7 @@ export type ProductCreateWithoutRecommendationsInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -1178,6 +1232,7 @@ export type ProductUncheckedCreateWithoutRecommendationsInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -1202,6 +1257,7 @@ export type ProductCreateWithoutRecommendedByInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -1221,6 +1277,7 @@ export type ProductUncheckedCreateWithoutRecommendedByInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -1256,6 +1313,7 @@ export type ProductUpdateWithoutRecommendationsInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1275,6 +1333,7 @@ export type ProductUncheckedUpdateWithoutRecommendationsInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1305,6 +1364,7 @@ export type ProductUpdateWithoutRecommendedByInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1324,6 +1384,7 @@ export type ProductUncheckedUpdateWithoutRecommendedByInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1343,6 +1404,7 @@ export type ProductCreateManyBrandInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -1357,6 +1419,7 @@ export type ProductUpdateWithoutBrandInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1376,6 +1439,7 @@ export type ProductUncheckedUpdateWithoutBrandInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1395,6 +1459,7 @@ export type ProductUncheckedUpdateManyWithoutBrandInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1409,6 +1474,7 @@ export type ProductCreateManyCategoryInput = {
   slug: string
   description?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku: string
   status?: $Enums.ProductStatus
   skillLevel?: $Enums.SkillLevel | null
@@ -1423,6 +1489,7 @@ export type ProductUpdateWithoutCategoryInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1442,6 +1509,7 @@ export type ProductUncheckedUpdateWithoutCategoryInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1461,6 +1529,7 @@ export type ProductUncheckedUpdateManyWithoutCategoryInput = {
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  originalPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   skillLevel?: Prisma.NullableEnumSkillLevelFieldUpdateOperationsInput | $Enums.SkillLevel | null
@@ -1542,6 +1611,7 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   slug?: boolean
   description?: boolean
   price?: boolean
+  originalPrice?: boolean
   sku?: boolean
   status?: boolean
   skillLevel?: boolean
@@ -1565,6 +1635,7 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   slug?: boolean
   description?: boolean
   price?: boolean
+  originalPrice?: boolean
   sku?: boolean
   status?: boolean
   skillLevel?: boolean
@@ -1582,6 +1653,7 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   slug?: boolean
   description?: boolean
   price?: boolean
+  originalPrice?: boolean
   sku?: boolean
   status?: boolean
   skillLevel?: boolean
@@ -1599,6 +1671,7 @@ export type ProductSelectScalar = {
   slug?: boolean
   description?: boolean
   price?: boolean
+  originalPrice?: boolean
   sku?: boolean
   status?: boolean
   skillLevel?: boolean
@@ -1608,7 +1681,7 @@ export type ProductSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"productId" | "name" | "slug" | "description" | "price" | "sku" | "status" | "skillLevel" | "brandId" | "categoryId" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"productId" | "name" | "slug" | "description" | "price" | "originalPrice" | "sku" | "status" | "skillLevel" | "brandId" | "categoryId" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   brand?: boolean | Prisma.BrandDefaultArgs<ExtArgs>
   category?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
@@ -1645,6 +1718,7 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     slug: string
     description: string | null
     price: runtime.Decimal
+    originalPrice: runtime.Decimal | null
     sku: string
     status: $Enums.ProductStatus
     skillLevel: $Enums.SkillLevel | null
@@ -2087,6 +2161,7 @@ export interface ProductFieldRefs {
   readonly slug: Prisma.FieldRef<"Product", 'String'>
   readonly description: Prisma.FieldRef<"Product", 'String'>
   readonly price: Prisma.FieldRef<"Product", 'Decimal'>
+  readonly originalPrice: Prisma.FieldRef<"Product", 'Decimal'>
   readonly sku: Prisma.FieldRef<"Product", 'String'>
   readonly status: Prisma.FieldRef<"Product", 'ProductStatus'>
   readonly skillLevel: Prisma.FieldRef<"Product", 'SkillLevel'>
