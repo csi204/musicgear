@@ -106,6 +106,11 @@ export const productCreatedEvent = z.object({
   productId: uuidSchema,
 });
 
+export const productDeletedEvent = z.object({
+  event: z.literal("product.deleted"),
+  productId: uuidSchema,
+});
+
 // ---------------------------------------------------------------------------
 // QStash Webhook Payload (ใช้ใน notification-svc และ inventory-svc)
 // รวม 4 event types: 2 จากบุญ + 2 จากเดียร์ (discriminated union)
@@ -117,4 +122,5 @@ export const qstashWebhookSchema = z.discriminatedUnion("event", [
   addressCreatedEvent,
   addressUpdatedEvent,
   productCreatedEvent,
+  productDeletedEvent,
 ]);
