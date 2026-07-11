@@ -24,6 +24,23 @@ export async function getProductById(db, productId) {
         select: { imageId: true, imageUrl: true, isPrimary: true, sortOrder: true },
         orderBy: { sortOrder: "asc" },
       },
+      recommendations: {
+        select: {
+          recommended: {
+            select: {
+              productId: true,
+              name: true,
+              price: true,
+              sku: true,
+              images: {
+                select: { imageUrl: true },
+                where: { isPrimary: true },
+                take: 1,
+              }
+            }
+          }
+        }
+      }
     },
   });
 
@@ -44,7 +61,7 @@ export async function getAllProducts(db, filters = {}) {
   if (brandId) where.brandId = brandId;
   if (categoryId) where.categoryId = categoryId;
   if (skillLevel) where.skillLevel = skillLevel;
-  if (status) {
+  if (status && status !== "all") {
     where.status = status;
   }
 
@@ -118,6 +135,23 @@ export async function getProductBySlug(db, slug) {
         select: { imageId: true, imageUrl: true, isPrimary: true, sortOrder: true },
         orderBy: { sortOrder: "asc" },
       },
+      recommendations: {
+        select: {
+          recommended: {
+            select: {
+              productId: true,
+              name: true,
+              price: true,
+              sku: true,
+              images: {
+                select: { imageUrl: true },
+                where: { isPrimary: true },
+                take: 1,
+              }
+            }
+          }
+        }
+      }
     },
   });
 }
@@ -131,41 +165,58 @@ export async function getProductBySlug(db, slug) {
  * @param {Array} images
  */
 export async function createProduct(db, data, images = []) {
-  return await db.$transaction(async (tx) => {
-    const product = await tx.product.create({
-      data: {
-        name: data.name,
-        slug: data.slug,
-        price: data.price,
-        sku: data.sku,
-        status: data.status || "active",
-        skillLevel: data.skillLevel || null,
-        brandId: data.brandId,
-        categoryId: data.categoryId,
-        description: data.description || null,
-      },
-    });
+  const product = await db.product.create({
+    data: {
+      name: data.name,
+      slug: data.slug,
+      price: data.price,
+      sku: data.sku,
+      status: data.status || "active",
+      skillLevel: data.skillLevel || null,
+      brandId: data.brandId,
+      categoryId: data.categoryId,
+      description: data.description || null,
+    },
+  });
 
-    if (images && images.length > 0) {
-      await tx.productImage.createMany({
-        data: images.map((img) => ({
-          productId: product.productId,
-          imageUrl: img.imageUrl,
-          isPrimary: img.isPrimary || false,
-          sortOrder: img.sortOrder || 0,
-        })),
-      });
-    }
-
-    // ดึงสินค้าเวอร์ชันล่าสุดที่มี relation ครบถ้วน
-    return await tx.product.findUnique({
-      where: { productId: product.productId },
-      include: {
-        brand: true,
-        category: true,
-        images: true,
-      },
+  if (images && images.length > 0) {
+    await db.productImage.createMany({
+      data: images.map((img) => ({
+        imageId: globalThis.crypto.randomUUID(),
+        productId: product.productId,
+        imageUrl: img.imageUrl,
+        isPrimary: img.isPrimary || false,
+        sortOrder: img.sortOrder || 0,
+      })),
     });
+  }
+
+  if (Array.isArray(data.recommendations) && data.recommendations.length > 0) {
+    await db.productRecommendation.createMany({
+      data: data.recommendations.map((recId) => ({
+        productId: product.productId,
+        recommendedId: recId,
+      })),
+    });
+  }
+
+  // ดึงสินค้าเวอร์ชันล่าสุดที่มี relation ครบถ้วน
+  return await db.product.findUnique({
+    where: { productId: product.productId },
+    include: {
+      brand: true,
+      category: true,
+      images: true,
+      recommendations: {
+        include: {
+          recommended: {
+            include: {
+              images: true
+            }
+          }
+        }
+      }
+    },
   });
 }
 
@@ -179,48 +230,72 @@ export async function createProduct(db, data, images = []) {
  * @param {Array|null} images — ถ้าเป็น null จะไม่มีการแตะต้องตารางรูปภาพเดิม
  */
 export async function updateProduct(db, productId, data, images = null) {
-  return await db.$transaction(async (tx) => {
-    const product = await tx.product.update({
+  const product = await db.product.update({
+    where: { productId },
+    data: {
+      name: data.name,
+      slug: data.slug,
+      price: data.price,
+      sku: data.sku,
+      status: data.status,
+      skillLevel: data.skillLevel,
+      brandId: data.brandId,
+      categoryId: data.categoryId,
+      description: data.description,
+    },
+  });
+
+  if (images !== null) {
+    // เคลียร์รูปเก่าทิ้ง
+    await db.productImage.deleteMany({
       where: { productId },
-      data: {
-        name: data.name,
-        slug: data.slug,
-        price: data.price,
-        sku: data.sku,
-        status: data.status,
-        skillLevel: data.skillLevel,
-        brandId: data.brandId,
-        categoryId: data.categoryId,
-        description: data.description,
-      },
     });
 
-    if (images !== null) {
-      // เคลียร์รูปเก่าทิ้ง
-      await tx.productImage.deleteMany({
-        where: { productId },
+    if (images.length > 0) {
+      await db.productImage.createMany({
+        data: images.map((img) => ({
+          imageId: globalThis.crypto.randomUUID(),
+          productId,
+          imageUrl: img.imageUrl,
+          isPrimary: img.isPrimary || false,
+          sortOrder: img.sortOrder || 0,
+        })),
       });
-
-      if (images.length > 0) {
-        await tx.productImage.createMany({
-          data: images.map((img) => ({
-            productId,
-            imageUrl: img.imageUrl,
-            isPrimary: img.isPrimary || false,
-            sortOrder: img.sortOrder || 0,
-          })),
-        });
-      }
     }
+  }
 
-    return await tx.product.findUnique({
+  if (Array.isArray(data.recommendations)) {
+    // Clear old recommendations
+    await db.productRecommendation.deleteMany({
       where: { productId },
-      include: {
-        brand: true,
-        category: true,
-        images: true,
-      },
     });
+
+    if (data.recommendations.length > 0) {
+      await db.productRecommendation.createMany({
+        data: data.recommendations.map((recId) => ({
+          productId,
+          recommendedId: recId,
+        })),
+      });
+    }
+  }
+
+  return await db.product.findUnique({
+    where: { productId },
+    include: {
+      brand: true,
+      category: true,
+      images: true,
+      recommendations: {
+        include: {
+          recommended: {
+            include: {
+              images: true
+            }
+          }
+        }
+      }
+    },
   });
 }
 
@@ -232,14 +307,12 @@ export async function updateProduct(db, productId, data, images = null) {
  * @param {string} productId
  */
 export async function deleteProduct(db, productId) {
-  return await db.$transaction(async (tx) => {
-    // ลบข้อมูลที่ผูกอยู่เพื่อความปลอดภัย
-    await tx.productImage.deleteMany({ where: { productId } });
-    await tx.review.deleteMany({ where: { productId } });
-    await tx.bundleItem.deleteMany({ where: { productId } });
+  // ลบข้อมูลที่ผูกอยู่เพื่อความปลอดภัย
+  await db.productImage.deleteMany({ where: { productId } });
+  await db.review.deleteMany({ where: { productId } });
+  await db.bundleItem.deleteMany({ where: { productId } });
 
-    return await tx.product.delete({
-      where: { productId },
-    });
+  return await db.product.delete({
+    where: { productId },
   });
 }

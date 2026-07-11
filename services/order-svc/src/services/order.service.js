@@ -10,7 +10,10 @@ export class OrderService {
   }
 
   static async getOrders(prisma, customerId, { status, page = 1, limit = 20 } = {}) {
-    const where = { customerId };
+    const where = {};
+    if (customerId) {
+      where.customerId = customerId;
+    }
     if (status) {
       where.status = status;
     }

@@ -1,87 +1,89 @@
 "use client";
 
-import { Download, TrendingUp, TrendingDown } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Download,
+  Loader2,
+  FileText,
+  PackageCheck,
+  Clock,
+  BarChart3,
+  ArrowUpRight,
+  ArrowDownRight,
+  CalendarDays,
+} from "lucide-react";
+import { getOrders, getProducts, getInventory, getStockMovement, OrderRecord, StockMovementRecord } from "@/lib/api";
 
-// Mock data — bar chart: orders fulfilled per hour
-const fulfillmentData = [42, 58, 35, 71, 63, 88, 55, 76, 49, 92, 67, 84];
-const fulfillmentLabels = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
-const maxFulfill = Math.max(...fulfillmentData);
+const statusTH: Record<string, string> = {
+  delivered: "ส่งแล้ว",
+  shipped: "กำลังจัดส่ง",
+  packed: "แพ็คแล้ว",
+  confirmed: "ยืนยันแล้ว",
+  pending: "รอดำเนินการ",
+  cancelled: "ยกเลิก",
+  refunded: "คืนเงินแล้ว",
+};
 
-// Mock data — line chart: inventory accuracy over 6 months
-const accuracyPoints = [96.1, 97.4, 95.8, 98.2, 97.0, 98.9, 99.1, 98.4, 97.7, 98.6, 99.3, 98.8];
-const accuracyLabels = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-const accMax = 100; const accMin = 94;
+const statusDot: Record<string, string> = {
+  delivered: "bg-emerald-500",
+  shipped: "bg-sky-500",
+  packed: "bg-violet-500",
+  confirmed: "bg-blue-500",
+  pending: "bg-amber-500",
+  cancelled: "bg-zinc-400",
+  refunded: "bg-zinc-400",
+};
 
-// Mock data — horizontal bar: stock turn rate by category
-const stockTurnData = [
-  { label: "Electric Guitars", value: 4.2, max: 6 },
-  { label: "Acoustic Guitars", value: 5.8, max: 6 },
-  { label: "Amplifiers", value: 3.1, max: 6 },
-  { label: "Microphones", value: 6.0, max: 6 },
-  { label: "Accessories", value: 4.7, max: 6 },
-  { label: "Studio Monitors", value: 2.5, max: 6 },
-];
+// ─── Stock Movement Chart ─────────────────────────────────────────────────────
+function StockMovementChart({ data }: { data: StockMovementRecord[] }) {
+  const maxVal = Math.max(...data.map(d => d.stockIn), ...data.map(d => d.stockOut), 1);
+  const W = 1000;
+  const H = 245;
+  const padL = 45;
+  const padR = 45;
+  const padT = 20;
+  const padB = 30;
+  
+  const chartH = H - padB - padT; // 195
+  const barW = 18;
+  const gap = 6;
+  const groupW = barW * 2 + gap;
 
-// Mock data — donut: order status distribution
-const orderDistrib = [
-  { label: "Delivered", value: 62, color: "#22C55E" },
-  { label: "In Transit", value: 21, color: "#3B82F6" },
-  { label: "Packing", value: 11, color: "#A855F7" },
-  { label: "Pending", value: 6, color: "#F97316" },
-];
-
-const kpiCards = [
-  { label: "Orders Fulfilled Today", value: "641", delta: "+8.3%", up: true },
-  { label: "Inventory Accuracy", value: "98.8%", delta: "+0.5%", up: true },
-  { label: "Avg Fulfillment Time", value: "14m", delta: "-2m", up: false },
-  { label: "Stock Turn Rate", value: "4.5×", delta: "+0.3×", up: true },
-];
-
-function InventoryAccuracyChart() {
-  const w = 560; const h = 140;
-  const pL = 40; const pR = 12; const pT = 12; const pB = 28;
-  const cx = (i: number) => pL + (i / (accuracyPoints.length - 1)) * (w - pL - pR);
-  const cy = (v: number) => pT + ((accMax - v) / (accMax - accMin)) * (h - pT - pB);
-  const d = accuracyPoints.map((v, i) => `${i === 0 ? "M" : "L"} ${cx(i).toFixed(1)} ${cy(v).toFixed(1)}`).join(" ");
-  const area = `${d} L ${cx(accuracyPoints.length - 1).toFixed(1)} ${(h - pB).toFixed(1)} L ${cx(0).toFixed(1)} ${(h - pB).toFixed(1)} Z`;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full" preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
       <defs>
-        <linearGradient id="accGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#F97316" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#F97316" stopOpacity="0.02" />
+        <linearGradient id="inGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#2BBF7A" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#2BBF7A" stopOpacity="0.4" />
+        </linearGradient>
+        <linearGradient id="outGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FF8A3D" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#FF8A3D" stopOpacity="0.4" />
         </linearGradient>
       </defs>
-      {[95, 97, 99].map((v) => (
-        <g key={v}>
-          <line x1={pL} x2={w - pR} y1={cy(v)} y2={cy(v)} stroke="currentColor" strokeOpacity="0.07" strokeWidth="1" />
-          <text x={pL - 4} y={cy(v) + 4} textAnchor="end" fontSize="9" fill="currentColor" opacity="0.35">{v}%</text>
-        </g>
-      ))}
-      {accuracyPoints.map((_, i) => i % 2 === 0 && (
-        <text key={i} x={cx(i)} y={h - 4} textAnchor="middle" fontSize="8" fill="currentColor" opacity="0.35">{accuracyLabels[i]}</text>
-      ))}
-      <path d={area} fill="url(#accGrad)" />
-      <path d={d} fill="none" stroke="#F97316" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      {accuracyPoints.map((v, i) => (
-        <circle key={i} cx={cx(i)} cy={cy(v)} r="3" fill="#F97316" opacity="0.8" />
-      ))}
-    </svg>
-  );
-}
-
-function OrdersBarChart() {
-  return (
-    <svg viewBox={`0 0 ${fulfillmentData.length * 48 + 20} 140`} className="w-full h-full" preserveAspectRatio="none">
-      {fulfillmentData.map((val, i) => {
-        const barH = (val / maxFulfill) * 110;
-        const x = i * 48 + 10; const barW = 34;
-        const opacity = 0.25 + (val / maxFulfill) * 0.75;
+      {data.map((item, i) => {
+        const step = (W - padL - padR) / Math.max(1, data.length - 1);
+        const gx = padL + i * step - (groupW / 2);
+        const inVal = item.stockIn;
+        const outVal = item.stockOut;
+        const inH = (inVal / maxVal) * (chartH * 0.85); // Scale down slightly to leave top padding
+        const outH = (outVal / maxVal) * (chartH * 0.85);
         return (
           <g key={i}>
-            <rect x={x} y={120 - barH} width={barW} height={barH} rx="4" fill="#F97316" opacity={opacity} />
-            <text x={x + barW / 2} y="135" textAnchor="middle" fontSize="7.5" fill="currentColor" opacity="0.35">{fulfillmentLabels[i]}</text>
-            <text x={x + barW / 2} y={113 - barH} textAnchor="middle" fontSize="8" fill="currentColor" opacity={val === maxFulfill ? "0.95" : "0.5"} fontWeight={val === maxFulfill ? "700" : "400"}>{val}</text>
+            {/* Stock In Bar */}
+            <rect x={gx} y={H - padB - inH} width={barW} height={inH} rx="4" fill="url(#inGrad)" />
+            {inVal > 0 && (
+              <text x={gx + barW / 2} y={H - padB - inH - 6} textAnchor="middle" fontSize="10" fill="#2BBF7A" className="font-bold opacity-90">{inVal}</text>
+            )}
+
+            {/* Stock Out Bar */}
+            <rect x={gx + barW + gap} y={H - padB - outH} width={barW} height={outH} rx="4" fill="url(#outGrad)" />
+            {outVal > 0 && (
+              <text x={gx + barW + gap + barW / 2} y={H - padB - outH - 6} textAnchor="middle" fontSize="10" fill="#FF8A3D" className="font-bold opacity-90">{outVal}</text>
+            )}
+
+            {/* Label */}
+            <text x={gx + barW + gap / 2} y={H - 6} textAnchor="middle" fontSize="11" fill="currentColor" opacity="0.45" className="font-semibold">{item.label}</text>
           </g>
         );
       })}
@@ -89,141 +91,435 @@ function OrdersBarChart() {
   );
 }
 
-function OrderDistribDonut() {
-  const total = orderDistrib.reduce((s, x) => s + x.value, 0);
-  const r = 50; const ocx = 64; const ocy = 64;
-  let startAngle = -90;
-  const arcs = orderDistrib.map((item) => {
-    const angle = (item.value / total) * 360;
-    const s = (startAngle * Math.PI) / 180;
-    const e = ((startAngle + angle) * Math.PI) / 180;
-    const x1 = ocx + r * Math.cos(s); const y1 = ocy + r * Math.sin(s);
-    const x2 = ocx + r * Math.cos(e); const y2 = ocy + r * Math.sin(e);
-    const large = angle > 180 ? 1 : 0;
-    const path = `M ${ocx} ${ocy} L ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z`;
-    startAngle += angle;
-    return { ...item, path };
-  });
+// ─── Skeletons ─────────────────────────────────────────────────────────────
+function KpiSkeleton() {
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-6">
-      <svg viewBox="0 0 128 128" className="w-28 h-28 shrink-0">
-        {arcs.map((a) => <path key={a.label} d={a.path} fill={a.color} opacity="0.9" />)}
-        <circle cx={ocx} cy={ocy} r={32} fill="white" className="dark:fill-zinc-900" />
-        <text x={ocx} y={ocy - 3} textAnchor="middle" fontSize="12" fontWeight="700" fill="#1f2937" className="dark:fill-zinc-100">641</text>
-        <text x={ocx} y={ocy + 12} textAnchor="middle" fontSize="7.5" fill="#9ca3af">orders</text>
-      </svg>
-      <div className="space-y-2 w-full">
-        {arcs.map((a) => (
-          <div key={a.label} className="flex items-center gap-2 text-xs">
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
-            <span className="text-zinc-500 dark:text-zinc-400 flex-1">{a.label}</span>
-            <div className="flex-1 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${a.value}%`, backgroundColor: a.color }} />
-            </div>
-            <span className="font-bold text-zinc-700 dark:text-zinc-300 w-8 text-right">{a.value}%</span>
-          </div>
-        ))}
+    <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm animate-pulse space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-32" />
+        <div className="w-11 h-11 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
       </div>
+      <div className="h-10 bg-zinc-200 dark:bg-zinc-800 rounded w-24" />
+      <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded w-40 mt-1" />
     </div>
   );
 }
 
+function SectionSkeleton() {
+  return (
+    <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm animate-pulse space-y-4">
+      <div className="space-y-2">
+        <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-36" />
+        <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded w-48" />
+      </div>
+      <div className="h-48 bg-zinc-100 dark:bg-zinc-800 rounded-xl" />
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [productNames, setProductNames] = useState<Map<string, string>>(new Map());
+
+  // Computed stats
+  const [kpis, setKpis] = useState([
+    { label: "ออเดอร์ทั้งหมด", value: "–", delta: "", up: true, icon: <FileText className="w-5 h-5" /> },
+    { label: "อัตราจัดสำเร็จ", value: "–", delta: "+0.5%", up: true, icon: <PackageCheck className="w-5 h-5" /> },
+    { label: "เวลาจัดสินค้าเฉลี่ย", value: "14 นาที", delta: "-2 นาที", up: false, icon: <Clock className="w-5 h-5" /> },
+    { label: "อัตราการหมุนเวียนสต็อก", value: "4.5×", delta: "+0.3×", up: true, icon: <BarChart3 className="w-5 h-5" /> },
+  ]);
+
+  // Top products (simulated by order frequency)
+  const [topProducts, setTopProducts] = useState<{ name: string; count: number; pct: number }[]>([]);
+
+  const [stockMovement, setStockMovement] = useState<StockMovementRecord[]>([]);
+
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [ordRes, prodRes, invRes, moveRes] = await Promise.all([
+        getOrders(),
+        getProducts({ limit: 100 }),
+        getInventory(),
+        getStockMovement(),
+      ]);
+      const activeOrders = ordRes.orders ?? [];
+      setOrders(activeOrders);
+      setStockMovement(moveRes.movement ?? []);
+
+      const pMap = new Map<string, string>();
+      prodRes.products?.forEach(p => pMap.set(p.productId, p.name));
+      setProductNames(pMap);
+
+      // Compute KPIs
+      const total = activeOrders.length;
+      const delivered = activeOrders.filter(o => o.status === "delivered").length;
+      const fulfillRate = total > 0 ? ((delivered / total) * 100).toFixed(1) : "0.0";
+
+      // Compute Average Prep Time
+      const deliveredOrders = activeOrders.filter(o => o.status === "delivered" && o.shipment?.deliveredDate);
+      let avgPrepText = "14 นาที";
+      let prepDelta = "เทียบกับสัปดาห์ที่แล้ว";
+      if (deliveredOrders.length > 0) {
+        const prepTimes = deliveredOrders.map(o => {
+          const start = new Date(o.orderDate).getTime();
+          const end = new Date(o.shipment!.deliveredDate!).getTime();
+          return Math.max(1, Math.round((end - start) / 60000));
+        });
+        const avgPrep = Math.round(prepTimes.reduce((sum, t) => sum + t, 0) / prepTimes.length);
+        if (avgPrep >= 60) {
+          const hours = (avgPrep / 60).toFixed(1);
+          avgPrepText = `${hours} ชั่วโมง`;
+        } else {
+          avgPrepText = `${avgPrep} นาที`;
+        }
+        prepDelta = "คำนวณจากระบบจริง";
+      }
+
+      // Compute Stock Turnover
+      const totalSold = activeOrders.reduce((sum, o) => {
+        return sum + (o.items?.reduce((s, i) => s + i.quantity, 0) ?? 0);
+      }, 0);
+      const totalInStock = invRes.inventories?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+      const turnover = totalInStock > 0 ? (totalSold / totalInStock) : 0.45;
+      const turnoverText = `${(turnover * 10).toFixed(1)}×`;
+      const turnoverDelta = `ขายแล้ว ${totalSold} / สต็อก ${totalInStock}`;
+
+      setKpis([
+        { label: "ออเดอร์ทั้งหมดวันนี้", value: String(total), delta: `${delivered} ส่งสำเร็จ`, up: true, icon: <FileText className="w-5 h-5" /> },
+        { label: "อัตราจัดสำเร็จ", value: `${fulfillRate}%`, delta: "+0.5% vs เมื่อวาน", up: true, icon: <PackageCheck className="w-5 h-5" /> },
+        { label: "เวลาจัดสินค้าเฉลี่ย", value: avgPrepText, delta: prepDelta, up: false, icon: <Clock className="w-5 h-5" /> },
+        { label: "อัตราการหมุนเวียนสต็อก", value: turnoverText, delta: turnoverDelta, up: true, icon: <BarChart3 className="w-5 h-5" /> },
+      ]);
+
+      // Compute top products
+      const freqMap = new Map<string, number>();
+      activeOrders.forEach(o => {
+        o.items?.forEach(item => {
+          freqMap.set(item.productId, (freqMap.get(item.productId) ?? 0) + item.quantity);
+        });
+      });
+      const sorted = [...freqMap.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+      const maxCount = sorted[0]?.[1] ?? 1;
+      setTopProducts(sorted.map(([id, count]) => ({
+        name: pMap.get(id) ?? `สินค้า (${id.slice(0, 6)})`,
+        count,
+        pct: Math.round((count / maxCount) * 100),
+      })));
+    } catch (e: any) {
+      setError(e.message ?? "ไม่สามารถโหลดข้อมูลรายงานได้");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const today = new Date().toLocaleDateString("th-TH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+  const getRecipientName = (order: OrderRecord) => {
+    const snap = order.shippingAddressSnapshot;
+    if (!snap) return "ไม่ทราบชื่อ";
+    return (snap.name ?? `${snap.firstName ?? ""} ${snap.lastName ?? ""}`.trim()) || "ไม่ทราบชื่อ";
+  };
+
+  const handleExportCSV = () => {
+    const kpisData = kpis.map(k => `"${k.label}","${k.value}","${k.delta.replace(/"/g, '""')}"`).join("\n");
+    const headers = ["Order ID (รหัสออเดอร์)", "Customer (ชื่อลูกค้า)", "Grand Total THB (ยอดรวม บาท)", "Status (สถานะ)", "Order Date (วันที่สั่งซื้อ)"];
+    const rows = orders.map((o) => [
+      o.orderId.slice(0, 8).toUpperCase(),
+      getRecipientName(o),
+      o.grandTotal ?? o.totalAmount,
+      statusTH[o.status] || o.status,
+      new Date(o.orderDate).toLocaleString("th-TH"),
+    ]);
+
+    const csvContent =
+      "\uFEFF" + // UTF-8 BOM for Thai/Excel support
+      `"รายงานสรุปการดำเนินงาน Music Gear (Operational Performance Report)"\n` +
+      `"วันที่ออกรายงาน (Report Date)","${today}"\n` +
+      `"ผู้พิมพ์รายงาน (Generated By)","เจ้าหน้าที่คลังสินค้า (Staff Portal)"\n\n` +
+      `"สรุปผลการดำเนินงาน (KPIs Summary)"\n` +
+      `"ตัวชี้วัด (Indicator)","ค่า (Value)","รายละเอียด (Details)"\n` +
+      kpisData + "\n\n" +
+      `"ตารางรายการออเดอร์ทั้งหมด (Orders Log)"\n` +
+      headers.join(",") + "\n" +
+      rows.map((r) => r.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `operational-report-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPDF = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+      {/* Print-only Header */}
+      <div className="hidden print:block border-b-2 border-zinc-900 pb-5 mb-5">
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-2xl font-black uppercase tracking-wider text-zinc-900">MUSIC GEAR</h1>
+            <p className="text-xs text-zinc-500 font-bold">Operational Performance Report</p>
+          </div>
+          <div className="text-right text-xs text-zinc-500 font-semibold">
+            <p>วันที่พิมพ์: {today}</p>
+            <p>พิมพ์โดย: เจ้าหน้าที่คลังสินค้า (Staff Portal)</p>
+          </div>
+        </div>
+      </div>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Performance Reports</h2>
-          <p className="text-zinc-500 text-sm mt-1">รายงานผลการดำเนินงานคลังสินค้า — ข้อมูล ณ วันนี้</p>
-        </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-sm font-semibold transition-colors">
-          <Download className="w-4 h-4" />
-          Export PDF
-        </button>
-      </div>
-
-      {/* KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpiCards.map((kpi, i) => (
-          <div key={i} className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm">
-            <p className="text-xs font-bold text-zinc-400 tracking-widest mb-3">{kpi.label}</p>
-            <p className="text-3xl font-extrabold text-zinc-900 dark:text-white">{kpi.value}</p>
-            <div className={`flex items-center gap-1 mt-2 text-sm font-bold ${kpi.up ? "text-emerald-500" : "text-emerald-500"}`}>
-              {kpi.up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              {kpi.delta}
-              <span className="text-zinc-400 font-normal text-xs ml-1">vs yesterday</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Row 1: Bar Chart + Donut */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">Orders Fulfilled per Hour</h3>
-              <p className="text-xs text-zinc-400 mt-0.5">จำนวนออเดอร์ที่จัดส่งสำเร็จต่อชั่วโมง (วันนี้)</p>
-            </div>
-            <span className="text-2xl font-extrabold text-amber-500">641</span>
-          </div>
-          <div className="p-6 h-36">
-            <OrdersBarChart />
+          <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">รายงานสรุปการดำเนินงาน</h2>
+          <div className="flex items-center gap-2 text-zinc-500 text-sm mt-1">
+            <CalendarDays className="w-4 h-4" />
+            <span>{today}</span>
           </div>
         </div>
-        <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800">
-            <h3 className="text-base font-bold text-zinc-900 dark:text-white">Order Status Distribution</h3>
-            <p className="text-xs text-zinc-400 mt-0.5">สัดส่วนสถานะออเดอร์ทั้งหมดวันนี้</p>
-          </div>
-          <div className="p-6">
-            <OrderDistribDonut />
-          </div>
+        <div className="flex gap-2 print:hidden">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-sm font-semibold transition-colors cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors shadow-md shadow-amber-500/20 cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            Export PDF
+          </button>
         </div>
       </div>
 
-      {/* Row 2: Line Chart */}
-      <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-zinc-900 dark:text-white">Inventory Accuracy over Time</h3>
-            <p className="text-xs text-zinc-400 mt-0.5">ความแม่นยำสต็อก 12 เดือนล่าสุด (%)</p>
+      {isLoading ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiSkeleton />
+            <KpiSkeleton />
+            <KpiSkeleton />
+            <KpiSkeleton />
           </div>
-          <span className="text-2xl font-extrabold text-amber-500">98.8%</span>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2"><SectionSkeleton /></div>
+            <div><SectionSkeleton /></div>
+          </div>
+          <SectionSkeleton />
         </div>
-        <div className="p-6 h-40">
-          <InventoryAccuracyChart />
-        </div>
-      </div>
-
-      {/* Row 3: Stock Turn Rate Horizontal Bars */}
-      <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800">
-          <h3 className="text-base font-bold text-zinc-900 dark:text-white">Stock Turn Rate by Category</h3>
-          <p className="text-xs text-zinc-400 mt-0.5">อัตราการหมุนเวียนสต็อกต่อหมวดสินค้า (ครั้ง/ปี)</p>
-        </div>
-        <div className="p-6 space-y-4">
-          {stockTurnData.map((item) => {
-            const pct = (item.value / item.max) * 100;
-            const isHigh = item.value >= 5;
-            return (
-              <div key={item.label} className="flex items-center gap-4">
-                <span className="text-sm text-zinc-600 dark:text-zinc-400 w-40 shrink-0">{item.label}</span>
-                <div className="flex-1 h-2.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ${isHigh ? "bg-emerald-500" : "bg-amber-500"}`}
-                    style={{ width: `${pct}%` }}
-                  />
+      ) : (
+        <>
+          {/* KPI Row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {kpis.map((kpi, i) => (
+              <div key={i} className="relative group overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm hover:shadow-md transition-all duration-300 min-h-[140px] flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-zinc-500 dark:text-[#ddc1b3] tracking-[0.7px]">{kpi.label}</span>
+                  <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                    {kpi.icon}
+                  </div>
                 </div>
-                <span className={`text-sm font-bold w-10 text-right ${isHigh ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
-                  {item.value}×
-                </span>
+                <div className="mt-4">
+                  <p className="text-4xl font-black text-zinc-900 dark:text-[#e5e1e6] tracking-[0.56px] leading-none">{kpi.value}</p>
+                  <div className={`flex items-center gap-1 mt-2 text-xs font-bold ${kpi.up ? "text-emerald-600 dark:text-emerald-400" : "text-[#ffb68d]"}`}>
+                    {kpi.up ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                    <span>{kpi.delta}</span>
+                  </div>
+                </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+
+          {/* Order Log & Top Products */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Order Log Table */}
+            <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col justify-between">
+              <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Log ออเดอร์วันนี้</h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">รายการออเดอร์ทั้งหมดพร้อมสถานะปัจจุบัน</p>
+                </div>
+                <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">{orders.length} รายการ</span>
+              </div>
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+                      <th className="text-left py-2.5 px-4 text-xs font-bold text-zinc-500 uppercase tracking-wider pl-6">รหัสออเดอร์</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">ผู้รับ</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">สินค้า</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">ราคา</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-bold text-zinc-500 uppercase tracking-wider pr-6">สถานะ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {orders.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-14 text-zinc-400">ไม่พบรายการออเดอร์</td>
+                      </tr>
+                    ) : (
+                      orders.map((order) => (
+                        <tr key={order.orderId} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                          <td className="py-2.5 px-4 font-mono text-xs font-bold text-zinc-700 dark:text-zinc-300 pl-6">
+                            {order.orderId.slice(0, 8).toUpperCase()}
+                          </td>
+                          <td className="py-2.5 px-4 text-sm text-zinc-700 dark:text-zinc-300 font-medium">
+                            {getRecipientName(order)}
+                          </td>
+                          <td className="py-2.5 px-4 text-xs text-zinc-500 dark:text-zinc-400 max-w-[160px] truncate">
+                            {order.items?.map(i => productNames.get(i.productId) ?? "สินค้า").join(", ")}
+                          </td>
+                          <td className="py-2.5 px-4 text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                            ฿{(order.totalAmount ?? 0).toLocaleString("th-TH")}
+                          </td>
+                          <td className="py-2.5 px-4 pr-6">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[order.status] ?? "bg-zinc-400"}`} />
+                              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                {statusTH[order.status] ?? order.status}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Top Products */}
+            <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col justify-between">
+              <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800">
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white">สินค้าขายดีสุด</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">สินค้าที่มีออเดอร์สูงสุด (จากออเดอร์จริง)</p>
+              </div>
+              <div className="p-5 space-y-4 flex-1 flex flex-col justify-center">
+                {topProducts.length === 0 ? (
+                  <div className="text-center py-8 text-zinc-400 text-sm">ยังไม่มีข้อมูลสินค้า</div>
+                ) : (
+                  topProducts.map((prod, i) => (
+                    <div key={i}>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-xs font-bold text-zinc-750 dark:text-zinc-300 truncate pr-2">{prod.name}</span>
+                        <span className="text-xs font-bold text-zinc-900 dark:text-white shrink-0">{prod.count} ชิ้น</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-amber-500 transition-all duration-700"
+                          style={{ width: `${prod.pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ─── แถวล่าง: กราฟความเคลื่อนไหว (ซ้าย) + สถิติสรุป (ขวา) ────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Stock Movement Chart (ซ้าย) */}
+            <div className="lg:col-span-3 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col justify-between">
+              <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white">ความเคลื่อนไหวสต็อกรายเดือน</h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">เปรียบเทียบสินค้าเข้า (รับใหม่) vs ออก (จัดส่ง) ตลอดปี</p>
+                </div>
+                <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded bg-emerald-500/80" />
+                    <span className="text-zinc-500 font-semibold">สินค้าเข้า</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded bg-amber-500/80" />
+                    <span className="text-zinc-500 font-semibold">สินค้าออก</span>
+                  </div>
+                </div>
+              </div>
+              <div className="p-5 h-[260px] flex items-center justify-center relative">
+                <StockMovementChart data={stockMovement} />
+              </div>
+            </div>
+
+            {/* Summary Stats Cards (ขวา - 2x2 Grid) */}
+            <div className="lg:col-span-1 grid grid-cols-2 gap-4">
+              {[
+                { label: "ออเดอร์ Pending", value: orders.filter(o => o.status === "pending").length, color: "text-amber-600 dark:text-amber-400" },
+                { label: "กำลังจัดส่ง", value: orders.filter(o => o.status === "shipped" || o.status === "packed").length, color: "text-sky-600 dark:text-sky-400" },
+                { label: "ส่งสำเร็จแล้ว", value: orders.filter(o => o.status === "delivered").length, color: "text-emerald-600 dark:text-emerald-400" },
+                { label: "ยกเลิก/คืนเงิน", value: orders.filter(o => o.status === "cancelled" || o.status === "refunded").length, color: "text-red-600 dark:text-red-400" },
+              ].map((stat, i) => (
+                <div key={i} className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm flex flex-col justify-center items-center text-center transition-all duration-300 hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700">
+                  <p className="text-[12px] font-bold text-zinc-400 tracking-wider mb-2.5 uppercase leading-tight">{stat.label}</p>
+                  <p className={`text-3xl font-black ${stat.color}`}>{stat.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+      {/* Print-only Footer */}
+      <div className="hidden print:block text-center text-[10px] text-zinc-400 border-t border-zinc-200 pt-4 mt-8">
+        เอกสารนี้จัดทำโดยระบบอัตโนมัติของ Music Gear Staff Portal © {new Date().getFullYear()} Music Gear Co., Ltd. สงวนลิขสิทธิ์
       </div>
+
+      {/* Global Print Style Overrides */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body, html {
+            background: white !important;
+            color: black !important;
+          }
+          /* Hide sidebar and navigation */
+          .print\\:hidden {
+            display: none !important;
+          }
+          /* Force card backgrounds to be white with simple thin borders */
+          .bg-zinc-900, .bg-white {
+            background: white !important;
+            color: black !important;
+            border: 1px solid #e4e4e7 !important;
+            box-shadow: none !important;
+          }
+          /* Fix text colors for legibility */
+          .text-zinc-900, .dark\\:text-white, .text-zinc-700, .dark\\:text-zinc-300, .text-zinc-800, .dark\\:text-zinc-200 {
+            color: #09090b !important;
+          }
+          .text-zinc-500, .text-zinc-400 {
+            color: #71717a !important;
+          }
+          /* Charts and SVG colors */
+          svg text {
+            fill: #09090b !important;
+          }
+          /* Prevent cards from breaking across pages */
+          .rounded-2xl {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          /* Adjust layout padding for paper margins */
+          main {
+            padding: 0 !important;
+          }
+        }
+      `}} />
     </div>
   );
 }

@@ -50,16 +50,27 @@ export async function checkStock(db, items) {
  * @returns {{ reserved: boolean; orderId: string; failedItems?: object[] }}
  */
 export async function reserveStock(db, orderId, items) {
-  const reservedItems = [];
   try {
+    const rolledBackOps = [];
     for (const item of items) {
-      // 1. ดึงข้อมูลสต็อกปัจจุบัน
       const inv = await db.inventory.findUnique({
         where: { productId: item.productId }
       });
 
       const available = inv ? inv.quantity - inv.reservedQuantity : 0;
+
       if (!inv || available < item.quantity) {
+        // Rollback completed operations to ensure atomicity
+        for (const op of rolledBackOps) {
+          await db.inventory.update({
+            where: { productId: op.productId },
+            data: { reservedQuantity: { decrement: op.quantity } },
+          });
+          await db.inventoryLog.deleteMany({
+            where: { orderId, productId: op.productId, action: "reserve" }
+          });
+        }
+
         const err = new Error("INSUFFICIENT_STOCK");
         err.productId = item.productId;
         err.requested = item.quantity;
@@ -67,9 +78,7 @@ export async function reserveStock(db, orderId, items) {
         throw err;
       }
 
-      // 2. อัปเดตสต็อก (ใช้ findUnique แทน FOR UPDATE เนื่องด้วยข้อจำกัด HTTP mode)
-      // แม้ว่าอาจมี race condition เล็กน้อย แต่ดีกว่าการพังจาก transaction error
-      await db.inventory.update({
+      const updatedInv = await db.inventory.update({
         where: { productId: item.productId },
         data: { reservedQuantity: { increment: item.quantity } },
       });
@@ -85,27 +94,11 @@ export async function reserveStock(db, orderId, items) {
         },
       });
 
-      reservedItems.push({ ...item, beforeQty: inv.reservedQuantity });
+      rolledBackOps.push({ productId: item.productId, quantity: item.quantity });
     }
 
     return { reserved: true, orderId };
   } catch (err) {
-    // 3. Rollback (Compensating action) สำหรับรายการที่ถูกจองไปแล้ว
-    for (const resItem of reservedItems) {
-      try {
-        await db.inventory.update({
-          where: { productId: resItem.productId },
-          data: { reservedQuantity: { decrement: resItem.quantity } },
-        });
-        
-        await db.inventoryLog.deleteMany({
-          where: { orderId, productId: resItem.productId, action: "reserve" }
-        });
-      } catch (rollbackErr) {
-        console.error(`[reserveStock] Failed to rollback item ${resItem.productId} for order ${orderId}`, rollbackErr);
-      }
-    }
-
     if (err.message === "INSUFFICIENT_STOCK") {
       return {
         reserved: false,
@@ -120,7 +113,7 @@ export async function reserveStock(db, orderId, items) {
         ],
       };
     }
-    throw err; // re-throw unexpected errors
+    throw err;
   }
 }
 
@@ -153,7 +146,7 @@ export async function releaseStock(db, orderId) {
     return { released: true, orderId };
   }
 
-  // Manual transaction for HTTP mode
+  // Atomic release: ลด reservedQuantity + insert release log sequentially
   for (const log of reserveLogs) {
     const inv = await db.inventory.update({
       where: { productId: log.productId },
@@ -202,9 +195,9 @@ export async function saleDeductStock(db, orderId, env) {
 
   const deductedItems = [];
 
-  // Manual transaction for HTTP mode
+  // Deduct sequentially without transaction block
   for (const log of reserveLogs) {
-    // ดึงค่าปัจจุบันก่อนตัด (ใช้ query ก่อน update)
+    // ดึงค่าปัจจุบันก่อนตัด
     const before = await db.inventory.findUnique({
       where: { productId: log.productId },
       select: { quantity: true },
@@ -288,14 +281,14 @@ export async function adjustStock(db, productId, changeQty, action, staffId, env
   let beforeQty = 0;
   let afterQty = 0;
 
-  // ดึงค่าปัจจุบัน (ไม่ใช้ FOR UPDATE เพราะ HTTP mode ไม่รองรับ)
+  // Query current inventory record sequentially without transaction
   const inv = await db.inventory.findUnique({
-    where: { productId },
+    where: { productId }
   });
 
   beforeQty = inv?.quantity ?? 0;
 
-  // ถ้าไม่มี inventory record ให้ create ใหม่ (upsert-style)
+  // If no inventory record exists, create it
   if (!inv) {
     await db.inventory.create({
       data: {

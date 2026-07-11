@@ -11,10 +11,7 @@ import { PrismaNeonHttp } from "@prisma/adapter-neon";
  * @param {string} connectionString — DATABASE_URL จาก c.env
  */
 export function createClient(connectionString) {
-  let cleanString = connectionString;
-  if (cleanString) {
-    cleanString = cleanString.replace(/^["']|["']$/g, "").trim();
-  }
+  const cleanString = connectionString.replace(/^["']|["']$/g, "").trim();
   const adapter = new PrismaNeonHttp(cleanString, { fetchOptions: { cache: 'no-store' } });
   return new PrismaClient({ adapter });
 }

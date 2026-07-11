@@ -161,6 +161,65 @@ export class ReportController {
       }
     };
     this.router.get("/inventory", allInventoryHandler);
+
+    // GET /stock-movement — ดึงสรุปการเข้า-ออกของสต็อกรายเดือนย้อนหลัง 12 เดือน
+    const stockMovementHandler = async (c) => {
+      const db = createClient(c.env.DATABASE_URL);
+      try {
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+        const logs = await db.systemAuditLog.findMany({
+          where: {
+            eventType: "stock.updated",
+            createdAt: { gte: oneYearAgo },
+          },
+          orderBy: { createdAt: "asc" },
+        });
+
+        const monthlyData = {};
+        const monthsTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+        
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date();
+          d.setMonth(d.getMonth() - i);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          monthlyData[key] = { label: monthsTH[d.getMonth()], stockIn: 0, stockOut: 0 };
+        }
+
+        for (const log of logs) {
+          const date = new Date(log.createdAt);
+          const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          if (!monthlyData[key]) continue;
+
+          let payload = log.payload;
+          if (typeof payload === "string") {
+            try {
+              payload = JSON.parse(payload);
+            } catch {
+              continue;
+            }
+          }
+
+          const beforeVal = parseInt(payload.beforeQty) || 0;
+          const afterVal = parseInt(payload.afterQty) || 0;
+          const diff = afterVal - beforeVal;
+
+          if (diff > 0) {
+            monthlyData[key].stockIn += diff;
+          } else if (diff < 0) {
+            monthlyData[key].stockOut += Math.abs(diff);
+          }
+        }
+
+        const movement = Object.values(monthlyData);
+        return c.json({ status: "ok", movement }, 200);
+      } catch (err) {
+        console.error("[GET /reports/stock-movement]", err);
+        return c.json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
+      }
+    };
+    this.router.get("/stock-movement", stockMovementHandler);
   }
 }
 
