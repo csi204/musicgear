@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import crypto from 'crypto';
 
-const sql = neon(process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_CkXVgUoGvS69@ep-sparkling-leaf-a7utdbyk-pooler.ap-southeast-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require');
+const sql = neon(process.env.DATABASE_URL || '');
 
 async function main() {
   console.log('Clearing existing data...');
