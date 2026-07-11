@@ -249,7 +249,88 @@ productRoutes.put("/bundles/:bundleId", async (c) => {
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// DELETE /products/bundles/:bundleId — ลบ Bundle
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.delete("/bundles/:bundleId", async (c) => {
+  const bundleId = c.req.param("bundleId");
+  const db = createClient(c.env.DATABASE_URL);
 
+  try {
+    // Delete associated bundle items first
+    await db.bundleItem.deleteMany({
+      where: { bundleId }
+    });
+
+    // Delete the bundle itself
+    const deleted = await db.bundle.delete({
+      where: { bundleId }
+    });
+
+    return c.json({ status: "ok", message: "Bundle deleted successfully", bundle: deleted }, 200);
+  } catch (err) {
+    console.error("[DELETE /products/bundles/:bundleId]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: err.message, stack: err.stack } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /products/categories — ดึงข้อมูลหมวดหมู่ทั้งหมด
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.get("/categories", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    const categories = await db.category.findMany();
+    return c.json({ status: "ok", categories }, 200);
+  } catch (err) {
+    console.error("[GET /products/categories]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch categories" } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /products/brands — ดึงข้อมูลแบรนด์ทั้งหมด
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.get("/brands", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    const brands = await db.brand.findMany();
+    return c.json({ status: "ok", brands }, 200);
+  } catch (err) {
+    console.error("[GET /products/brands]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch brands" } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /products/brands — สร้างแบรนด์ใหม่
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.post("/brands", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    const body = await c.req.json().catch(() => null);
+    if (!body || !body.name) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "name is required" } }, 400);
+    }
+
+    const { name } = body;
+    // Check if brand already exists
+    let brand = await db.brand.findFirst({
+      where: { name: { equals: name } }
+    });
+
+    if (!brand) {
+      brand = await db.brand.create({
+        data: { name }
+      });
+    }
+
+    return c.json({ status: "ok", brand }, 201);
+  } catch (err) {
+    console.error("[POST /products/brands]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to create brand" } }, 500);
+  }
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // GET /products/:productId — ดึงข้อมูลสินค้าพร้อมรูปภาพด้วย UUID
@@ -289,6 +370,7 @@ productRoutes.get("/:productId", async (c) => {
         isPrimary: img.isPrimary,
         sortOrder: img.sortOrder,
       })),
+      recommendations: product.recommendations || [],
     });
   } catch (err) {
     console.error("[GET /products/:productId]", err);
@@ -334,9 +416,32 @@ productRoutes.post("/", async (c) => {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "Price must be a valid number" } }, 400);
     }
 
-    const slug = body.slug || name.toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
+    let slugBase = body.slug || name.toLowerCase()
+      .replace(/[^a-z0-9ก-๙]+/g, "-")
       .replace(/(^-|-$)/g, "");
+
+    if (!slugBase) {
+      slugBase = sku.toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+    }
+
+    if (!slugBase) {
+      slugBase = "product";
+    }
+
+    let slug = slugBase;
+    let suffix = 1;
+    while (true) {
+      const existingSlug = await db.product.findUnique({
+        where: { slug }
+      });
+      if (!existingSlug) {
+        break;
+      }
+      slug = `${slugBase}-${suffix}`;
+      suffix++;
+    }
 
     // ดึงไฟล์รูปภาพที่อัปโหลด
     const filesList = [];
@@ -353,8 +458,8 @@ productRoutes.post("/", async (c) => {
       }
     }
 
-    const dbImages = [];
-    if (c.env.PRODUCT_IMAGES) {
+    let dbImages = [];
+    if (c.env.PRODUCT_IMAGES && filesList.length > 0) {
       for (let i = 0; i < filesList.length; i++) {
         const file = filesList[i];
         const key = await uploadToR2(c.env.PRODUCT_IMAGES, file);
@@ -369,8 +474,30 @@ productRoutes.post("/", async (c) => {
           sortOrder: i
         });
       }
-    } else {
+    } else if (body.images) {
+      if (Array.isArray(body.images)) {
+        dbImages = body.images;
+      } else if (typeof body.images === "string") {
+        try {
+          const parsed = JSON.parse(body.images);
+          if (Array.isArray(parsed)) dbImages = parsed;
+        } catch {}
+      }
+    } else if (!c.env.PRODUCT_IMAGES) {
       console.warn("PRODUCT_IMAGES bucket not bound");
+    }
+
+    let recommendations = [];
+    if (body.recommendations) {
+      if (typeof body.recommendations === "string") {
+        try {
+          recommendations = JSON.parse(body.recommendations);
+        } catch {
+          recommendations = body.recommendations.split(",").map(id => id.trim()).filter(Boolean);
+        }
+      } else if (Array.isArray(body.recommendations)) {
+        recommendations = body.recommendations;
+      }
     }
 
     const productData = {
@@ -382,7 +509,8 @@ productRoutes.post("/", async (c) => {
       skillLevel: body.skillLevel || null,
       brandId: finalBrandId,
       categoryId: finalCategoryId,
-      description: body.description || null
+      description: body.description || null,
+      recommendations
     };
 
     const product = await createProduct(db, productData, dbImages);
@@ -427,7 +555,7 @@ productRoutes.post("/", async (c) => {
     return c.json({ status: "ok", product }, 201);
   } catch (err) {
     console.error("[POST /products]", err);
-    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to create product" } }, 500);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: err.message, stack: err.stack } }, 500);
   }
 });
 
@@ -466,6 +594,23 @@ productRoutes.patch("/:productId", async (c) => {
     if (contentType.includes("multipart/form-data")) {
       const filesList = [];
       const imageFields = ["images", "imageFiles"];
+      
+      let existingImages = [];
+      if (body.images) {
+        const imagesField = Array.isArray(body.images) ? body.images : [body.images];
+        for (const item of imagesField) {
+          if (typeof item === "string") {
+            try {
+              const parsed = JSON.parse(item);
+              if (Array.isArray(parsed)) {
+                existingImages = parsed;
+                break;
+              }
+            } catch {}
+          }
+        }
+      }
+
       for (const field of imageFields) {
         if (body[field]) {
           const val = body[field];
@@ -478,25 +623,55 @@ productRoutes.patch("/:productId", async (c) => {
         }
       }
 
-      if (filesList.length > 0 && c.env.PRODUCT_IMAGES) {
+      if (filesList.length > 0 || existingImages.length > 0) {
         dbImages = [];
-        for (let i = 0; i < filesList.length; i++) {
-          const file = filesList[i];
-          const key = await uploadToR2(c.env.PRODUCT_IMAGES, file);
-          const originUrl = new URL(c.req.url).origin;
-          const publicUrl = c.env.R2_PUBLIC_URL
-            ? `${c.env.R2_PUBLIC_URL}/${key}`
-            : `${originUrl}/products/images/${key}`;
-
+        existingImages.forEach((img, idx) => {
           dbImages.push({
-            imageUrl: publicUrl,
-            isPrimary: i === 0,
-            sortOrder: i
+            imageUrl: img.imageUrl,
+            isPrimary: img.isPrimary,
+            sortOrder: img.sortOrder
           });
+        });
+
+        if (filesList.length > 0 && c.env.PRODUCT_IMAGES) {
+          for (let i = 0; i < filesList.length; i++) {
+            const file = filesList[i];
+            const key = await uploadToR2(c.env.PRODUCT_IMAGES, file);
+            const originUrl = new URL(c.req.url).origin;
+            const publicUrl = c.env.R2_PUBLIC_URL
+              ? `${c.env.R2_PUBLIC_URL}/${key}`
+              : `${originUrl}/products/images/${key}`;
+
+            dbImages.push({
+              imageUrl: publicUrl,
+              isPrimary: dbImages.length === 0,
+              sortOrder: dbImages.length
+            });
+          }
         }
       }
-    } else if (body.images && Array.isArray(body.images)) {
-      dbImages = body.images;
+    } else if (body.images) {
+      if (Array.isArray(body.images)) {
+        dbImages = body.images;
+      } else if (typeof body.images === "string") {
+        try {
+          const parsed = JSON.parse(body.images);
+          if (Array.isArray(parsed)) dbImages = parsed;
+        } catch {}
+      }
+    }
+
+    let recommendations = undefined;
+    if (body.recommendations !== undefined) {
+      if (typeof body.recommendations === "string") {
+        try {
+          recommendations = JSON.parse(body.recommendations);
+        } catch {
+          recommendations = body.recommendations.split(",").map(id => id.trim()).filter(Boolean);
+        }
+      } else if (Array.isArray(body.recommendations)) {
+        recommendations = body.recommendations;
+      }
     }
 
     const updateData = {
@@ -505,17 +680,20 @@ productRoutes.patch("/:productId", async (c) => {
       price: price !== undefined ? price : existing.price,
       sku: body.sku !== undefined ? body.sku : existing.sku,
       status: body.status !== undefined ? body.status : existing.status,
-      skillLevel: body.skillLevel !== undefined ? body.skillLevel : existing.skillLevel,
+      skillLevel: body.skillLevel !== undefined 
+        ? (body.skillLevel === "" ? null : body.skillLevel) 
+        : existing.skillLevel,
       brandId: body.brandId !== undefined ? body.brandId : existing.brandId,
       categoryId: body.categoryId !== undefined ? body.categoryId : existing.categoryId,
-      description: body.description !== undefined ? body.description : existing.description
+      description: body.description !== undefined ? body.description : existing.description,
+      recommendations
     };
 
     const updated = await updateProduct(db, productId, updateData, dbImages);
     return c.json({ status: "ok", product: updated });
   } catch (err) {
     console.error("[PATCH /products/:productId]", err);
-    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to update product" } }, 500);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: err.message, stack: err.stack } }, 500);
   }
 });
 

@@ -10,7 +10,7 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
   const activeToken = token ?? (typeof window !== "undefined" ? getAccessToken() : undefined);
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(fetchOptions.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
     ...(fetchOptions.headers as Record<string, string>),
   };
 
@@ -42,6 +42,15 @@ export interface ProductRecord {
   brand: { brandId: string; name: string };
   category: { categoryId: string; name: string };
   images: { imageId: string; imageUrl: string; isPrimary: boolean; sortOrder: number }[];
+  recommendations?: {
+    recommended: {
+      productId: string;
+      name: string;
+      price: number;
+      sku: string;
+      images: { imageUrl: string }[];
+    };
+  }[];
 }
 
 export interface InventoryRecord {
@@ -189,4 +198,97 @@ export async function getInventoryAlerts(query: { limit?: number; page?: number 
   if (query.page) params.set("page", String(query.page));
 
   return apiFetch<{ alerts: any[] }>(`/reports/inventory-alerts?${params.toString()}`, { method: "GET", token });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// New Interfaces & Endpoints for Dynamic Frontend
+// ──────────────────────────────────────────────────────────────────────────────
+
+export interface CategoryRecord {
+  categoryId: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface BrandRecord {
+  brandId: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface InventoryLogRecord {
+  id: string;
+  productId: string;
+  orderId?: string | null;
+  beforeQty: number;
+  afterQty: number;
+  changeQty: number;
+  action: "receive" | "adjust" | "reserve" | "release" | "sale_deduct";
+  staffId?: string | null;
+  createdAt: string;
+}
+
+export interface StockMovementRecord {
+  label: string;
+  stockIn: number;
+  stockOut: number;
+}
+
+/** GET /products/categories — List all product categories */
+export async function getCategories(token?: string): Promise<{ categories: CategoryRecord[] }> {
+  return apiFetch<{ categories: CategoryRecord[] }>("/products/categories", { method: "GET", token });
+}
+
+/** GET /products/brands — List all brands */
+export async function getBrands(token?: string): Promise<{ brands: BrandRecord[] }> {
+  return apiFetch<{ brands: BrandRecord[] }>("/products/brands", { method: "GET", token });
+}
+
+/** POST /products/brands — Create a new brand */
+export async function createBrand(name: string, token?: string): Promise<{ status: string; brand: BrandRecord }> {
+  return apiFetch<{ status: string; brand: BrandRecord }>("/products/brands", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+    token,
+  });
+}
+
+/** GET /inventory/stock/:productId/logs — Fetch inventory logs for a specific product */
+export async function getInventoryLogs(productId: string, token?: string): Promise<{ logs: InventoryLogRecord[] }> {
+  return apiFetch<{ logs: InventoryLogRecord[] }>(`/inventory/stock/${productId}/logs`, { method: "GET", token });
+}
+
+/** GET /reports/stock-movement — Fetch monthly stock movement logs */
+export async function getStockMovement(token?: string): Promise<{ movement: StockMovementRecord[] }> {
+  return apiFetch<{ movement: StockMovementRecord[] }>("/reports/stock-movement", { method: "GET", token });
+}
+
+/** GET /products/:productId — Fetch a single product details */
+export async function getProductById(productId: string, token?: string): Promise<ProductRecord> {
+  return apiFetch<ProductRecord>(`/products/${productId}`, { method: "GET", token });
+}
+
+/** PATCH /products/:productId — Update an existing product */
+export async function updateProduct(
+  productId: string,
+  data: any,
+  token?: string
+): Promise<{ product: ProductRecord }> {
+  const isFormData = data instanceof FormData;
+  return apiFetch<{ product: ProductRecord }>(`/products/${productId}`, {
+    method: "PATCH",
+    headers: isFormData ? {} : { "Content-Type": "application/json" },
+    body: isFormData ? data : JSON.stringify(data),
+    token,
+  });
+}
+
+/** DELETE /products/:productId — Delete a product */
+export async function deleteProductById(productId: string, token?: string): Promise<{ status: string; message: string }> {
+  return apiFetch<{ status: string; message: string }>(`/products/${productId}`, { method: "DELETE", token });
+}
+
+/** DELETE /products/bundles/:bundleId — Delete a bundle set */
+export async function deleteBundleById(bundleId: string, token?: string): Promise<{ status: string; message: string }> {
+  return apiFetch<{ status: string; message: string }>(`/products/bundles/${bundleId}`, { method: "DELETE", token });
 }

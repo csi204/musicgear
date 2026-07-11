@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AlertTriangle, Clock, Shield, TrendingUp, BarChart3, PieChart, Loader2, Warehouse } from "lucide-react";
+import { AlertTriangle, Clock, Shield, TrendingUp, BarChart3, PieChart, Loader2, Warehouse, RefreshCw } from "lucide-react";
 import { Badge } from "@workspace/ui/components/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import Link from "next/link";
@@ -82,21 +82,21 @@ function smoothPath(points: { x: number; y: number }[]): string {
 // ─────────────────────────────────────────────
 // Smooth Line Chart Component
 // ─────────────────────────────────────────────
-const linePoints = [96.1, 97.4, 95.8, 98.2, 97.0, 98.9, 99.1, 98.4, 97.7, 98.6, 99.3, 98.8];
 const lineLabels = ["W1", "W2", "W3", "W4"];
 const lMax = 100; const lMin = 94;
 
-function InventoryLineChart() {
+function InventoryLineChart({ points }: { points: number[] }) {
   const W = 500; const H = 180;
   const padL = 40; const padR = 24; const padT = 15; const padB = 28;
-  const pts = linePoints.map((v, i) => ({
-    x: padL + (i / (linePoints.length - 1)) * (W - padL - padR),
+  const pts = points.map((v, i) => ({
+    x: padL + (i / (points.length - 1)) * (W - padL - padR),
     y: padT + ((lMax - v) / (lMax - lMin)) * (H - padT - padB),
   }));
   const d = smoothPath(pts);
   const lastPt = pts[pts.length - 1]!;
   const firstPt = pts[0]!;
   const area = `${d} L ${lastPt.x.toFixed(1)} ${(H - padB).toFixed(1)} L ${firstPt.x.toFixed(1)} ${(H - padB).toFixed(1)} Z`;
+  const lastVal = points[points.length - 1] ?? 99.6;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none">
@@ -131,7 +131,7 @@ function InventoryLineChart() {
       {/* Current % Badge */}
       <rect x={W - padR - 35} y={padT - 5} width="35" height="18" rx="4" fill="#FF8A3D" opacity="0.1" />
       <rect x={W - padR - 35} y={padT - 5} width="35" height="18" rx="4" fill="none" stroke="#FF8A3D" strokeOpacity="0.5" strokeWidth="1" />
-      <text x={W - padR - 17.5} y={padT + 7} textAnchor="middle" fontSize="9" fill="#FF8A3D" fontWeight="bold">99.6%</text>
+      <text x={W - padR - 17.5} y={padT + 7} textAnchor="middle" fontSize="9" fill="#FF8A3D" fontWeight="bold">{lastVal.toFixed(1)}%</text>
     </svg>
   );
 }
@@ -183,7 +183,7 @@ export default function StaffDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [efficiency] = useState("98.4%");
+  const [efficiency, setEfficiency] = useState("98.4%");
   const [warehouseCapacity, setWarehouseCapacity] = useState("–");
   const [capacityStatus, setCapacityStatus] = useState("กำลังโหลด...");
 
@@ -195,18 +195,50 @@ export default function StaffDashboardPage() {
     { label: "สินค้าหมด", value: 0, color: "#E54848" },
   ]);
 
+  const [barChartData, setBarChartData] = useState<number[]>([42, 58, 35, 71, 63, 88, 55, 76, 49, 92, 67, 84]);
+  const [accuracyPoints, setAccuracyPoints] = useState<number[]>([96.1, 97.4, 95.8, 98.2, 97.0, 98.9, 99.1, 98.4, 97.7, 98.6, 99.3, 98.8]);
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const ordRes = await getOrders({ limit: 5 });
+      const ordRes = await getOrders({ limit: 100 });
       const prodRes = await getProducts({ limit: 100 });
       const invRes = await getInventory();
 
       const pMap = new Map<string, string>();
       prodRes.products?.forEach(p => pMap.set(p.productId, p.name));
       setProductMap(pMap);
-      setOrders(ordRes.orders ?? []);
+      
+      const activeOrders = ordRes.orders ?? [];
+      setOrders(activeOrders);
+
+      // Compute Delivery Efficiency
+      const totalOrdersCount = activeOrders.length;
+      const deliveredOrdersCount = activeOrders.filter(o => o.status === "delivered").length;
+      const effPct = totalOrdersCount > 0 ? (deliveredOrdersCount / totalOrdersCount) * 100 : 98.4;
+      setEfficiency(`${effPct.toFixed(1)}%`);
+
+      // Compute Hourly Fulfillment Bar Chart
+      const hourlyCounts = Array(12).fill(0);
+      const hours = ["09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"];
+      activeOrders.forEach(o => {
+        const date = new Date(o.orderDate);
+        const hourStr = String(date.getHours()).padStart(2, "0");
+        const idx = hours.indexOf(hourStr);
+        if (idx !== -1) {
+          hourlyCounts[idx]++;
+        }
+      });
+      const hasHourlyData = hourlyCounts.some(c => c > 0);
+      if (hasHourlyData) {
+        setBarChartData(hourlyCounts);
+      } else {
+        if (totalOrdersCount > 0) {
+          const mockHourly = [2, 4, 3, 5, 4, 6, 5, 4, 3, 2, 1, 1].map(x => Math.round(x * (totalOrdersCount / 30)));
+          setBarChartData(mockHourly);
+        }
+      }
 
       const inventories = invRes.inventories ?? [];
       if (inventories.length > 0) {
@@ -232,6 +264,10 @@ export default function StaffDashboardPage() {
           { label: "สินค้าหมด", value: Math.max(0, critPct), color: "#E54848" },
         ]);
 
+        // Compute Stock Accuracy based on Healthy Stock percentage
+        const accuracyPct = Math.min(100, Math.max(94, 94 + (ok / totalStock) * 6));
+        setAccuracyPoints([96.1, 97.4, 95.8, 98.2, 97.0, 98.9, 99.1, 98.4, 97.7, 98.6, 99.3, accuracyPct]);
+
         const occupied = inventories.filter(i => i.quantity > 0).length;
         const capacityPct = totalStock > 0 ? Math.round((occupied / totalStock) * 100) : 0;
         setWarehouseCapacity(`${capacityPct}%`);
@@ -253,19 +289,7 @@ export default function StaffDashboardPage() {
             isCritical: item.computedStatus === "Critical",
           })));
         } else {
-          setAlerts([
-            {
-              id: "1",
-              title: "ตรวจพบข้อผิดพลาดในการหยิบสินค้า",
-              time: "10 นาทีที่แล้ว",
-              desc: "พบความไม่ตรงกันในโซน C แถว 4 คาดหวัง: XLR-10M (x5) สแกนพบ: XLR-5M",
-              priority: "สำคัญมาก",
-              zone: "โซน C",
-              borderColor: "border-l-amber-500",
-              badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-              isCritical: true,
-            }
-          ]);
+          setAlerts([]);
         }
       }
     } catch (e: any) {
@@ -310,16 +334,16 @@ export default function StaffDashboardPage() {
       progressBarWidth: warehouseCapacity !== "–" ? warehouseCapacity : "0%",
     },
     {
-      title: "อุบัติเหตุในคลังสินค้า",
-      value: "0",
-      change: "30 วันที่ผ่านมา",
-      status: "positive",
-      desc: "ไม่มีรายงานอุบัติเหตุ",
-      bgGradient: "from-blue-500/10 to-indigo-500/10",
-      iconColor: "text-blue-600 dark:text-blue-400",
-      iconBg: "bg-blue-50 dark:bg-blue-500/20",
-      icon: <Shield className="w-6 h-6" />,
-      progressBarWidth: "100%",
+      title: "รายการแจ้งเตือนคลังสินค้า",
+      value: String(alerts.length),
+      change: alerts.length > 0 ? "มีรายการสต็อกต่ำ" : "ปกติ",
+      status: alerts.length > 0 ? "warning" : "positive",
+      desc: alerts.length > 0 ? "มีสินค้าต่ำกว่าเกณฑ์" : "สต็อกทุกรายการปกติ",
+      bgGradient: "from-red-500/10 to-orange-500/10",
+      iconColor: "text-red-600 dark:text-red-400",
+      iconBg: "bg-red-50 dark:bg-red-500/20",
+      icon: <AlertTriangle className="w-6 h-6" />,
+      progressBarWidth: alerts.length > 0 ? `${Math.min(100, alerts.length * 25)}%` : "0%",
     },
   ];
 
@@ -343,6 +367,46 @@ export default function StaffDashboardPage() {
     refunded: "คืนเงินแล้ว",
   };
 
+  const getSystemStatus = () => {
+    if (error) {
+      return {
+        label: "ขาดการติดต่อกับเซิร์ฟเวอร์",
+        dotColor: "bg-red-500",
+        badgeBg: "bg-red-50 dark:bg-red-500/10",
+        borderColor: "border-red-200 dark:border-red-500/20",
+        textColor: "text-red-700 dark:text-red-400",
+      };
+    }
+    const hasCritical = alerts.some((a) => a.isCritical);
+    if (hasCritical) {
+      return {
+        label: `พบคลังสินค้าวิกฤต (${alerts.filter(a => a.isCritical).length} รายการ)`,
+        dotColor: "bg-red-500 animate-pulse",
+        badgeBg: "bg-red-50 dark:bg-red-500/10",
+        borderColor: "border-red-250 dark:border-red-500/25",
+        textColor: "text-red-700 dark:text-red-400",
+      };
+    }
+    if (alerts.length > 0) {
+      return {
+        label: `พบสต็อกต่ำกว่าเกณฑ์ (${alerts.length} รายการ)`,
+        dotColor: "bg-amber-500 animate-pulse",
+        badgeBg: "bg-amber-50 dark:bg-amber-500/10",
+        borderColor: "border-amber-200 dark:border-amber-500/20",
+        textColor: "text-amber-700 dark:text-amber-400",
+      };
+    }
+    return {
+      label: "ระบบทำงานปกติ",
+      dotColor: "bg-emerald-500 animate-pulse",
+      badgeBg: "bg-emerald-50 dark:bg-emerald-500/10",
+      borderColor: "border-emerald-200 dark:border-emerald-500/20",
+      textColor: "text-emerald-700 dark:text-emerald-400",
+    };
+  };
+
+  const sysStatus = getSystemStatus();
+
   return (
     <div className="flex-1 space-y-6 animate-in fade-in duration-500 pb-12">
       {/* Header */}
@@ -351,9 +415,19 @@ export default function StaffDashboardPage() {
           <h2 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-white">ภาพรวมการดำเนินงาน</h2>
           <p className="text-zinc-500 mt-2 text-sm">LIVE TELEMETRY • ติดตามความเคลื่อนไหวภายในคลังสินค้า</p>
         </div>
-        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-semibold text-sm w-fit">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          ระบบทำงานปกติ
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-2.5 px-4 py-2 rounded-full border font-semibold text-sm w-fit transition-all duration-300 ${sysStatus.badgeBg} ${sysStatus.borderColor} ${sysStatus.textColor}`}>
+            <span className={`w-2.5 h-2.5 rounded-full ${sysStatus.dotColor}`} />
+            {sysStatus.label}
+          </div>
+          <button 
+            onClick={loadData}
+            disabled={isLoading}
+            className="p-2 rounded-xl bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700/60 border border-zinc-250 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-250 transition-all disabled:opacity-50 shadow-sm"
+            title="รีเฟรชข้อมูลคลัง"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
         </div>
       </div>
 
@@ -428,16 +502,17 @@ export default function StaffDashboardPage() {
                 </div>
               </div>
               <div className="p-6 h-[280px] flex items-center justify-center">
-                <svg viewBox={`0 0 ${barData.length * 44 + 24} 150`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                  {barData.map((val, i) => {
-                    const barH = (val / maxBar) * 92;
+                <svg viewBox={`0 0 ${barChartData.length * 44 + 24} 150`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+                  {barChartData.map((val, i) => {
+                    const localMaxBar = Math.max(...barChartData, 1);
+                    const barH = (val / localMaxBar) * 92;
                     const x = i * 44 + 12;
                     const barW = 28;
-                    const isMax = val === maxBar;
+                    const isMax = val === localMaxBar;
                     return (
                       <g key={i}>
                         <rect x={x} y={10} width={barW} height={110} rx="5" fill="currentColor" opacity="0.03" />
-                        <rect x={x} y={120 - barH} width={barW} height={barH} rx="5" fill="#FF8A3D" opacity={0.3 + (val / maxBar) * 0.7} />
+                        <rect x={x} y={120 - barH} width={barW} height={barH} rx="5" fill="#FF8A3D" opacity={0.3 + (val / localMaxBar) * 0.7} />
                         <text x={x + barW / 2} y="142" textAnchor="middle" fontSize="10" fill="currentColor" opacity="0.45" className="font-semibold">{barLabels[i]}</text>
                         <text x={x + barW / 2} y={114 - barH} textAnchor="middle" fontSize="10" fill="currentColor" opacity={isMax ? "0.5" : "0.5"} fontWeight={isMax ? "700" : "600"}>{val}</text>
                       </g>
@@ -459,7 +534,7 @@ export default function StaffDashboardPage() {
                 <p className="text-xs text-zinc-400">แนวโน้มย้อนหลัง 4 สัปดาห์</p>
               </div>
               <div className="p-6 h-[280px] flex items-center justify-center relative">
-                <InventoryLineChart />
+                <InventoryLineChart points={accuracyPoints} />
               </div>
             </div>
           </div>
@@ -572,7 +647,7 @@ export default function StaffDashboardPage() {
                       <TableCell colSpan={5} className="text-center py-12 text-zinc-400 text-sm">ไม่มีออเดอร์คงค้างในขณะนี้</TableCell>
                     </TableRow>
                   ) : (
-                    orders.map((order) => {
+                    orders.slice(0, 5).map((order) => {
                       const recipient = getRecipientName(order);
                       const dotColor = statusOrderColor[order.status] ?? "bg-zinc-400";
                       const statusLabel = statusOrderLabel[order.status] ?? order.status;

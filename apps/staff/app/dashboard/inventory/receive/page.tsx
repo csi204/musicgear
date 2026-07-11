@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Barcode, CheckCircle, AlertTriangle, XCircle, Plus, Loader2, X, ScanLine, Zap, ChevronDown } from "lucide-react";
 import { getProducts, adjustStock, ProductRecord } from "@/lib/api";
+import { CustomSelect } from "@/components/custom-select";
 
 type Condition = "good" | "damaged" | "missing";
 type MatchStatus = "full_match" | "shortage" | "damaged";
@@ -42,9 +43,9 @@ export default function ReceiveStockPage() {
   const [selectedProductId, setSelectedProductId] = useState("");
   const [expectedQty, setExpectedQty] = useState(10);
   
-  const [poNumber, setPoNumber] = useState("PO-2026-0708-A");
-  const [supplier, setSupplier] = useState("Yamaha Global Logistics");
-  const [carrier, setCarrier] = useState("FedEx Freight");
+  const [poNumber, setPoNumber] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const [carrier, setCarrier] = useState("");
   const [trackingId, setTrackingId] = useState("");
   
   const [isLoading, setIsLoading] = useState(true);
@@ -100,18 +101,7 @@ export default function ReceiveStockPage() {
         const prodRes = await getProducts({ limit: 100 });
         setProductList(prodRes.products);
         
-        // Pre-fill with the first 3 products to make it look ready
-        if (prodRes.products.length > 0) {
-          const prefilled: LineItem[] = prodRes.products.slice(0, 3).map((p, idx) => ({
-            id: p.productId,
-            name: p.name,
-            sku: p.sku,
-            expected: idx === 1 ? 50 : idx === 2 ? 12 : 24,
-            received: idx === 1 ? 45 : idx === 2 ? 12 : 24,
-            condition: idx === 2 ? "damaged" : "good",
-          }));
-          setItems(prefilled);
-        }
+        // Start with empty items checklist for dynamic entry
       } catch (e: any) {
         setError("ไม่สามารถดึงข้อมูลรายการสินค้าเพื่อรับเข้าคลังได้");
       } finally {
@@ -257,20 +247,19 @@ export default function ReceiveStockPage() {
               <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">บริษัทขนส่ง</label>
-                  <div className="relative group">
-                    <select
+                    <CustomSelect
                       value={carrier}
-                      onChange={(e) => setCarrier(e.target.value)}
-                      className="w-full pl-3 pr-10 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer appearance-none"
-                    >
-                      <option>FedEx Freight</option>
-                      <option>DHL Express</option>
-                      <option>UPS Ground</option>
-                      <option>Kerry Express</option>
-                      <option>Flash Express</option>
-                    </select>
-                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none transition-transform duration-200 group-focus-within:rotate-180" />
-                  </div>
+                      onChange={setCarrier}
+                      options={[
+                        { value: "FedEx Freight", label: "FedEx Freight" },
+                        { value: "DHL Express", label: "DHL Express" },
+                        { value: "UPS Ground", label: "UPS Ground" },
+                        { value: "Kerry Express", label: "Kerry Express" },
+                        { value: "Flash Express", label: "Flash Express" }
+                      ]}
+                      triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-2.5 h-10"
+                      dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
+                    />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">หมายเลขติดตาม (Tracking)</label>
@@ -291,11 +280,11 @@ export default function ReceiveStockPage() {
             <h3 className="text-base font-bold text-zinc-900 dark:text-white">สรุปการรับสินค้า</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-100 dark:border-zinc-700/55 p-4 text-center">
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">จำนวนคาดหวัง</p>
+                <p className="text-[12px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">จำนวนคาดหวัง</p>
                 <p className="text-3xl font-black text-zinc-900 dark:text-[#e5e1e6] mt-2 leading-none">{totalExpected}</p>
               </div>
               <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-100 dark:border-zinc-700/55 p-4 text-center">
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">ได้รับจริง</p>
+                <p className="text-[12px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">ได้รับจริง</p>
                 <p className={`text-3xl font-black mt-2 leading-none ${totalReceived === totalExpected ? "text-emerald-500" : "text-[#ffb68d]"}`}>{totalReceived}</p>
               </div>
             </div>
@@ -326,8 +315,8 @@ export default function ReceiveStockPage() {
         </div>
 
         {/* Right Panel — Line Items Table */}
-        <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col justify-between">
-          <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col justify-between relative">
+          <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 rounded-t-2xl">
             <h3 className="text-base font-bold text-zinc-900 dark:text-white">รายการสินค้าที่นำส่งคลัง</h3>
           </div>
           <div className="overflow-x-auto flex-1">
@@ -379,18 +368,13 @@ export default function ReceiveStockPage() {
                           />
                         </td>
                         <td className="py-4 px-4">
-                          <div className="relative group w-full">
-                            <select
+                            <CustomSelect
                               value={item.condition}
-                              onChange={(e) => updateItem(item.id, "condition", e.target.value as Condition)}
-                              className="w-full pl-3 pr-9 py-1.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer appearance-none"
-                            >
-                              {conditionOptions.map((o) => (
-                                <option key={o.value} value={o.value}>{o.label}</option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none transition-transform duration-200 group-focus-within:rotate-180" />
-                          </div>
+                              onChange={(val) => updateItem(item.id, "condition", val as Condition)}
+                              options={conditionOptions}
+                              triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-1 px-2.5 h-8 text-xs"
+                              dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
+                            />
                         </td>
                         <td className="py-4 px-4">
                           <span className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${mb.class}`}>
@@ -415,24 +399,19 @@ export default function ReceiveStockPage() {
             </table>
           </div>
           {/* Add Item form */}
-          <div className="border-t border-zinc-200 dark:border-zinc-800 px-6 py-4 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col sm:flex-row items-end gap-3">
+          <div className="border-t border-zinc-200 dark:border-zinc-800 px-6 py-4 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col sm:flex-row items-end gap-3 rounded-b-2xl">
             <div className="flex-1 w-full">
-              <label className="text-[10px] font-bold text-zinc-400 block mb-1">เลือกสินค้าที่ต้องการรับเข้า</label>
-              <div className="relative group">
-                <select
+              <label className="text-[12px] font-bold text-zinc-400 block mb-1">เลือกสินค้าที่ต้องการรับเข้า</label>
+                <CustomSelect
                   value={selectedProductId}
-                  onChange={(e) => setSelectedProductId(e.target.value)}
-                  className="w-full pl-3 pr-10 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer appearance-none"
-                >
-                  <option value="">-- เลือกสินค้า --</option>
-                  {productList.map((p) => (
-                    <option key={p.productId} value={p.productId}>
-                      {p.name} ({p.sku})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none transition-transform duration-200 group-focus-within:rotate-180" />
-              </div>
+                  onChange={setSelectedProductId}
+                  options={[
+                    { value: "", label: "-- เลือกสินค้า --" },
+                    ...productList.map((p) => ({ value: p.productId, label: `${p.name} (${p.sku})` }))
+                  ]}
+                  triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-2.5 h-10"
+                  dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
+                />
             </div>
             <div className="w-full sm:w-28">
               <label className="text-[10px] font-bold text-zinc-400 block mb-1">จำนวนที่คาดหวัง</label>
@@ -440,7 +419,12 @@ export default function ReceiveStockPage() {
                 type="number"
                 min={1}
                 value={expectedQty}
-                onChange={(e) => setExpectedQty(Math.max(1, Number(e.target.value)))}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || Number(val) > 0) {
+                  if (val !== "") setExpectedQty(Math.max(1, Number(val)));
+                  }
+                }}
                 className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 font-bold text-center"
               />
             </div>

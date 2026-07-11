@@ -24,6 +24,23 @@ export async function getProductById(db, productId) {
         select: { imageId: true, imageUrl: true, isPrimary: true, sortOrder: true },
         orderBy: { sortOrder: "asc" },
       },
+      recommendations: {
+        select: {
+          recommended: {
+            select: {
+              productId: true,
+              name: true,
+              price: true,
+              sku: true,
+              images: {
+                select: { imageUrl: true },
+                where: { isPrimary: true },
+                take: 1,
+              }
+            }
+          }
+        }
+      }
     },
   });
 
@@ -118,6 +135,23 @@ export async function getProductBySlug(db, slug) {
         select: { imageId: true, imageUrl: true, isPrimary: true, sortOrder: true },
         orderBy: { sortOrder: "asc" },
       },
+      recommendations: {
+        select: {
+          recommended: {
+            select: {
+              productId: true,
+              name: true,
+              price: true,
+              sku: true,
+              images: {
+                select: { imageUrl: true },
+                where: { isPrimary: true },
+                take: 1,
+              }
+            }
+          }
+        }
+      }
     },
   });
 }
@@ -148,10 +182,20 @@ export async function createProduct(db, data, images = []) {
   if (images && images.length > 0) {
     await db.productImage.createMany({
       data: images.map((img) => ({
+        imageId: globalThis.crypto.randomUUID(),
         productId: product.productId,
         imageUrl: img.imageUrl,
         isPrimary: img.isPrimary || false,
         sortOrder: img.sortOrder || 0,
+      })),
+    });
+  }
+
+  if (Array.isArray(data.recommendations) && data.recommendations.length > 0) {
+    await db.productRecommendation.createMany({
+      data: data.recommendations.map((recId) => ({
+        productId: product.productId,
+        recommendedId: recId,
       })),
     });
   }
@@ -163,6 +207,15 @@ export async function createProduct(db, data, images = []) {
       brand: true,
       category: true,
       images: true,
+      recommendations: {
+        include: {
+          recommended: {
+            include: {
+              images: true
+            }
+          }
+        }
+      }
     },
   });
 }
@@ -201,10 +254,27 @@ export async function updateProduct(db, productId, data, images = null) {
     if (images.length > 0) {
       await db.productImage.createMany({
         data: images.map((img) => ({
+          imageId: globalThis.crypto.randomUUID(),
           productId,
           imageUrl: img.imageUrl,
           isPrimary: img.isPrimary || false,
           sortOrder: img.sortOrder || 0,
+        })),
+      });
+    }
+  }
+
+  if (Array.isArray(data.recommendations)) {
+    // Clear old recommendations
+    await db.productRecommendation.deleteMany({
+      where: { productId },
+    });
+
+    if (data.recommendations.length > 0) {
+      await db.productRecommendation.createMany({
+        data: data.recommendations.map((recId) => ({
+          productId,
+          recommendedId: recId,
         })),
       });
     }
@@ -216,6 +286,15 @@ export async function updateProduct(db, productId, data, images = null) {
       brand: true,
       category: true,
       images: true,
+      recommendations: {
+        include: {
+          recommended: {
+            include: {
+              images: true
+            }
+          }
+        }
+      }
     },
   });
 }
