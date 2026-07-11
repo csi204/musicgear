@@ -34,6 +34,8 @@ export class WebhookController {
           await reportService.updateDailySales(event.amount);
         } else if (event.event === "stock.updated") {
           await reportService.upsertInventorySnapshot(event);
+        } else if (event.event === "product.deleted") {
+          await reportService.deleteInventorySnapshot(event.productId);
         }
 
         return c.json({ success: true, message: "Webhook processed" }, 200);

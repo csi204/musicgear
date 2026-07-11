@@ -280,4 +280,18 @@ export class ReportService {
       },
     });
   }
+
+  /**
+   * ลบยอดคงคลัง (InventorySnapshot) เมื่อสินค้าถูกลบ
+   */
+  async deleteInventorySnapshot(productId) {
+    try {
+      return await this.db.inventorySnapshot.delete({
+        where: { productId }
+      });
+    } catch (err) {
+      // ละเว้นหากไม่พบ หรือถูกลบไปก่อนแล้ว
+      console.warn(`[ReportService] deleteInventorySnapshot failed or already deleted for productId=${productId}:`, err.message);
+    }
+  }
 }
