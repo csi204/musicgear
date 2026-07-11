@@ -207,7 +207,11 @@ export default function StaffDashboardPage() {
       const invRes = await getInventory();
 
       const pMap = new Map<string, string>();
-      prodRes.products?.forEach(p => pMap.set(p.productId, p.name));
+      const pStatusMap = new Map<string, string>();
+      prodRes.products?.forEach(p => {
+        pMap.set(p.productId, p.name);
+        pStatusMap.set(p.productId, p.status);
+      });
       setProductMap(pMap);
       
       const activeOrders = ordRes.orders ?? [];
@@ -241,12 +245,17 @@ export default function StaffDashboardPage() {
       }
 
       const inventories = invRes.inventories ?? [];
-      if (inventories.length > 0) {
-        const totalStock = inventories.length;
+      const validInventories = inventories.filter(i => pMap.has(i.productId));
+      if (validInventories.length > 0) {
+        const totalStock = validInventories.length;
 
-        const computed = inventories.map(i => {
+        const computed = validInventories.map(i => {
           const avail = i.quantity - i.reservedQuantity;
-          const status = avail <= 0 ? "Critical" : avail <= i.reorderPoint ? "Low" : "In Stock";
+          const isDiscontinued = pStatusMap.get(i.productId) === "discontinued";
+          // ถ้าสินค้าเป็น discontinued และไม่มีสต็อกพร้อมขาย ไม่ต้องมองเป็น Critical/Low ให้ถือว่าปกติ (In Stock)
+          const status = (isDiscontinued && avail <= 0)
+            ? "In Stock"
+            : (avail <= 0 ? "Critical" : avail <= i.reorderPoint ? "Low" : "In Stock");
           return { ...i, computedStatus: status };
         });
 
@@ -254,9 +263,9 @@ export default function StaffDashboardPage() {
         const low = computed.filter(i => i.computedStatus === "Low").length;
         const critical = computed.filter(i => i.computedStatus === "Critical").length;
 
-        const okPct = Math.round((ok / totalStock) * 100);
-        const lowPct = Math.round((low / totalStock) * 100);
-        const critPct = 100 - okPct - lowPct;
+        const okPct = totalStock > 0 ? Math.round((ok / totalStock) * 100) : 100;
+        const lowPct = totalStock > 0 ? Math.round((low / totalStock) * 100) : 0;
+        const critPct = totalStock > 0 ? (100 - okPct - lowPct) : 0;
 
         setStockBreakdown([
           { label: "มีสินค้าพร้อมขาย", value: okPct, color: "#2BBF7A" },
@@ -265,10 +274,10 @@ export default function StaffDashboardPage() {
         ]);
 
         // Compute Stock Accuracy based on Healthy Stock percentage
-        const accuracyPct = Math.min(100, Math.max(94, 94 + (ok / totalStock) * 6));
+        const accuracyPct = Math.min(100, Math.max(94, 94 + (totalStock > 0 ? (ok / totalStock) * 6 : 6)));
         setAccuracyPoints([96.1, 97.4, 95.8, 98.2, 97.0, 98.9, 99.1, 98.4, 97.7, 98.6, 99.3, accuracyPct]);
 
-        const occupied = inventories.filter(i => i.quantity > 0).length;
+        const occupied = validInventories.filter(i => i.quantity > 0).length;
         const capacityPct = totalStock > 0 ? Math.round((occupied / totalStock) * 100) : 0;
         setWarehouseCapacity(`${capacityPct}%`);
         setCapacityStatus(capacityPct >= 90 ? "ใกล้เต็มคลัง" : capacityPct >= 60 ? "ใช้งานเหมาะสม" : "ยังว่างมาก");

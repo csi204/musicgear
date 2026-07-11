@@ -35,6 +35,16 @@ const statusConfig: Record<ProductStatus, { label: string; badge: string; dot: s
 };
 
 // ─────────────────────────────────────────────────────
+const formatNumberWithCommas = (val: string | number) => {
+  if (val === null || val === undefined || val === "") return "";
+  const numStr = String(val).replace(/,/g, "");
+  const cleanNum = numStr.replace(/[^\d.]/g, "");
+  if (!cleanNum) return "";
+  const parts = cleanNum.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.slice(0, 2).join(".");
+};
+
 // Skeletons
 // ─────────────────────────────────────────────────────
 function ProductRowSkeleton() {
@@ -556,14 +566,14 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
                 <div>
                   <label className="text-sm font-semibold text-zinc-500 dark:text-[#c4c5d9] tracking-[0.7px] uppercase block mb-1.5">ราคา (บาท) *</label>
                   <input
-                    type="number"
-                    placeholder="เช่น 32000"
-                    value={form.price}
-                    min="1"
+                    type="text"
+                    placeholder="เช่น 32,000"
+                    value={formatNumberWithCommas(form.price)}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (val === "" || Number(val) > 0) {
-                        setForm(prev => ({ ...prev, price: val }));
+                      const raw = val.replace(/,/g, "");
+                      if (raw === "" || Number(raw) >= 0) {
+                        setForm(prev => ({ ...prev, price: raw }));
                       }
                     }}
                     className="w-full px-4 py-3 text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-[#2a2a2d] text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
@@ -751,7 +761,7 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
                         >
                           <div className="truncate pr-2">
                             <span className="font-bold block truncate">{prod.name}</span>
-                            <span className="text-[10px] text-zinc-500">{prod.sku} • {prod.price.toLocaleString()} บาท</span>
+                            <span className="text-[10px] text-zinc-500">{prod.sku} • {Number(prod.price).toLocaleString("th-TH")} บาท</span>
                           </div>
                           <Plus className="w-3.5 h-3.5 shrink-0 text-amber-500" />
                         </button>
@@ -776,7 +786,7 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
                         >
                           <div className="truncate pr-2">
                             <span className="font-bold text-zinc-800 dark:text-zinc-200 group-hover:text-amber-500 block truncate">{prod.name}</span>
-                            <span className="text-[9px] text-zinc-500">{prod.category?.name} · {prod.price.toLocaleString()} บาท</span>
+                            <span className="text-[9px] text-zinc-500">{prod.category?.name} · {Number(prod.price).toLocaleString("th-TH")} บาท</span>
                           </div>
                           <Plus className="w-3.5 h-3.5 text-zinc-400 group-hover:text-amber-500 shrink-0" />
                         </button>
@@ -811,7 +821,7 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
                           <div className="flex-1 min-w-0 pr-4">
                             <h5 className="text-xs font-bold text-zinc-850 dark:text-white truncate">{prod.name}</h5>
                             <span className="text-[10px] text-zinc-500 dark:text-zinc-450 block truncate">{prod.sku}</span>
-                            <span className="text-xs font-black text-amber-500 mt-0.5 block">{prod.price.toLocaleString()} บาท</span>
+                            <span className="text-xs font-black text-amber-500 mt-0.5 block">{Number(prod.price).toLocaleString("th-TH")} บาท</span>
                           </div>
                           <button
                             type="button"
@@ -1078,7 +1088,7 @@ export default function ProductsPage() {
                     </TableCell>
                     <TableCell className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">{p.brand}</TableCell>
                     <TableCell className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
-                      ฿{p.price.toLocaleString("th-TH")}
+                      ฿{Number(p.price).toLocaleString("th-TH")}
                     </TableCell>
                     <TableCell>
                       <StockBar stock={p.stock} reserved={p.reserved} />
@@ -1206,7 +1216,7 @@ function ProductDetailModal({ product, onClose, onEdit, onSuccess }: ProductDeta
             <div className="space-y-2">
               <h4 className="text-lg font-bold leading-tight">{product.name}</h4>
               <p className="text-xs font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-505 dark:text-zinc-400 px-2 py-0.5 rounded w-fit">SKU: {product.sku}</p>
-              <p className="text-2xl font-black text-amber-500">฿{product.price.toLocaleString("th-TH")}</p>
+              <p className="text-2xl font-black text-amber-500">฿{Number(product.price).toLocaleString("th-TH")}</p>
             </div>
           </div>
 
@@ -1728,14 +1738,14 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
                 <div>
                   <label className="text-sm font-semibold text-zinc-500 dark:text-[#c4c5d9] tracking-[0.7px] uppercase block mb-1.5">ราคา (บาท) *</label>
                   <input
-                    type="number"
-                    placeholder="เช่น 32000"
-                    value={form.price}
-                    min="1"
+                    type="text"
+                    placeholder="เช่น 32,000"
+                    value={formatNumberWithCommas(form.price)}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (val === "" || Number(val) > 0) {
-                        setForm(prev => ({ ...prev, price: val }));
+                      const raw = val.replace(/,/g, "");
+                      if (raw === "" || Number(raw) >= 0) {
+                        setForm(prev => ({ ...prev, price: raw }));
                       }
                     }}
                     className="w-full px-4 py-3 text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-[#2a2a2d] text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
@@ -1919,7 +1929,7 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
                         >
                           <div className="truncate pr-2">
                             <span className="font-bold block truncate">{prod.name}</span>
-                            <span className="text-[10px] text-zinc-500">{prod.sku} • {prod.price.toLocaleString()} บาท</span>
+                            <span className="text-[10px] text-zinc-500">{prod.sku} • {Number(prod.price).toLocaleString("th-TH")} บาท</span>
                           </div>
                           <Plus className="w-3.5 h-3.5 shrink-0 text-amber-500" />
                         </button>
@@ -1944,7 +1954,7 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
                         >
                           <div className="truncate pr-2">
                             <span className="font-bold text-zinc-800 dark:text-zinc-200 group-hover:text-amber-505 block truncate">{prod.name}</span>
-                            <span className="text-[9px] text-zinc-505">{prod.category?.name} · {prod.price.toLocaleString()} บาท</span>
+                            <span className="text-[9px] text-zinc-505">{prod.category?.name} · {Number(prod.price).toLocaleString("th-TH")} บาท</span>
                           </div>
                           <Plus className="w-3.5 h-3.5 text-zinc-400 group-hover:text-amber-505 shrink-0" />
                         </button>
@@ -1979,7 +1989,7 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
                           <div className="flex-1 min-w-0 pr-4">
                             <h5 className="text-xs font-bold text-zinc-850 dark:text-white truncate">{prod.name}</h5>
                             <span className="text-[10px] text-zinc-505 dark:text-zinc-450 block truncate">{prod.sku}</span>
-                            <span className="text-xs font-black text-amber-500 mt-0.5 block">{prod.price.toLocaleString()} บาท</span>
+                            <span className="text-xs font-black text-amber-500 mt-0.5 block">{Number(prod.price).toLocaleString("th-TH")} บาท</span>
                           </div>
                           <button
                             type="button"
