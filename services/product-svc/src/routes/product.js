@@ -1,3 +1,4 @@
+// Force hot-reload to apply new Prisma Client schema with originalPrice
 import { Hono } from "hono";
 import { createClient } from "../db/client.js";
 import {
@@ -358,6 +359,7 @@ productRoutes.get("/:productId", async (c) => {
       name: product.name,
       slug: product.slug,
       price: parseFloat(product.price.toString()),
+      originalPrice: product.originalPrice ? parseFloat(product.originalPrice.toString()) : null,
       sku: product.sku,
       status: product.status,
       description: product.description ?? null,
@@ -370,7 +372,14 @@ productRoutes.get("/:productId", async (c) => {
         isPrimary: img.isPrimary,
         sortOrder: img.sortOrder,
       })),
-      recommendations: product.recommendations || [],
+      recommendations: product.recommendations?.map(r => ({
+        ...r,
+        recommended: {
+          ...r.recommended,
+          price: parseFloat(r.recommended.price.toString()),
+          originalPrice: r.recommended.originalPrice ? parseFloat(r.recommended.originalPrice.toString()) : null,
+        }
+      })) || [],
     });
   } catch (err) {
     console.error("[GET /products/:productId]", err);
@@ -414,6 +423,14 @@ productRoutes.post("/", async (c) => {
     const parsedPrice = parseFloat(price);
     if (isNaN(parsedPrice)) {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "Price must be a valid number" } }, 400);
+    }
+
+    let parsedOriginalPrice = null;
+    if (body.originalPrice !== undefined && body.originalPrice !== null && body.originalPrice !== "") {
+      parsedOriginalPrice = parseFloat(body.originalPrice);
+      if (isNaN(parsedOriginalPrice) || parsedOriginalPrice < 0) {
+        return c.json({ error: { code: "VALIDATION_ERROR", message: "originalPrice must be a valid non-negative number" } }, 400);
+      }
     }
 
     let slugBase = body.slug || name.toLowerCase()
@@ -504,6 +521,7 @@ productRoutes.post("/", async (c) => {
       name,
       slug,
       price: parsedPrice,
+      originalPrice: parsedOriginalPrice,
       sku,
       status: body.status || "active",
       skillLevel: body.skillLevel || null,
@@ -587,6 +605,18 @@ productRoutes.patch("/:productId", async (c) => {
     const price = body.price !== undefined ? parseFloat(body.price) : undefined;
     if (body.price !== undefined && isNaN(price)) {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "Price must be a valid number" } }, 400);
+    }
+
+    let originalPrice = undefined;
+    if (body.originalPrice !== undefined) {
+      if (body.originalPrice === null || body.originalPrice === "" || body.originalPrice === "null") {
+        originalPrice = null;
+      } else {
+        originalPrice = parseFloat(body.originalPrice);
+        if (isNaN(originalPrice) || originalPrice < 0) {
+          return c.json({ error: { code: "VALIDATION_ERROR", message: "originalPrice must be a valid non-negative number" } }, 400);
+        }
+      }
     }
 
     // จัดการอัปโหลดรูปภาพใหม่ (ถ้าถูกส่งมาใน multipart request)
@@ -678,6 +708,7 @@ productRoutes.patch("/:productId", async (c) => {
       name: body.name !== undefined ? body.name : existing.name,
       slug: body.slug !== undefined ? body.slug : existing.slug,
       price: price !== undefined ? price : existing.price,
+      originalPrice: originalPrice !== undefined ? originalPrice : existing.originalPrice,
       sku: body.sku !== undefined ? body.sku : existing.sku,
       status: body.status !== undefined ? body.status : existing.status,
       skillLevel: body.skillLevel !== undefined 
@@ -711,6 +742,44 @@ productRoutes.delete("/:productId", async (c) => {
     }
 
     await deleteProduct(db, productId);
+
+    // ยิง Event ไปหา QStash US region
+    const qstashUrl = c.env.QSTASH_URL;
+    const qstashToken = c.env.QSTASH_TOKEN;
+    const inventorySvcUrl = c.env.INVENTORY_SVC_URL;
+
+    if (qstashUrl && qstashToken && inventorySvcUrl) {
+      const subscriberUrl = `${inventorySvcUrl.replace(/\/$/, "")}/webhooks/qstash`;
+      const payload = {
+        event: "product.deleted",
+        productId: productId
+      };
+
+      console.info(`[product-svc] Publishing product.deleted to QStash: ${subscriberUrl}`);
+
+      c.executionCtx.waitUntil(
+        fetch(`${qstashUrl}/v2/publish/${subscriberUrl}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${qstashToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }).then(async (res) => {
+          if (!res.ok) {
+            const txt = await res.text();
+            console.error(`[product-svc] QStash publish error ${res.status}: ${txt}`);
+          } else {
+            console.info(`[product-svc] QStash event product.deleted published successfully.`);
+          }
+        }).catch(err => {
+          console.error(`[product-svc] QStash publish failed:`, err);
+        })
+      );
+    } else {
+      console.warn("[product-svc] QStash variables or INVENTORY_SVC_URL not set — skipping publish");
+    }
+
     return c.json({ status: "ok", message: "Product deleted successfully" });
   } catch (err) {
     console.error("[DELETE /products/:productId]", err);
