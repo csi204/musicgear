@@ -12,10 +12,22 @@ app.get('/', (c) => c.json({ status: 'ok', service: 'report' }))
 const webhookController = new WebhookController();
 app.route('/webhooks', webhookController.router);
 
-// Report APIs (Protected: Admin only)
+// Report APIs (Protected)
 const reportController = new ReportController();
 app.use('/reports/*', authMiddleware);
-app.use('/reports/*', createRoleMiddleware(["admin", "staff"])); // Included staff just in case, but can be admin only
+
+// Restrict financial and audit reports to Admin only
+const adminOnlyMiddleware = createRoleMiddleware(["admin"]);
+app.use('/reports/sales', adminOnlyMiddleware);
+app.use('/reports/audit-logs', adminOnlyMiddleware);
+app.use('/reports/dashboard-summary', adminOnlyMiddleware);
+
+// Allow staff & admin for inventory-related reports
+const staffOrAdminMiddleware = createRoleMiddleware(["admin", "staff"]);
+app.use('/reports/inventory-alerts', staffOrAdminMiddleware);
+app.use('/reports/inventory', staffOrAdminMiddleware);
+app.use('/reports/stock-movement', staffOrAdminMiddleware);
+
 app.route('/reports', reportController.router);
 
 export default app

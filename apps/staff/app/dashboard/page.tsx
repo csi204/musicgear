@@ -639,8 +639,8 @@ export default function StaffDashboardPage() {
                 VIEW ALL
               </Link>
             </div>
-            <div className="p-0">
-              <Table>
+            <div className="p-0 overflow-x-auto w-full">
+              <Table className="min-w-[800px] md:min-w-full">
                 <TableHeader className="bg-zinc-50/50 dark:bg-zinc-900/50">
                   <TableRow>
                     <TableHead className="font-bold text-[11px] uppercase tracking-wider pl-6 text-zinc-500 h-12">ORDER ID</TableHead>

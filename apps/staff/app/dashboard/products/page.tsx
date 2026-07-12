@@ -9,6 +9,7 @@ import { getProducts, getInventory, getCategories, getBrands, getOrders, Product
 import { getAccessToken, getApiBaseUrl } from "@/lib/auth";
 import { CustomSelect } from "@/components/custom-select";
 import { Pagination } from "@/components/pagination";
+import { useUser } from "@/hooks/useUser";
 
 type ProductStatus = "active" | "inactive" | "out_of_stock" | "discontinued";
 
@@ -41,7 +42,9 @@ const formatNumberWithCommas = (val: string | number) => {
   const cleanNum = numStr.replace(/[^\d.]/g, "");
   if (!cleanNum) return "";
   const parts = cleanNum.split(".");
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  if (parts[0]) {
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
   return parts.slice(0, 2).join(".");
 };
 
@@ -871,6 +874,7 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
 // Main Page
 // ─────────────────────────────────────────────────────
 export default function ProductsPage() {
+  const { isAdmin } = useUser();
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState<DisplayProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -961,13 +965,15 @@ export default function ProductsPage() {
           <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">รายการสินค้า</h2>
           <p className="text-zinc-500 text-sm mt-1">ดูสินค้าและสถานะสต็อก — การแก้ไขราคา/เพิ่มสินค้าต้องมีสิทธิ์ Admin</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors shadow-md shadow-amber-500/20"
-        >
-          <Plus className="w-4 h-4" />
-          เพิ่มสินค้า
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors shadow-md shadow-amber-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            เพิ่มสินค้า
+          </button>
+        )}
       </div>
 
       {/* Main table card */}
@@ -1039,7 +1045,8 @@ export default function ProductsPage() {
         </div>
 
         {/* Table */}
-        <Table>
+        <div className="overflow-x-auto w-full">
+          <Table className="min-w-[900px] md:min-w-full">
           <TableHeader>
             <TableRow>
               <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider">สินค้า</TableHead>
@@ -1116,6 +1123,7 @@ export default function ProductsPage() {
             )}
           </TableBody>
         </Table>
+        </div>
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -1160,6 +1168,7 @@ interface ProductDetailModalProps {
 }
 
 function ProductDetailModal({ product, onClose, onEdit, onSuccess }: ProductDetailModalProps) {
+  const { isAdmin } = useUser();
   const handleDelete = async () => {
     const confirmDelete = window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบสินค้า "${product.name}"? การดำเนินการนี้ไม่สามารถย้อนกลับได้`);
     if (!confirmDelete) return;
@@ -1267,21 +1276,25 @@ function ProductDetailModal({ product, onClose, onEdit, onSuccess }: ProductDeta
 
         {/* Footer */}
         <div className="px-6 py-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3 items-center">
-          <button
-            onClick={handleDelete}
-            className="mr-auto px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl transition-all cursor-pointer"
-          >
-            ลบสินค้า
-          </button>
-          <button
-            onClick={() => {
-              onEdit();
-              onClose();
-            }}
-            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl transition-all cursor-pointer"
-          >
-            แก้ไขรายละเอียดสินค้า
-          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={handleDelete}
+                className="mr-auto px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl transition-all cursor-pointer"
+              >
+                ลบสินค้า
+              </button>
+              <button
+                onClick={() => {
+                  onEdit();
+                  onClose();
+                }}
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl transition-all cursor-pointer"
+              >
+                แก้ไขรายละเอียดสินค้า
+              </button>
+            </>
+          )}
           <button onClick={onClose} className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-xl transition-all cursor-pointer">
             ปิดหน้าต่าง
           </button>

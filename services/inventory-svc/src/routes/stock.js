@@ -131,6 +131,18 @@ stockRoutes.post(
   }),
   async (c) => {
     const { productId, changeQty, action, staffId } = c.req.valid("json");
+    const user = c.get("user");
+
+    const roleKey = Array.isArray(user?.roles) ? user?.roles[0]?.key : null;
+    const flatRole = user?.role;
+    const rawRole = roleKey || flatRole || "customer";
+    const role = String(rawRole).toLowerCase();
+
+    // Staff is only allowed to perform "receive" action. "adjust" is restricted to Admin only.
+    if (action === "adjust" && role !== "admin") {
+      return c.json({ error: { code: "FORBIDDEN", message: "Only admin can adjust stock manually" } }, 403);
+    }
+
     const db = createClient(c.env.DATABASE_URL);
 
     try {
@@ -197,10 +209,27 @@ stockRoutes.get(
   createRoleMiddleware(["staff", "admin"]),
   async (c) => {
     const productId = c.req.param("productId");
+    const user = c.get("user");
+
+    const roleKey = Array.isArray(user?.roles) ? user?.roles[0]?.key : null;
+    const flatRole = user?.role;
+    const rawRole = roleKey || flatRole || "customer";
+    const role = String(rawRole).toLowerCase();
+
     const db = createClient(c.env.DATABASE_URL);
     try {
+      const whereClause = { productId };
+
+      // If user is staff, only show their own logs or system logs (reserve, release, sale_deduct)
+      if (role === "staff") {
+        whereClause.OR = [
+          { staffId: user?.sub || null },
+          { staffId: null }
+        ];
+      }
+
       const logs = await db.inventoryLog.findMany({
-        where: { productId },
+        where: whereClause,
         orderBy: { createdAt: "desc" },
         take: 50,
       });

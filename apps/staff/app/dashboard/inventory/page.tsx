@@ -217,7 +217,8 @@ export default function InventoryPage() {
         </div>
 
         {/* Table */}
-        <Table>
+        <div className="overflow-x-auto w-full">
+          <Table className="min-w-[850px] md:min-w-full">
           <TableHeader>
             <TableRow>
               <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider">SKU</TableHead>
@@ -277,6 +278,7 @@ export default function InventoryPage() {
             )}
           </TableBody>
         </Table>
+        </div>
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
