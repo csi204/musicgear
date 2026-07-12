@@ -8,6 +8,7 @@ import { getBundles, getInventory, getProducts, deleteBundleById, BundleRecord, 
 import { getAccessToken, getApiBaseUrl } from "@/lib/auth";
 import { CustomSelect } from "@/components/custom-select";
 import { Pagination } from "@/components/pagination";
+import { useUser } from "@/hooks/useUser";
 
 type BundleStatus = "healthy" | "low_component" | "out_of_stock";
 
@@ -608,6 +609,7 @@ function EditBundleModal({ bundle, onClose, onSuccess }: EditBundleModalProps) {
 // Main Page
 // ─────────────────────────────────────────────────────
 export default function BundlesPage() {
+  const { isAdmin } = useUser();
   const [search, setSearch] = useState("");
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -709,13 +711,15 @@ export default function BundlesPage() {
           <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">จัดการเซ็ตสินค้า</h2>
           <p className="text-zinc-500 text-sm mt-1">ติดตามสถานะการจัดเซ็ตและความพร้อมของสินค้าในแต่ละเซ็ต</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors shadow-md shadow-amber-500/20"
-        >
-          <Plus className="w-4 h-4" />
-          สร้าง Bundle ใหม่
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors shadow-md shadow-amber-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            สร้าง Bundle ใหม่
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -827,7 +831,8 @@ export default function BundlesPage() {
               </div>
             )}
 
-            <Table>
+            <div className="overflow-x-auto w-full">
+              <Table className="min-w-[800px] md:min-w-full">
               <TableHeader>
                 <TableRow>
                   <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider">เซ็ตสินค้า</TableHead>
@@ -883,12 +888,14 @@ export default function BundlesPage() {
                             >
                               ดูรายละเอียด
                             </button>
-                            <button
-                              onClick={() => setEditingBundle(bundle)}
-                              className="px-3 py-1.5 text-sm font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
-                            >
-                              แก้ไข
-                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditingBundle(bundle)}
+                                className="px-3 py-1.5 text-sm font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                              >
+                                แก้ไข
+                              </button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -897,6 +904,7 @@ export default function BundlesPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -933,6 +941,7 @@ interface BundleDetailModalProps {
 }
 
 function BundleDetailModal({ bundle, onClose, onSuccess }: BundleDetailModalProps) {
+  const { isAdmin } = useUser();
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1075,15 +1084,17 @@ function BundleDetailModal({ bundle, onClose, onSuccess }: BundleDetailModalProp
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between">
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="px-5 py-2.5 bg-red-600 hover:bg-red-750 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-50 flex items-center gap-2"
-          >
-            {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
-            ลบเซ็ตสินค้า
-          </button>
+        <div className={`px-6 py-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center ${isAdmin ? "justify-between" : "justify-end"}`}>
+          {isAdmin && (
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="px-5 py-2.5 bg-red-600 hover:bg-red-750 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
+              ลบเซ็ตสินค้า
+            </button>
+          )}
           <button onClick={onClose} className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-xl transition-all">
             ปิดหน้าต่าง
           </button>

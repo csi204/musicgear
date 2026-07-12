@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft, Barcode, CheckCircle, AlertTriangle, XCircle, Plus, Loader2, X, ScanLine, Zap, ChevronDown, Check } from "lucide-react";
 import { getProducts, adjustStock, ProductRecord } from "@/lib/api";
 import { CustomSelect } from "@/components/custom-select";
+import { cn } from "@workspace/ui/lib/utils";
 
 type Condition = "good" | "damaged" | "missing";
 type MatchStatus = "full_match" | "shortage" | "damaged";
@@ -41,13 +42,27 @@ const conditionOptions: { value: Condition; label: string }[] = [
 export default function ReceiveStockPage() {
   const [productList, setProductList] = useState<ProductRecord[]>([]);
   const [items, setItems] = useState<LineItem[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState("");
-  const [expectedQty, setExpectedQty] = useState(10);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expectedQty, setExpectedQty] = useState<number | string>(10);
   
   const [poNumber, setPoNumber] = useState("");
   const [supplier, setSupplier] = useState("");
   const [carrier, setCarrier] = useState("");
   const [trackingId, setTrackingId] = useState("");
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -163,27 +178,36 @@ export default function ReceiveStockPage() {
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const handleAddItem = () => {
-    if (!selectedProductId) return;
-    const prod = productList.find(p => p.productId === selectedProductId);
-    if (!prod) return;
-    
-    // Check duplicate
-    if (items.some(item => item.id === selectedProductId)) {
-      alert("มีสินค้านี้ในรายการรับเข้าอยู่แล้ว");
+  const handleAddMultipleItems = () => {
+    if (selectedProductIds.length === 0) {
+      alert("กรุณาเลือกสินค้าอย่างน้อย 1 รายการ");
       return;
     }
 
-    setItems(prev => [...prev, {
-      id: prod.productId,
-      name: prod.name,
-      sku: prod.sku,
-      expected: expectedQty,
-      received: expectedQty,
-      condition: "good",
-      damagedQty: 0
-    }]);
-    setSelectedProductId("");
+    const newItems: LineItem[] = [];
+    for (const pId of selectedProductIds) {
+      const prod = productList.find(p => p.productId === pId);
+      if (!prod) continue;
+
+      // Skip duplicates
+      if (items.some(item => item.id === pId)) continue;
+
+      const qty = typeof expectedQty === "string" ? (parseInt(expectedQty, 10) || 1) : expectedQty;
+      newItems.push({
+        id: prod.productId,
+        name: prod.name,
+        sku: prod.sku,
+        expected: qty,
+        received: qty,
+        condition: "good",
+        damagedQty: 0
+      });
+    }
+
+    setItems(prev => [...prev, ...newItems]);
+    setSelectedProductIds([]);
+    setDropdownOpen(false);
+    setSearchQuery("");
   };
 
   const handleFinalize = async () => {
@@ -241,9 +265,9 @@ export default function ReceiveStockPage() {
 
   return (
     <>
-    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12 lg:pb-0 lg:h-[calc(100vh-10rem)] lg:flex lg:flex-col lg:overflow-hidden">
       {/* Header */}
-      <div className="flex items-start gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
+      <div className="flex items-start gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5 shrink-0">
         <Link href="/dashboard/inventory" className="mt-1 p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-400">
           <ArrowLeft className="w-5 h-5" />
         </Link>
@@ -260,34 +284,36 @@ export default function ReceiveStockPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 lg:flex-1 lg:overflow-hidden min-h-0">
         {/* Left Panel */}
-        <div className="space-y-4">
+        <div className="space-y-4 shrink-0 w-full lg:w-[320px]">
           {/* Shipment Details Form */}
-          <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm p-5 space-y-4">
-            <h3 className="text-base font-bold text-zinc-900 dark:text-white">รายละเอียดการจัดส่ง</h3>
-            <div className="space-y-3">
+          <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm p-4 lg:p-4.5 space-y-3">
+            <h3 className="text-sm lg:text-base font-bold text-zinc-900 dark:text-white">รายละเอียดการจัดส่ง</h3>
+            <div className="space-y-2 lg:space-y-2.5">
               <div>
-                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">เลขที่ใบสั่งซื้อ (PO)</label>
+                <label className="text-[11px] lg:text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">เลขที่ใบสั่งซื้อ (PO)</label>
                 <input
                   type="text"
+                  placeholder="เช่น PO-2024-001"
                   value={poNumber}
                   onChange={(e) => setPoNumber(e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                  className="w-full px-3 py-2 text-xs lg:text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">ชื่อผู้จำหน่าย</label>
+                <label className="text-[11px] lg:text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">ชื่อผู้จำหน่าย</label>
                 <input
                   type="text"
+                  placeholder="เช่น Yamaha Thailand"
                   value={supplier}
                   onChange={(e) => setSupplier(e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                  className="w-full px-3 py-2 text-xs lg:text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
                 />
               </div>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-2 lg:gap-2.5">
                 <div>
-                  <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">บริษัทขนส่ง</label>
+                  <label className="text-[11px] lg:text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">บริษัทขนส่ง</label>
                     <CustomSelect
                       value={carrier}
                       onChange={setCarrier}
@@ -298,18 +324,18 @@ export default function ReceiveStockPage() {
                         { value: "Kerry Express", label: "Kerry Express" },
                         { value: "Flash Express", label: "Flash Express" }
                       ]}
-                      triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-2.5 h-10"
+                      triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-1.5 h-8 text-xs"
                       dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
                     />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">หมายเลขติดตาม (Tracking)</label>
+                  <label className="text-[11px] lg:text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">หมายเลขติดตาม (Tracking)</label>
                   <input
                     type="text"
-                    placeholder="สแกนหรือระบุ..."
+                    placeholder="สแกนหรือระบุ... เช่น T2407132130310"    
                     value={trackingId}
                     onChange={(e) => setTrackingId(e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                    className="w-full px-3 py-2 text-xs lg:text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
                   />
                 </div>
               </div>
@@ -317,36 +343,36 @@ export default function ReceiveStockPage() {
           </div>
 
           {/* Summary Card */}
-          <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm p-5 space-y-4">
-            <h3 className="text-base font-bold text-zinc-900 dark:text-white">สรุปการรับสินค้า</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-100 dark:border-zinc-700/55 p-4 text-center">
-                <p className="text-[12px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">จำนวนคาดหวัง</p>
-                <p className="text-3xl font-black text-zinc-900 dark:text-[#e5e1e6] mt-2 leading-none">{totalExpected}</p>
+          <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm p-4 lg:p-4.5 space-y-3">
+            <h3 className="text-sm lg:text-base font-bold text-zinc-900 dark:text-white">สรุปการรับสินค้า</h3>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-100 dark:border-zinc-700/55 p-3 text-center">
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">จำนวนคาดหวัง</p>
+                <p className="text-2xl lg:text-3xl font-black text-zinc-900 dark:text-[#e5e1e6] mt-1.5 leading-none">{totalExpected}</p>
               </div>
-              <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-100 dark:border-zinc-700/55 p-4 text-center">
-                <p className="text-[12px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">ได้รับจริง</p>
-                <p className={`text-3xl font-black mt-2 leading-none ${totalReceived === totalExpected ? "text-emerald-500" : "text-[#ffb68d]"}`}>{totalReceived}</p>
+              <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-100 dark:border-zinc-700/55 p-3 text-center">
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">ได้รับจริง</p>
+                <p className={`text-2xl lg:text-3xl font-black mt-1.5 leading-none ${totalReceived === totalExpected ? "text-emerald-500" : "text-[#ffb68d]"}`}>{totalReceived}</p>
               </div>
             </div>
             {discrepancies > 0 && (
-              <div className="flex items-center justify-between rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 px-4 py-3">
-                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-xs font-bold">
-                  <AlertTriangle className="w-4 h-4" />
+              <div className="flex items-center justify-between rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 px-3.5 py-2.5">
+                <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 text-[11px] font-bold">
+                  <AlertTriangle className="w-3.5 h-3.5" />
                   จำนวนไม่ตรงเกณฑ์
                 </div>
-                <span className="text-lg font-black text-amber-600 dark:text-amber-400">{discrepancies} รายการ</span>
+                <span className="text-base font-black text-amber-600 dark:text-amber-400">{discrepancies} รายการ</span>
               </div>
             )}
-            <div className="space-y-2 pt-2">
-              <Link href="/dashboard/inventory" className="w-full block text-center px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-sm font-semibold text-zinc-650 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+            <div className="space-y-1.5 pt-1">
+              <Link href="/dashboard/inventory" className="w-full block text-center px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-650 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
                 ยกเลิก
               </Link>
               {error && <p className="text-xs text-red-500 text-center font-semibold">{error}</p>}
               <button
                 onClick={handleFinalize}
                 disabled={isSaving || isLoading}
-                className="w-full px-4 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-bold transition-colors shadow-md shadow-amber-500/20 flex items-center justify-center gap-2"
+                className="w-full px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs lg:text-sm font-bold transition-colors shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                 ยืนยันการรับเข้าสต็อก
@@ -356,11 +382,11 @@ export default function ReceiveStockPage() {
         </div>
 
         {/* Right Panel — Line Items Table */}
-        <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col justify-between relative">
-          <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 rounded-t-2xl">
+        <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col justify-between relative lg:h-full lg:overflow-hidden min-h-0">
+          <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 rounded-t-2xl shrink-0">
             <h3 className="text-base font-bold text-zinc-900 dark:text-white">รายการสินค้าที่นำส่งคลัง</h3>
           </div>
-          <div className="overflow-x-auto flex-1">
+          <div className="overflow-auto flex-1 lg:overflow-y-auto lg:h-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
@@ -481,18 +507,124 @@ export default function ReceiveStockPage() {
           </div>
           {/* Add Item form */}
           <div className="border-t border-zinc-200 dark:border-zinc-800 px-6 py-4 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col sm:flex-row items-end gap-3 rounded-b-2xl">
-            <div className="flex-1 w-full">
+            <div className="flex-1 w-full relative" ref={dropdownRef}>
               <label className="text-[12px] font-bold text-zinc-400 block mb-1">เลือกสินค้าที่ต้องการรับเข้า</label>
-                <CustomSelect
-                  value={selectedProductId}
-                  onChange={setSelectedProductId}
-                  options={[
-                    { value: "", label: "-- เลือกสินค้า --" },
-                    ...productList.map((p) => ({ value: p.productId, label: `${p.name} (${p.sku})` }))
-                  ]}
-                  triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-2.5 h-10"
-                  dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
-                />
+              
+              {/* Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="w-full px-4 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-850 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all text-left flex items-center justify-between cursor-pointer gap-2 h-10"
+              >
+                <span className="truncate text-zinc-800 dark:text-zinc-250 font-medium">
+                  {selectedProductIds.length === 0 
+                    ? "-- เลือกสินค้า (เลือกได้หลายรายการ) --" 
+                    : `เลือกแล้ว ${selectedProductIds.length} รายการ`}
+                </span>
+                <ChevronDown className={cn("w-4 h-4 text-zinc-400 transition-transform shrink-0", dropdownOpen && "rotate-180")} />
+              </button>
+
+              {/* Upward Dropdown Panel */}
+              {dropdownOpen && (
+                <div className="absolute bottom-full mb-2 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-4 flex flex-col gap-3 max-h-[350px] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-150">
+                  {/* Search Input */}
+                  <input
+                    type="text"
+                    placeholder="ค้นหาชื่อสินค้า หรือ SKU..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                  />
+
+                  {/* Scrollable Items List */}
+                  <div className="flex-1 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800/50 pr-1 select-none">
+                    {productList
+                      .filter(p => !items.some(i => i.id === p.productId)) // Filter out already added items
+                      .filter(p => 
+                        p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        p.sku.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map((prod) => {
+                        const isChecked = selectedProductIds.includes(prod.productId);
+                        return (
+                          <div 
+                            key={prod.productId}
+                            onClick={() => {
+                              setSelectedProductIds(prev => 
+                                isChecked 
+                                  ? prev.filter(id => id !== prod.productId)
+                                  : [...prev, prod.productId]
+                              );
+                            }}
+                            className="flex items-center gap-3 py-2.5 px-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 cursor-pointer rounded-lg transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              readOnly
+                              className="rounded border-zinc-300 dark:border-zinc-700 accent-amber-500 cursor-pointer w-4 h-4"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">{prod.name}</p>
+                              <p className="text-xs text-zinc-400 font-mono mt-0.5">{prod.sku}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    
+                    {/* Fallback Empty State */}
+                    {productList
+                      .filter(p => !items.some(i => i.id === p.productId))
+                      .filter(p => 
+                        p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        p.sku.toLowerCase().includes(searchQuery.toLowerCase())
+                      ).length === 0 && (
+                        <div className="py-8 text-center text-xs text-zinc-400">
+                          ไม่พบสินค้าเพิ่มเติม
+                        </div>
+                      )}
+                  </div>
+
+                  {/* Dropdown Footer Actions */}
+                  <div className="flex justify-between items-center border-t border-zinc-150 dark:border-zinc-800 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const shownProducts = productList
+                          .filter(p => !items.some(i => i.id === p.productId))
+                          .filter(p => 
+                            p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            p.sku.toLowerCase().includes(searchQuery.toLowerCase())
+                          );
+                        
+                        setSelectedProductIds(prev => {
+                          const shownIds = shownProducts.map(p => p.productId);
+                          const allSelected = shownIds.every(id => prev.includes(id));
+                          if (allSelected) {
+                            // Unselect shown ones
+                            return prev.filter(id => !shownIds.includes(id));
+                          } else {
+                            // Select all shown ones
+                            return Array.from(new Set([...prev, ...shownIds]));
+                          }
+                        });
+                      }}
+                      className="text-xs font-bold text-amber-500 hover:text-amber-600 transition-colors cursor-pointer"
+                    >
+                      เลือกทั้งหมด / ล้างทั้งหมดที่แสดง
+                    </button>
+                    {selectedProductIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProductIds([])}
+                        className="text-xs font-bold text-red-500 hover:text-red-650 transition-colors cursor-pointer"
+                      >
+                        ล้างค่า
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="w-full sm:w-28">
               <label className="text-[10px] font-bold text-zinc-400 block mb-1">จำนวนที่คาดหวัง</label>
@@ -502,16 +634,19 @@ export default function ReceiveStockPage() {
                 value={expectedQty}
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (val === "" || Number(val) > 0) {
-                  if (val !== "") setExpectedQty(Math.max(1, Number(val)));
+                  if (val === "") {
+                    setExpectedQty("");
+                  } else {
+                    const parsed = parseInt(val, 10);
+                    setExpectedQty(isNaN(parsed) ? 1 : Math.max(1, parsed));
                   }
                 }}
-                className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 font-bold text-center"
+                className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-850 text-zinc-900 dark:text-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500/30 font-bold text-center"
               />
             </div>
             <button
-              onClick={handleAddItem}
-              className="px-4 py-2.5 text-sm font-bold rounded-xl bg-amber-500 hover:bg-amber-600 text-white transition-colors flex items-center gap-1 shrink-0"
+              onClick={handleAddMultipleItems}
+              className="px-4 py-2.5 text-sm font-bold rounded-xl bg-amber-500 hover:bg-amber-600 text-white transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               เพิ่มรายการ

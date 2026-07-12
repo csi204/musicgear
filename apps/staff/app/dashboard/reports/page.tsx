@@ -12,9 +12,11 @@ import {
   ArrowDownRight,
   CalendarDays,
   X,
+  AlertCircle,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { getOrders, getProducts, getInventory, getStockMovement, OrderRecord, StockMovementRecord } from "@/lib/api";
+import { useUser } from "@/hooks/useUser";
 
 const statusTH: Record<string, string> = {
   delivered: "ส่งแล้ว",
@@ -107,6 +109,7 @@ function KpiSkeleton() {
   );
 }
 
+// ─── Section Skeleton ─────────────────────────────────────────────────────────────
 function SectionSkeleton() {
   return (
     <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm animate-pulse space-y-4">
@@ -121,6 +124,7 @@ function SectionSkeleton() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
+  const { isAdmin, loading: authLoading } = useUser();
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -284,6 +288,27 @@ export default function ReportsPage() {
   const handleExportPDF = () => {
     window.print();
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+        <span className="text-sm text-zinc-500 font-semibold">กำลังตรวจสอบสิทธิ์...</span>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900 p-8 shadow-sm text-center">
+        <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center text-red-500 mb-4 shrink-0">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h3 className="text-xl font-bold text-zinc-900 dark:text-white">ไม่มีสิทธิ์เข้าถึงหน้านี้</h3>
+        <p className="text-zinc-500 text-sm mt-2 max-w-md">หน้าต่างรายงานประสิทธิภาพการดำเนินงานและการเงินสงวนสิทธิ์ไว้เฉพาะระดับผู้ดูแลระบบ (Admin) เท่านั้น</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
