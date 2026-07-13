@@ -20,6 +20,31 @@ import { createRoleMiddleware } from "@musicgear/auth-middleware";
 export const stockRoutes = new Hono();
 
 // ──────────────────────────────────────────────────────────────────────────────
+// GET /stock/sync-db — [TEMPORARY] ดึงสินค้าจาก product-svc มาใส่ตาราง inventory
+// ──────────────────────────────────────────────────────────────────────────────
+stockRoutes.get("/sync-db", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    const res = await fetch("http://localhost:8794/api/products");
+    const data = await res.json();
+    const products = data.products || data || [];
+    let count = 0;
+    for (const p of products) {
+      const existing = await db.inventory.findUnique({ where: { productId: p.id } });
+      if (!existing) {
+        await db.inventory.create({
+          data: { productId: p.id, quantity: 0, reservedQuantity: 0, reorderPoint: 5 }
+        });
+        count++;
+      }
+    }
+    return c.json({ status: "ok", message: `Synced ${count} products to Inventory DB.` }, 200);
+  } catch (err) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // POST /stock/check — ตรวจสต็อกก่อนซื้อ
 // ──────────────────────────────────────────────────────────────────────────────
 stockRoutes.post(

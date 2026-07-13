@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, FileBarChart, LogOut, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, Users, FileBarChart, LogOut, Sun, Moon, Package, Layers } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 import { buildLogoutUrl, clearSession } from "../../lib/auth";
 import { useTheme } from "next-themes";
@@ -11,6 +11,8 @@ import { useTheme } from "next-themes";
 const navItems = [
   { href: "/dashboard", label: "ภาพรวม", icon: LayoutDashboard },
   { href: "/dashboard/users", label: "จัดการผู้ใช้", icon: Users },
+  { href: "/dashboard/products", label: "สินค้า", icon: Package },
+  { href: "/dashboard/bundles", label: "เซ็ตสินค้า", icon: Layers },
   { href: "/dashboard/reports", label: "รายงาน", icon: FileBarChart },
 ];
 
@@ -41,7 +43,7 @@ export function Sidebar() {
       <div className="h-16 flex items-center justify-between px-6 border-b border-zinc-100 dark:border-zinc-800/60">
         <div>
           <h1 className="text-lg font-extrabold leading-tight text-zinc-900 dark:text-zinc-50 tracking-tight">MusicGear</h1>
-          <p className="text-[10px] font-bold text-zinc-400 tracking-wider">ระบบจัดการคลังสินค้า</p>
+          <p className="text-[10px] font-bold text-zinc-400 tracking-wider">WAREHOUSE ADMIN</p>
         </div>
         <label htmlFor="mobile-sidebar-toggle" className="md:hidden p-1.5 text-zinc-400 hover:text-zinc-600 cursor-pointer rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>

@@ -122,3 +122,138 @@ export async function getInventoryAlerts(query: { limit?: number; status?: strin
     token,
   });
 }
+
+// --- Product Service ---
+export interface ProductRecord {
+  productId: string;
+  name: string;
+  slug: string;
+  price: number | string;
+  originalPrice: number | string | null;
+  sku: string;
+  status: "active" | "inactive" | "discontinued" | "out_of_stock";
+  skillLevel: "beginner" | "intermediate" | "advanced" | null;
+  brand: { brandId: string; name: string };
+  category: { categoryId: string; name: string };
+  images: { imageId: string; imageUrl: string; isPrimary: boolean; sortOrder: number }[];
+  description: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProductListResponse {
+  status: string;
+  products: ProductRecord[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+/** GET /products */
+export async function getProducts(query: Record<string, any> = {}, token?: string): Promise<ProductListResponse> {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.append(key, value.toString());
+    }
+  });
+  const qs = params.toString();
+  return apiFetch<ProductListResponse>(`/products${qs ? `?${qs}` : ''}`, { method: "GET", token });
+}
+
+/** DELETE /products/:productId */
+export async function deleteProduct(productId: string, token?: string): Promise<{ status: string }> {
+  return apiFetch(`/products/${productId}`, { method: "DELETE", token });
+}
+
+/** POST /products */
+export async function createProduct(formData: FormData, token?: string): Promise<{ status: string; product: ProductRecord }> {
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  
+  const res = await fetch(`${API_BASE}/products`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+    throw new Error(err?.error?.message ?? `API error ${res.status}`);
+  }
+  return res.json();
+}
+
+/** PATCH /products/:productId */
+export async function updateProduct(productId: string, formData: FormData, token?: string): Promise<{ status: string; product: ProductRecord }> {
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  
+  const res = await fetch(`${API_BASE}/products/${productId}`, {
+    method: "PATCH",
+    headers,
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+    throw new Error(err?.error?.message ?? `API error ${res.status}`);
+  }
+  return res.json();
+}
+
+/** GET /products/brands */
+export async function getBrands(token?: string): Promise<{ status: string; brands: { brandId: string; name: string }[] }> {
+  return apiFetch("/products/brands", { method: "GET", token });
+}
+
+/** GET /products/categories */
+export async function getCategories(token?: string): Promise<{ status: string; categories: { categoryId: string; name: string }[] }> {
+  return apiFetch("/products/categories", { method: "GET", token });
+}
+
+/** GET /products/:productId */
+export async function getProductById(productId: string, token?: string): Promise<ProductRecord> {
+  return apiFetch(`/products/${productId}`, { method: "GET", token });
+}
+
+// --- Bundle Service ---
+export interface BundleItem {
+  bundleItemId: string;
+  bundleId: string;
+  productId: string;
+  quantity: number;
+  product: { productId: string; name: string; sku: string; price: number | string };
+}
+
+export interface BundleRecord {
+  bundleId: string;
+  name: string;
+  description: string | null;
+  discountType: "percentage" | "fixed_amount";
+  discountValue: number | string;
+  createdAt: string;
+  updatedAt: string;
+  items: BundleItem[];
+}
+
+export async function getBundles(token?: string): Promise<{ status: string; bundles: BundleRecord[] }> {
+  return apiFetch("/products/bundles", { method: "GET", token });
+}
+
+export async function getBundleById(bundleId: string, token?: string): Promise<{ status: string; bundle: BundleRecord }> {
+  return apiFetch(`/products/bundles/${bundleId}`, { method: "GET", token });
+}
+
+export async function createBundle(data: any, token?: string): Promise<{ status: string; bundle: BundleRecord }> {
+  return apiFetch("/products/bundles", { method: "POST", body: JSON.stringify(data), token });
+}
+
+export async function updateBundle(bundleId: string, data: any, token?: string): Promise<{ status: string; bundle: BundleRecord }> {
+  return apiFetch(`/products/bundles/${bundleId}`, { method: "PUT", body: JSON.stringify(data), token });
+}
+
+export async function deleteBundle(bundleId: string, token?: string): Promise<{ status: string }> {
+  return apiFetch(`/products/bundles/${bundleId}`, { method: "DELETE", token });
+}

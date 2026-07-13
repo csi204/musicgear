@@ -229,9 +229,9 @@ export async function saleDeductStock(db, orderId, env) {
     deductedItems.push({ productId: log.productId, beforeQty, afterQty });
   }
 
-  // Publish stock.updated event สำหรับสินค้าที่ quantity ลดถึง 0 (out-of-stock)
+  // Publish stock.updated event สำหรับสินค้าที่สต็อกมีการเปลี่ยนแปลง
   for (const item of deductedItems) {
-    if (item.afterQty === 0) {
+    if (item.beforeQty !== item.afterQty) {
       // ดึงข้อมูล reorderPoint จาก DB + productName/category จาก product-svc
       const inv = await db.inventory.findUnique({
         where: { productId: item.productId },
@@ -320,7 +320,7 @@ export async function adjustStock(db, productId, changeQty, action, staffId, env
 
   // ถ้าสินค้ากลับมามีสต็อก (beforeQty = 0, afterQty > 0) → notify ลูกค้าที่รอ
   // หรือเมื่อสต็อกเปลี่ยนแปลง → อัปเดต InventorySnapshot ใน report-svc ด้วย
-  if (beforeQty === 0 && afterQty > 0) {
+  if (beforeQty !== afterQty || beforeQty === 0) {
     // ดึงข้อมูล reorderPoint จาก DB
     const inv = await db.inventory.findUnique({
       where: { productId },

@@ -129,6 +129,42 @@ productRoutes.get("/bundles", async (c) => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// GET /products/bundles/:bundleId — ดึงข้อมูล bundle set ตาม ID
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.get("/bundles/:bundleId", async (c) => {
+  const bundleId = c.req.param("bundleId");
+  const db = createClient(c.env.DATABASE_URL);
+  
+  try {
+    const bundle = await db.bundle.findUnique({
+      where: { bundleId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                productId: true,
+                name: true,
+                sku: true,
+                price: true,
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!bundle) {
+      return c.json({ error: { code: "BUNDLE_NOT_FOUND", message: "Bundle not found" } }, 404);
+    }
+    return c.json({ status: "ok", bundle }, 200);
+  } catch (err) {
+    console.error("[GET /products/bundles/:bundleId]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch bundle" } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // POST /products/bundles — สร้าง Bundle ใหม่
 // ──────────────────────────────────────────────────────────────────────────────
 productRoutes.post("/bundles", async (c) => {
@@ -690,27 +726,38 @@ productRoutes.post("/", async (c) => {
         productId: product.productId
       };
 
-      console.info(`[product-svc] Publishing product.created to QStash: ${subscriberUrl}`);
-
-      c.executionCtx.waitUntil(
-        fetch(`${qstashUrl}/v2/publish/${subscriberUrl}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${qstashToken}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
-        }).then(async (res) => {
-          if (!res.ok) {
-            const txt = await res.text();
-            console.error(`[product-svc] QStash publish error ${res.status}: ${txt}`);
-          } else {
-            console.info(`[product-svc] QStash event published successfully.`);
-          }
-        }).catch(err => {
-          console.error(`[product-svc] QStash publish failed:`, err);
-        })
-      );
+      // Bypass QStash for local development
+      if (qstashUrl.includes("localhost")) {
+        console.info(`[product-svc] Local Dev Mode: Direct webhook to ${subscriberUrl}`);
+        c.executionCtx.waitUntil(
+          fetch(subscriberUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          }).catch(err => console.error(`[product-svc] Direct webhook failed:`, err))
+        );
+      } else {
+        console.info(`[product-svc] Publishing product.created to QStash: ${subscriberUrl}`);
+        c.executionCtx.waitUntil(
+          fetch(`${qstashUrl}/v2/publish/${subscriberUrl}`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${qstashToken}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          }).then(async (res) => {
+            if (!res.ok) {
+              const txt = await res.text();
+              console.error(`[product-svc] QStash publish error ${res.status}: ${txt}`);
+            } else {
+              console.info(`[product-svc] QStash event published successfully.`);
+            }
+          }).catch(err => {
+            console.error(`[product-svc] QStash publish failed:`, err);
+          })
+        );
+      }
     } else {
       console.warn("[product-svc] QStash variables or INVENTORY_SVC_URL not set — skipping publish");
     }

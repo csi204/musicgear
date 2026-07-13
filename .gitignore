@@ -42,3 +42,6 @@ yarn-error.log*
 scratch/
 seed-inventory-stock.js
 apps/web/seed-inventory-stock.js
+
+# Prisma generated client
+**/generated/prisma
