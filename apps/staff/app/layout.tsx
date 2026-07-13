@@ -2,6 +2,7 @@ import { Inter, Noto_Sans_Thai } from "next/font/google"
 import { Geist_Mono } from "next/font/google"
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ToastProvider } from "@/components/toast-provider"
 import { cn } from "@workspace/ui/lib/utils";
 
 const fontSans = Inter({ subsets: ["latin"], variable: "--font-sans" })
@@ -28,8 +29,10 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", fontSans.variable, fontThai.variable)}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
-}
+}

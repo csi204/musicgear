@@ -27,6 +27,7 @@ model Inventory {
   quantity         Int      @default(0)
   reservedQuantity Int      @default(0)
   reorderPoint     Int      @default(0)     // จุด reorder สำหรับแจ้งเตือน Low/Critical
+  maxCapacity      Int      @default(100)   // ความจุสูงสุดของคลังสินค้าสำหรับสินค้านี้
   updatedAt        DateTime @default(now()) @updatedAt @db.Timestamptz
 }
 

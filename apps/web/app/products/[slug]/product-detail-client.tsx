@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   Star, 
   ShoppingCart, 
@@ -10,39 +11,148 @@ import {
   Plus, 
   Minus, 
   Check, 
-  Home, 
-  ArrowRight,
-  Info
+  Home,
+  ArrowLeft
 } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
-import { getProductById, Product } from "../../../lib/products-data";
+import { getApiBaseUrl } from "../../../lib/auth";
+import { useCartContext } from "../../../components/cart-provider";
+import { showToast } from "../../../components/toast";
 
-// TODO: [product-svc] Replace getProductById() with API call:
-//   GET {API_GATEWAY}/products/by-slug/:slug  (product-svc via api-gateway)
-// TODO: [r2] Product imageUrl/imagesGallery will be Cloudflare R2 URLs
-import { useCart } from "../../../hooks/useCart";
+export interface Product {
+  id: string;
+  productId: string;
+  brand: string;
+  title: string;
+  price: number;
+  originalPrice?: number;
+  imageUrl: string;
+  colors: { name: string; hex: string }[];
+  imagesByColor?: { [color: string]: string };
+  rating: number;
+  reviewsCount: number;
+  stockStatus: string;
+  descriptionLong: string;
+  specifications: { label: string; value: string }[];
+  groupedSpecs?: Record<string, { label: string; value: string }[]>;
+  imagesGallery: string[];
+  accessories: any[];
+  comparisons: any[];
+}
 
 interface ProductDetailClientProps {
-  /** Slug-like ID used for mock lookup. In production: product slug from URL → GET /products/by-slug/:slug */
   productSlug: string;
 }
 
 export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
-  // TODO: [product-svc] Replace with: const product = await productService.getBySlug(productSlug)
-  const product = getProductById(productSlug);
-  const { addItem, addMultipleItems } = useCart();
+  const router = useRouter();
+  const { addItem, addMultipleItems, loading: cartLoading } = useCartContext();
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProduct() {
+      try {
+        // Map backend product to frontend Product interface
+        const mapProduct = (p: any) => {
+          // Map dynamic database specifications to groups
+          const groupedSpecs: Record<string, { label: string; value: string }[]> = {
+            "General": [
+              { label: "SKU", value: p.sku },
+              { label: "Level", value: p.skillLevel || "All Levels" }
+            ]
+          };
+
+          if (p.specifications && Array.isArray(p.specifications)) {
+            p.specifications.forEach((spec: any) => {
+              const groupName = spec.definition?.group?.name || "Other";
+              const label = spec.definition?.name || "Spec";
+              const value = spec.value;
+
+              if (!groupedSpecs[groupName]) {
+                groupedSpecs[groupName] = [];
+              }
+              groupedSpecs[groupName].push({ label, value });
+            });
+          }
+
+          return {
+            id: p.slug, // URL slug
+            productId: p.productId, // DB UUID
+            brand: p.brand?.name || "GENERIC",
+            title: p.name,
+            price: Number(p.price),
+            originalPrice: undefined, // mock original price removed
+            imageUrl: p.images && p.images.length > 0 
+              ? `${getApiBaseUrl()}/products/images/${p.images.find((img: any) => img.isPrimary)?.imageUrl || p.images[0].imageUrl}`
+              : "https://images.unsplash.com/photo-1550985616-10810253b84d?auto=format&fit=crop&w=600&q=80",
+            colors: [
+              { name: "Standard", hex: "#4B5563" }
+            ],
+            rating: 4.8,
+            reviewsCount: 15,
+            stockStatus: p.status === "active" ? "In Stock" : "Out of Stock",
+            descriptionLong: p.description || "สินค้าแบรนด์ดังคุณภาพระดับพรีเมียมจาก MusicGear",
+            specifications: [
+              { label: "SKU", value: p.sku },
+              { label: "Level", value: p.skillLevel || "All Levels" }
+            ],
+            groupedSpecs,
+            imagesGallery: p.images && p.images.length > 0
+              ? p.images.map((img: any) => `${getApiBaseUrl()}/products/images/${img.imageUrl}`)
+              : [],
+            accessories: [],
+            comparisons: []
+          };
+        };
+
+        // 1. Check list cache first for instant load
+        if (typeof window !== "undefined") {
+          const cachedListStr = sessionStorage.getItem("mg_cached_products");
+          if (cachedListStr) {
+            try {
+              const cachedList = JSON.parse(cachedListStr);
+              const found = cachedList.find((p: any) => p.slug === productSlug);
+              if (found) {
+                setProduct(mapProduct(found));
+                setLoading(false);
+                return; // Return early, instant load!
+              }
+            } catch {}
+          }
+        }
+
+        // 2. Fetch from network if not cached
+        setLoading(true);
+        const res = await fetch(`${getApiBaseUrl()}/products/by-slug/${productSlug}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === "ok" && data.product) {
+            setProduct(mapProduct(data.product));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch product by slug:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProduct();
+  }, [productSlug]);
 
   // Selected Options States
-  const [selectedColor, setSelectedColor] = useState(product?.colors[0]?.name || "");
+  const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [activeImage, setActiveImage] = useState(product?.imageUrl || "");
+  const [activeImage, setActiveImage] = useState("");
   const [activeTab, setActiveTab] = useState<"description" | "specifications" | "reviews">("description");
   
   // Bundle Selection States
   const [includeMain, setIncludeMain] = useState(true);
-  const [selectedAccessories, setSelectedAccessories] = useState<string[]>(product?.accessories?.map(acc => acc.id) || []);
+  const [selectedAccessories, setSelectedAccessories] = useState<string[]>([]);
   const [bundleAdded, setBundleAdded] = useState(false);
   const [itemAdded, setItemAdded] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -51,11 +161,6 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
         setSelectedColor(firstColor.name);
       }
       setActiveImage(product.imageUrl);
-      
-      // Default all accessories to checked
-      if (product.accessories) {
-        setSelectedAccessories(product.accessories.map(acc => acc.id));
-      }
     }
   }, [product]);
 
@@ -66,6 +171,43 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
       setActiveImage(product.imagesByColor[colorName]);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F5F3EE]/30 text-neutral-900 flex flex-col">
+        <div className="mx-auto max-w-7xl w-full px-6 py-12">
+          {/* Breadcrumb skeleton */}
+          <div className="h-4 w-40 bg-neutral-200 animate-pulse rounded mb-8" />
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
+            {/* Left Column: Image Gallery Skeleton */}
+            <div className="lg:col-span-7 flex flex-col gap-4">
+              <div className="aspect-[4/3] w-full bg-neutral-200 animate-pulse rounded-3xl" />
+              <div className="flex gap-4">
+                {[1, 2, 3, 4].map((n) => (
+                  <div key={n} className="h-20 w-20 bg-neutral-200 animate-pulse rounded-xl" />
+                ))}
+              </div>
+            </div>
+
+            {/* Right Column: Product Info Skeleton */}
+            <div className="lg:col-span-5 flex flex-col gap-6 text-left">
+              <div className="h-4 w-24 bg-neutral-200 animate-pulse rounded" />
+              <div className="h-10 w-full bg-neutral-200 animate-pulse rounded-lg" />
+              <div className="h-4 w-32 bg-neutral-200 animate-pulse rounded" />
+              <div className="h-8 w-40 bg-neutral-200 animate-pulse rounded-lg mt-4" />
+              <div className="h-[2px] bg-neutral-100 my-4" />
+              <div className="h-4 w-48 bg-neutral-200 animate-pulse rounded" />
+              <div className="flex gap-4 mt-6">
+                <div className="h-14 w-24 bg-neutral-200 animate-pulse rounded-full" />
+                <div className="h-14 w-full bg-neutral-200 animate-pulse rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -97,52 +239,110 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
   const totalBundlePrice = mainProductPrice + accessoriesPrice;
 
   // Add single item to cart
-  const handleAddToCart = () => {
-    addItem({
-      productId: product.id,
-      title: product.title,
-      price: product.price,
-      quantity: quantity,
-      color: selectedColor || "Default",
-      imageUrl: activeImage || product.imageUrl,
-      brand: product.brand
-    });
+  const handleAddToCart = async () => {
+    if (!product || isAddingToCart) return;
+    
+    setIsAddingToCart(true);
+    
+    // Show instant UI feedback (Optimistic UI)
     setItemAdded(true);
-    setTimeout(() => setItemAdded(false), 2000);
+    showToast("เพิ่มสินค้าลงตะกร้าแล้ว!");
+    const timer = setTimeout(() => setItemAdded(false), 2000);
+    
+    try {
+      await addItem({
+        productId: product.productId,
+        title: product.title,
+        price: product.price,
+        quantity: quantity,
+        color: selectedColor,
+        imageUrl: product.imageUrl,
+        brand: product.brand,
+      });
+    } catch (err) {
+      console.error("Failed to add to cart:", err);
+      clearTimeout(timer);
+      setItemAdded(false);
+      showToast("ไม่สามารถเพิ่มสินค้าลงตะกร้าได้");
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
+  // Buy Now: add to cart then redirect to checkout
+  const handleBuyNow = async () => {
+    if (!product || isBuyingNow) return;
+
+    setIsBuyingNow(true);
+    try {
+      await addItem({
+        productId: product.productId,
+        title: product.title,
+        price: product.price,
+        quantity: quantity,
+        color: selectedColor,
+        imageUrl: product.imageUrl,
+        brand: product.brand,
+      });
+      // Redirect to checkout — checkout handles auth guard (guest → login → back)
+      router.push("/checkout");
+    } catch (err) {
+      console.error("Buy now failed:", err);
+      showToast("ไม่สามารถดำเนินการได้ กรุณาลองใหม่อีกครั้ง");
+      setIsBuyingNow(false);
+    }
   };
 
   // Add bundle to cart
-  const handleAddBundleToCart = () => {
-    const itemsToAdd = [];
+  const handleAddBundleToCart = async () => {
+    if (!product || isAddingToCart) return;
     
-    if (includeMain) {
-      itemsToAdd.push({
-        productId: product.id,
-        title: product.title,
-        price: product.price,
-        quantity: 1,
-        color: selectedColor || "Default",
-        imageUrl: activeImage || product.imageUrl,
-        brand: product.brand
-      });
-    }
+    setIsAddingToCart(true);
+    
+    // Show instant UI feedback (Optimistic UI)
+    setBundleAdded(true);
+    showToast("เพิ่มเซ็ตสินค้าลงตะกร้าแล้ว!");
+    const timer = setTimeout(() => setBundleAdded(false), 2500);
 
-    selectedAccessoriesData.forEach(acc => {
-      itemsToAdd.push({
-        productId: acc.id,
-        title: acc.title,
-        price: acc.price,
-        quantity: 1,
-        color: "Default",
-        imageUrl: acc.imageUrl,
-        brand: "ACCESSORY"
-      });
-    });
-
-    if (itemsToAdd.length > 0) {
-      addMultipleItems(itemsToAdd);
-      setBundleAdded(true);
-      setTimeout(() => setBundleAdded(false), 2500);
+    try {
+      const itemsToAdd = [];
+      
+      // 1. Add Main Product if selected
+      if (includeMain) {
+        itemsToAdd.push({
+          productId: product.productId,
+          title: product.title,
+          price: product.price,
+          quantity: quantity, // Use the selected quantity for main item
+          color: selectedColor,
+          imageUrl: product.imageUrl,
+          brand: product.brand,
+        });
+      }
+      
+      // 2. Add Accessories
+      for (const acc of selectedAccessoriesData) {
+        itemsToAdd.push({
+          productId: acc.id, // Using acc.id as productId for now (mock data)
+          title: acc.title,
+          price: acc.price,
+          quantity: 1, // Usually accessories in bundles are added as 1 unit
+          color: "Standard",
+          imageUrl: acc.imageUrl,
+          brand: product.brand, // Fallback to main brand
+        });
+      }
+      
+      if (itemsToAdd.length > 0) {
+        await addMultipleItems(itemsToAdd);
+      }
+    } catch (err) {
+      console.error("Failed to add bundle to cart:", err);
+      clearTimeout(timer);
+      setBundleAdded(false);
+      showToast("ไม่สามารถเพิ่มเซ็ตสินค้าลงตะกร้าได้");
+    } finally {
+      setIsAddingToCart(false);
     }
   };
 
@@ -194,16 +394,27 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
       <div className="mx-auto max-w-7xl px-6">
         
         {/* Breadcrumbs */}
-        <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-slate-gray uppercase mb-8">
+        <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-slate-gray uppercase mb-4">
           <Link href="/" className="hover:text-neutral-900 transition-colors flex items-center gap-1">
             <Home className="h-3.5 w-3.5" />
           </Link>
-          <span className="text-neutral-400 font-normal">/</span>
+          <span className="text-stone-400 font-normal">/</span>
           <Link href={categoryLink} className="hover:text-neutral-900 transition-colors">
             {categoryName}
           </Link>
-          <span className="text-neutral-400 font-normal">/</span>
-          <span className="text-neutral-800 font-bold truncate max-w-[200px] sm:max-w-xs">{product.title}</span>
+          <span className="text-stone-400 font-normal">/</span>
+          <span className="text-stone-850 font-bold truncate max-w-[200px] sm:max-w-xs">{product.title}</span>
+        </div>
+
+        {/* Back Button */}
+        <div className="mb-6">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-stone-500 hover:text-stone-950 transition-colors text-xs font-bold uppercase tracking-wider cursor-pointer group w-fit mt-5"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1 " />
+            ย้อนกลับ
+          </button>
         </div>
 
         {/* Top Split Section: Gallery & Details */}
@@ -386,8 +597,22 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
                   )}
                 </button>
                 
-                <button className="flex h-12 items-center justify-center rounded-full border border-neutral-800 bg-white font-bold text-sm text-neutral-800 tracking-wide hover:bg-neutral-50 transition-all cursor-pointer active:scale-95">
-                  ซื้อทันที (Buy Now)
+                <button
+                  onClick={handleBuyNow}
+                  disabled={isBuyingNow}
+                  className="flex h-12 items-center justify-center gap-2 rounded-full border border-neutral-800 bg-white font-bold text-sm text-neutral-800 tracking-wide hover:bg-neutral-800 hover:text-white transition-all cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isBuyingNow ? (
+                    <>
+                      <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      กำลังดำเนินการ...
+                    </>
+                  ) : (
+                    "ซื้อทันที"
+                  )}
                 </button>
               </div>
 
@@ -470,15 +695,51 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
             )}
 
             {activeTab === "specifications" && (
-              <div>
-                <h3 className="font-heading text-lg font-bold text-neutral-950 mb-4">ข้อมูลจำเพาะทางเทคนิค (Technical Specifications)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-                  {product.specifications.map((spec, idx) => (
-                    <div key={idx} className="flex py-2 border-b border-[#F5F3EE] justify-between text-sm">
-                      <span className="font-semibold text-neutral-800">{spec.label}</span>
-                      <span className="text-slate-gray font-medium">{spec.value}</span>
-                    </div>
-                  ))}
+              <div className="space-y-8 animate-in fade-in duration-300 max-w-4xl">
+                <div>
+                  <h3 className="font-heading text-lg font-bold text-neutral-950 mb-2">ข้อมูลจำเพาะทางเทคนิค (Technical Specifications)</h3>
+                  <p className="text-xs text-stone-500 mb-6 -mt-2">ข้อมูลจำเพาะทางโครงสร้างและเทคนิคอย่างละเอียดของเครื่องดนตรีชิ้นนี้</p>
+                </div>
+
+                <div className="overflow-hidden border border-stone-200/80 rounded-xl shadow-sm bg-white dark:bg-[#1a1a1c] dark:border-zinc-800">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-neutral-50/50 dark:bg-zinc-900/40 border-b border-stone-200 dark:border-zinc-800 text-stone-600 dark:text-zinc-400 text-[11px] uppercase tracking-wider font-semibold">
+                        <th className="px-6 py-3 w-1/3 font-bold">คุณลักษณะ (Feature)</th>
+                        <th className="px-6 py-3 w-2/3 font-bold">ข้อมูลจำเพาะ (Specification)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-150 dark:divide-zinc-850">
+                      {product.groupedSpecs && Object.keys(product.groupedSpecs).filter(k => k !== "General" || product.groupedSpecs?.[k]?.length! > 2).length > 0 ? (
+                        Object.entries(product.groupedSpecs).map(([groupName, specs]) => {
+                          if (specs.length === 0) return null;
+                          return (
+                            <React.Fragment key={groupName}>
+                              {/* Group Header Row */}
+                              <tr className="bg-neutral-50/40 dark:bg-zinc-900/20">
+                                <td colSpan={2} className="px-6 py-2.5 text-xs font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest bg-stone-100/30 dark:bg-zinc-800/10">
+                                  <span className="inline-block border-l-2 border-amber-500 pl-2">{groupName}</span>
+                                </td>
+                              </tr>
+                              {specs.map((spec, idx) => (
+                                <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-zinc-800/10 transition-colors text-xs sm:text-sm">
+                                  <td className="px-6 py-3.5 font-semibold text-stone-500 dark:text-zinc-400 align-top">{spec.label}</td>
+                                  <td className="px-6 py-3.5 text-stone-900 dark:text-white font-semibold whitespace-pre-wrap">{spec.value}</td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })
+                      ) : (
+                        product.specifications.map((spec, idx) => (
+                          <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-zinc-800/10 transition-colors text-xs sm:text-sm">
+                            <td className="px-6 py-3.5 font-semibold text-stone-500 dark:text-zinc-400 align-top">{spec.label}</td>
+                            <td className="px-6 py-3.5 text-stone-900 dark:text-white font-semibold whitespace-pre-wrap">{spec.value}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}

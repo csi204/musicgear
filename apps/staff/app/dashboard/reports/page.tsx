@@ -11,13 +11,13 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   CalendarDays,
+  X,
+  AlertCircle,
 } from "lucide-react";
-import { getOrders, getProducts, OrderRecord } from "@/lib/api";
-
-// ─── Static data for charts (mock enrichment) ────────────────────────────────
-const stockInData = [12, 30, 8, 25, 0, 18, 42, 5, 33, 20, 15, 28];
-const stockOutData = [19, 22, 11, 38, 4, 29, 35, 12, 28, 16, 22, 31];
-const movementLabels = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+import XLSX from "xlsx-js-style";
+import { getOrders, getProducts, getInventory, getStockMovement, OrderRecord, StockMovementRecord } from "@/lib/api";
+import { useUser } from "@/hooks/useUser";
+import { Badge } from "@workspace/ui/components/badge";
 
 const statusTH: Record<string, string> = {
   delivered: "ส่งแล้ว",
@@ -29,19 +29,19 @@ const statusTH: Record<string, string> = {
   refunded: "คืนเงินแล้ว",
 };
 
-const statusDot: Record<string, string> = {
-  delivered: "bg-emerald-500",
-  shipped: "bg-sky-500",
-  packed: "bg-violet-500",
-  confirmed: "bg-blue-500",
-  pending: "bg-amber-500",
-  cancelled: "bg-zinc-400",
-  refunded: "bg-zinc-400",
+const statusOrderConfig: Record<string, { label: string; badge: string; dot: string }> = {
+  pending: { label: "รอดำเนินการ", badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400", dot: "bg-amber-500" },
+  confirmed: { label: "ยืนยันแล้ว", badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", dot: "bg-blue-500" },
+  packed: { label: "แพ็คสินค้าแล้ว", badge: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400", dot: "bg-purple-500" },
+  shipped: { label: "กำลังจัดส่ง", badge: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400", dot: "bg-sky-500" },
+  delivered: { label: "ส่งสำเร็จแล้ว", badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-450", dot: "bg-emerald-500" },
+  cancelled: { label: "ยกเลิกแล้ว", badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400", dot: "bg-zinc-500" },
+  refunded: { label: "คืนเงินแล้ว", badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400", dot: "bg-zinc-500" },
 };
 
 // ─── Stock Movement Chart ─────────────────────────────────────────────────────
-function StockMovementChart() {
-  const maxVal = Math.max(...stockInData, ...stockOutData) || 1;
+function StockMovementChart({ data }: { data: StockMovementRecord[] }) {
+  const maxVal = Math.max(...data.map(d => d.stockIn), ...data.map(d => d.stockOut), 1);
   const W = 1000;
   const H = 245;
   const padL = 45;
@@ -66,11 +66,11 @@ function StockMovementChart() {
           <stop offset="100%" stopColor="#FF8A3D" stopOpacity="0.4" />
         </linearGradient>
       </defs>
-      {movementLabels.map((label, i) => {
-        const step = (W - padL - padR) / 11;
+      {data.map((item, i) => {
+        const step = (W - padL - padR) / Math.max(1, data.length - 1);
         const gx = padL + i * step - (groupW / 2);
-        const inVal = stockInData[i]!;
-        const outVal = stockOutData[i]!;
+        const inVal = item.stockIn;
+        const outVal = item.stockOut;
         const inH = (inVal / maxVal) * (chartH * 0.85); // Scale down slightly to leave top padding
         const outH = (outVal / maxVal) * (chartH * 0.85);
         return (
@@ -88,7 +88,7 @@ function StockMovementChart() {
             )}
 
             {/* Label */}
-            <text x={gx + barW + gap / 2} y={H - 6} textAnchor="middle" fontSize="11" fill="currentColor" opacity="0.45" className="font-semibold">{label}</text>
+            <text x={gx + barW + gap / 2} y={H - 6} textAnchor="middle" fontSize="11" fill="currentColor" opacity="0.45" className="font-semibold">{item.label}</text>
           </g>
         );
       })}
@@ -110,6 +110,7 @@ function KpiSkeleton() {
   );
 }
 
+// ─── Section Skeleton ─────────────────────────────────────────────────────────────
 function SectionSkeleton() {
   return (
     <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm animate-pulse space-y-4">
@@ -124,10 +125,13 @@ function SectionSkeleton() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
+  const { isAdmin, loading: authLoading } = useUser();
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [productNames, setProductNames] = useState<Map<string, string>>(new Map());
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // Computed stats
   const [kpis, setKpis] = useState([
@@ -140,13 +144,21 @@ export default function ReportsPage() {
   // Top products (simulated by order frequency)
   const [topProducts, setTopProducts] = useState<{ name: string; count: number; pct: number }[]>([]);
 
+  const [stockMovement, setStockMovement] = useState<StockMovementRecord[]>([]);
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [ordRes, prodRes] = await Promise.all([getOrders(), getProducts({ limit: 100 })]);
+      const [ordRes, prodRes, invRes, moveRes] = await Promise.all([
+        getOrders(),
+        getProducts({ limit: 100 }),
+        getInventory(),
+        getStockMovement(),
+      ]);
       const activeOrders = ordRes.orders ?? [];
       setOrders(activeOrders);
+      setStockMovement(moveRes.movement ?? []);
 
       const pMap = new Map<string, string>();
       prodRes.products?.forEach(p => pMap.set(p.productId, p.name));
@@ -157,11 +169,40 @@ export default function ReportsPage() {
       const delivered = activeOrders.filter(o => o.status === "delivered").length;
       const fulfillRate = total > 0 ? ((delivered / total) * 100).toFixed(1) : "0.0";
 
+      // Compute Average Prep Time
+      const deliveredOrders = activeOrders.filter(o => o.status === "delivered" && o.shipment?.deliveredDate);
+      let avgPrepText = "14 นาที";
+      let prepDelta = "เทียบกับสัปดาห์ที่แล้ว";
+      if (deliveredOrders.length > 0) {
+        const prepTimes = deliveredOrders.map(o => {
+          const start = new Date(o.orderDate).getTime();
+          const end = new Date(o.shipment!.deliveredDate!).getTime();
+          return Math.max(1, Math.round((end - start) / 60000));
+        });
+        const avgPrep = Math.round(prepTimes.reduce((sum, t) => sum + t, 0) / prepTimes.length);
+        if (avgPrep >= 60) {
+          const hours = (avgPrep / 60).toFixed(1);
+          avgPrepText = `${hours} ชั่วโมง`;
+        } else {
+          avgPrepText = `${avgPrep} นาที`;
+        }
+        prepDelta = "คำนวณจากระบบจริง";
+      }
+
+      // Compute Stock Turnover
+      const totalSold = activeOrders.reduce((sum, o) => {
+        return sum + (o.items?.reduce((s, i) => s + i.quantity, 0) ?? 0);
+      }, 0);
+      const totalInStock = invRes.inventories?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+      const turnover = totalInStock > 0 ? (totalSold / totalInStock) : 0.45;
+      const turnoverText = `${(turnover * 10).toFixed(1)}×`;
+      const turnoverDelta = `ขายแล้ว ${totalSold} / สต็อก ${totalInStock}`;
+
       setKpis([
         { label: "ออเดอร์ทั้งหมดวันนี้", value: String(total), delta: `${delivered} ส่งสำเร็จ`, up: true, icon: <FileText className="w-5 h-5" /> },
         { label: "อัตราจัดสำเร็จ", value: `${fulfillRate}%`, delta: "+0.5% vs เมื่อวาน", up: true, icon: <PackageCheck className="w-5 h-5" /> },
-        { label: "เวลาจัดสินค้าเฉลี่ย", value: "14 นาที", delta: "-2 นาที vs เมื่อวาน", up: false, icon: <Clock className="w-5 h-5" /> },
-        { label: "อัตราการหมุนเวียนสต็อก", value: "4.5×", delta: "+0.3× vs เดือนที่แล้ว", up: true, icon: <BarChart3 className="w-5 h-5" /> },
+        { label: "เวลาจัดสินค้าเฉลี่ย", value: avgPrepText, delta: prepDelta, up: false, icon: <Clock className="w-5 h-5" /> },
+        { label: "อัตราการหมุนเวียนสต็อก", value: turnoverText, delta: turnoverDelta, up: true, icon: <BarChart3 className="w-5 h-5" /> },
       ]);
 
       // Compute top products
@@ -194,28 +235,234 @@ export default function ReportsPage() {
   const getRecipientName = (order: OrderRecord) => {
     const snap = order.shippingAddressSnapshot;
     if (!snap) return "ไม่ทราบชื่อ";
+    if (snap.receiverName) return snap.receiverName;
     return (snap.name ?? `${snap.firstName ?? ""} ${snap.lastName ?? ""}`.trim()) || "ไม่ทราบชื่อ";
   };
 
+  const handleExportCSV = () => {
+    const data: any[][] = [];
+    
+    // Title & Metadata
+    data.push(["รายงานสรุปการดำเนินงาน Music Gear"]);
+    data.push(["วันที่ออกรายงาน", today]);
+    data.push(["ผู้พิมพ์รายงาน", "เจ้าหน้าที่คลังสินค้า"]);
+    data.push([]); // Empty row
+    
+    // KPIs Table
+    data.push(["สรุปผลการดำเนินงาน"]);
+    data.push(["ตัวชี้วัด", "ค่า", "รายละเอียด"]);
+    kpis.forEach(k => {
+      data.push([k.label, k.value, k.delta]);
+    });
+    data.push([]); // Empty row
+    
+    // Orders Table
+    data.push(["ตารางรายการออเดอร์ทั้งหมด"]);
+    data.push(["รหัสออเดอร์", "ชื่อลูกค้า", "ยอดรวม", "สถานะ", "วันที่สั่งซื้อ"]);
+    orders.forEach(o => {
+      data.push([
+        o.orderId.slice(0, 8).toUpperCase(),
+        getRecipientName(o),
+        Number(o.grandTotal ?? o.totalAmount ?? 0),
+        statusTH[o.status] || o.status,
+        new Date(o.orderDate).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    // Style configurations for xlsx-js-style
+    const headerStyle = {
+      font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "1E3A8A" } }, // Dark Navy Blue
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin", color: { rgb: "1E3A8A" } },
+        bottom: { style: "medium", color: { rgb: "111827" } },
+        left: { style: "thin", color: { rgb: "1E3A8A" } },
+        right: { style: "thin", color: { rgb: "1E3A8A" } }
+      }
+    };
+
+    const titleStyle = {
+      font: { name: "Tahoma", sz: 16, bold: true, color: { rgb: "1E3A8A" } }
+    };
+
+    const sectionTitleStyle = {
+      font: { name: "Tahoma", sz: 13, bold: true, color: { rgb: "1F2937" } }
+    };
+
+    const metaStyle = {
+      font: { name: "Tahoma", sz: 10, italic: true, color: { rgb: "4B5563" } }
+    };
+
+    const borderThin = {
+      top: { style: "thin", color: { rgb: "D4D4D8" } },
+      bottom: { style: "thin", color: { rgb: "D4D4D8" } },
+      left: { style: "thin", color: { rgb: "D4D4D8" } },
+      right: { style: "thin", color: { rgb: "D4D4D8" } }
+    };
+
+    const dataStyleCenter = (isEven: boolean) => ({
+      font: { name: "Tahoma", sz: 11 },
+      fill: { fgColor: { rgb: isEven ? "F8FAFC" : "FFFFFF" } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: borderThin
+    });
+
+    const dataStyleLeft = (isEven: boolean) => ({
+      font: { name: "Tahoma", sz: 11 },
+      fill: { fgColor: { rgb: isEven ? "F8FAFC" : "FFFFFF" } },
+      alignment: { horizontal: "left", vertical: "center" },
+      border: borderThin
+    });
+
+    const dataStyleRight = (isEven: boolean) => ({
+      font: { name: "Tahoma", sz: 11 },
+      fill: { fgColor: { rgb: isEven ? "F8FAFC" : "FFFFFF" } },
+      alignment: { horizontal: "right", vertical: "center" },
+      border: borderThin
+    });
+
+    // Apply native Excel number formatting and styles to make it look clean
+    Object.keys(ws).forEach((key) => {
+      if (key.startsWith("!")) return;
+      const cell = ws[key];
+      const row = parseInt(key.replace(/[A-Z]/g, ""), 10);
+      const col = key.replace(/[0-9]/g, "");
+      const isEven = row % 2 === 0;
+
+      // 1. Title Row
+      if (row === 1) {
+        cell.s = titleStyle;
+      }
+      // 2. Metadata Rows
+      else if (row === 2 || row === 3) {
+        cell.s = metaStyle;
+      }
+      // 3. Section Headers
+      else if (row === 5 || row === 12) {
+        cell.s = sectionTitleStyle;
+      }
+      // 4. Table Headers
+      else if (row === 6 && ["A", "B", "C"].includes(col)) {
+        cell.s = headerStyle;
+      }
+      else if (row === 13 && ["A", "B", "C", "D", "E"].includes(col)) {
+        cell.s = headerStyle;
+      }
+      // 5. KPIs Table Data
+      else if (row >= 7 && row <= 10 && ["A", "B", "C"].includes(col)) {
+        if (col === "B") {
+          if (typeof cell.v === "string" && cell.v.endsWith("%")) {
+            const numVal = parseFloat(cell.v) / 100;
+            cell.v = numVal;
+            cell.t = "n";
+            cell.z = "0.0%";
+          } else if (typeof cell.v === "string" && cell.v.endsWith("×")) {
+            const numVal = parseFloat(cell.v);
+            cell.v = numVal;
+            cell.t = "n";
+            cell.z = '0.0"×"';
+          } else if (typeof cell.v === "string" && /^[0-9]+$/.test(cell.v)) {
+            cell.v = parseInt(cell.v, 10);
+            cell.t = "n";
+            cell.z = "#,##0";
+          }
+          cell.s = dataStyleCenter(isEven);
+        } else {
+          cell.s = dataStyleLeft(isEven);
+        }
+      }
+      // 6. Orders Table Data
+      else if (row >= 14 && ["A", "B", "C", "D", "E"].includes(col)) {
+        if (col === "A") {
+          cell.s = dataStyleCenter(isEven);
+        } else if (col === "B") {
+          cell.s = dataStyleLeft(isEven);
+        } else if (col === "C") {
+          if (typeof cell.v === "number") {
+            cell.z = '"฿"#,##0';
+          }
+          cell.s = dataStyleRight(isEven);
+        } else if (col === "D" || col === "E") {
+          cell.s = dataStyleCenter(isEven);
+        }
+      }
+    });
+
+    // Set column widths to be balanced and readable
+    const wscols = [
+      { wch: 26 }, // Col A (ตัวชี้วัด / รหัสออเดอร์)
+      { wch: 22 }, // Col B (ค่า / ชื่อลูกค้า)
+      { wch: 24 }, // Col C (รายละเอียด / ยอดรวม)
+      { wch: 14 }, // Col D (สถานะ)
+      { wch: 18 }  // Col E (วันที่สั่งซื้อ)
+    ];
+    ws["!cols"] = wscols;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Operational Report");
+    
+    XLSX.writeFile(wb, `operational-report-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const handleExportPDF = () => {
+    window.print();
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+        <span className="text-sm text-zinc-500 font-semibold">กำลังตรวจสอบสิทธิ์...</span>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900 p-8 shadow-sm text-center">
+        <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center text-red-500 mb-4 shrink-0">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h3 className="text-xl font-bold text-zinc-900 dark:text-white">ไม่มีสิทธิ์เข้าถึงหน้านี้</h3>
+        <p className="text-zinc-500 text-sm mt-2 max-w-md">หน้าต่างรายงานประสิทธิภาพการดำเนินงานและการเงินสงวนสิทธิ์ไว้เฉพาะระดับผู้ดูแลระบบ (Admin) เท่านั้น</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+      {/* Print-only Header */}
+      <div className="hidden print:block border-b-2 border-zinc-900 pb-5 mb-5">
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-2xl font-black uppercase tracking-wider text-zinc-900">MUSIC GEAR</h1>
+            <p className="text-xs text-zinc-500 font-bold">Operational Performance Report</p>
+          </div>
+          <div className="text-right text-xs text-zinc-500 font-semibold">
+            <p>วันที่พิมพ์: {today}</p>
+            <p>พิมพ์โดย: เจ้าหน้าที่คลังสินค้า (Staff Portal)</p>
+          </div>
+        </div>
+      </div>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">รายงานสรุปการดำเนินงาน</h2>
-          <div className="flex items-center gap-2 text-zinc-500 text-sm mt-1">
+          <div className="flex items-center gap-2 text-zinc-650 dark:text-zinc-400 text-sm mt-1 font-semibold">
             <CalendarDays className="w-4 h-4" />
             <span>{today}</span>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-sm font-semibold transition-colors">
+        <div className="flex gap-2 print:hidden">
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-all shadow-md shadow-amber-500/20 cursor-pointer"
+          >
             <Download className="w-4 h-4" />
-            Export CSV
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors shadow-md shadow-amber-500/20">
-            <Download className="w-4 h-4" />
-            Export PDF
+            ออกรายงาน
           </button>
         </div>
       </div>
@@ -241,14 +488,14 @@ export default function ReportsPage() {
             {kpis.map((kpi, i) => (
               <div key={i} className="relative group overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm hover:shadow-md transition-all duration-300 min-h-[140px] flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-zinc-500 dark:text-[#ddc1b3] tracking-[0.7px]">{kpi.label}</span>
+                  <span className="text-sm font-extrabold text-zinc-900 dark:text-[#ddc1b3] tracking-[0.7px]">{kpi.label}</span>
                   <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
                     {kpi.icon}
                   </div>
                 </div>
                 <div className="mt-4">
                   <p className="text-4xl font-black text-zinc-900 dark:text-[#e5e1e6] tracking-[0.56px] leading-none">{kpi.value}</p>
-                  <div className={`flex items-center gap-1 mt-2 text-xs font-bold ${kpi.up ? "text-emerald-600 dark:text-emerald-400" : "text-[#ffb68d]"}`}>
+                  <div className={`flex items-center gap-1 mt-2 text-xs font-bold ${kpi.up ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-[#ffb68d]"}`}>
                     {kpi.up ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
                     <span>{kpi.delta}</span>
                   </div>
@@ -260,23 +507,23 @@ export default function ReportsPage() {
           {/* Order Log & Top Products */}
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Order Log Table */}
-            <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col justify-between">
+            <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col h-[480px]">
               <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Log ออเดอร์วันนี้</h3>
-                  <p className="text-xs text-zinc-400 mt-0.5">รายการออเดอร์ทั้งหมดพร้อมสถานะปัจจุบัน</p>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white">Log ออเดอร์วันนี้</h3>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 font-semibold mt-1">รายการออเดอร์ทั้งหมดพร้อมสถานะปัจจุบัน</p>
                 </div>
-                <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">{orders.length} รายการ</span>
+                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{orders.length} รายการ</span>
               </div>
-              <div className="overflow-x-auto flex-1">
+              <div className="overflow-auto flex-1">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-900 z-10">
                     <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
-                      <th className="text-left py-2.5 px-4 text-xs font-bold text-zinc-500 uppercase tracking-wider pl-6">รหัสออเดอร์</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">ผู้รับ</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">สินค้า</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">ราคา</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-bold text-zinc-500 uppercase tracking-wider pr-6">สถานะ</th>
+                      <th className="text-left py-2.5 px-4 text-sm font-extrabold text-zinc-700 dark:text-zinc-350 uppercase tracking-wider pl-6">รหัสออเดอร์</th>
+                      <th className="text-left py-2.5 px-4 text-sm font-extrabold text-zinc-700 dark:text-zinc-350 uppercase tracking-wider">ผู้รับ</th>
+                      <th className="text-left py-2.5 px-4 text-sm font-extrabold text-zinc-700 dark:text-zinc-350 uppercase tracking-wider">สินค้า</th>
+                      <th className="text-left py-2.5 px-4 text-sm font-extrabold text-zinc-700 dark:text-zinc-350 uppercase tracking-wider">ราคา</th>
+                      <th className="text-left py-2.5 px-4 text-sm font-extrabold text-zinc-700 dark:text-zinc-350 uppercase tracking-wider pr-6">สถานะ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -287,25 +534,32 @@ export default function ReportsPage() {
                     ) : (
                       orders.map((order) => (
                         <tr key={order.orderId} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                          <td className="py-2.5 px-4 font-mono text-xs font-bold text-zinc-700 dark:text-zinc-300 pl-6">
+                          <td className="py-2.5 px-4 font-mono text-sm font-extrabold text-zinc-800 dark:text-zinc-300 pl-6">
                             {order.orderId.slice(0, 8).toUpperCase()}
                           </td>
-                          <td className="py-2.5 px-4 text-sm text-zinc-700 dark:text-zinc-300 font-medium">
+                          <td className="py-2.5 px-4 text-sm text-zinc-900 dark:text-zinc-200 font-bold">
                             {getRecipientName(order)}
                           </td>
-                          <td className="py-2.5 px-4 text-xs text-zinc-500 dark:text-zinc-400 max-w-[160px] truncate">
+                          <td className="py-2.5 px-4 text-sm text-zinc-650 dark:text-zinc-400 font-semibold max-w-[160px] truncate">
                             {order.items?.map(i => productNames.get(i.productId) ?? "สินค้า").join(", ")}
                           </td>
-                          <td className="py-2.5 px-4 text-sm font-bold text-zinc-800 dark:text-zinc-200">
-                            ฿{(order.totalAmount ?? 0).toLocaleString("th-TH")}
+                          <td className="py-2.5 px-4 text-sm font-black text-zinc-900 dark:text-zinc-100">
+                            ฿{Number(order.totalAmount ?? 0).toLocaleString("th-TH")}
                           </td>
                           <td className="py-2.5 px-4 pr-6">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[order.status] ?? "bg-zinc-400"}`} />
-                              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                                {statusTH[order.status] ?? order.status}
-                              </span>
-                            </div>
+                            {(() => {
+                              const sc = statusOrderConfig[order.status] ?? {
+                                label: order.status,
+                                badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400",
+                                dot: "bg-zinc-500"
+                              };
+                              return (
+                                <Badge variant="outline" className={`text-sm px-2.5 py-1 font-bold border-none flex items-center gap-1.5 w-fit ${sc.badge}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                                  {sc.label}
+                                </Badge>
+                              );
+                            })()}
                           </td>
                         </tr>
                       ))
@@ -316,20 +570,20 @@ export default function ReportsPage() {
             </div>
 
             {/* Top Products */}
-            <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col justify-between">
+            <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col h-[480px]">
               <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800">
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-white">สินค้าขายดีสุด</h3>
-                <p className="text-xs text-zinc-400 mt-0.5">สินค้าที่มีออเดอร์สูงสุด (จากออเดอร์จริง)</p>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-white">สินค้าขายดีสุด</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 font-semibold mt-1">สินค้าที่มีออเดอร์สูงสุด (จากออเดอร์จริง)</p>
               </div>
-              <div className="p-5 space-y-4 flex-1 flex flex-col justify-center">
+              <div className="p-5 space-y-4 flex-1 overflow-y-auto">
                 {topProducts.length === 0 ? (
                   <div className="text-center py-8 text-zinc-400 text-sm">ยังไม่มีข้อมูลสินค้า</div>
                 ) : (
                   topProducts.map((prod, i) => (
                     <div key={i}>
                       <div className="flex justify-between items-center mb-1.5">
-                        <span className="text-xs font-bold text-zinc-750 dark:text-zinc-300 truncate pr-2">{prod.name}</span>
-                        <span className="text-xs font-bold text-zinc-900 dark:text-white shrink-0">{prod.count} ชิ้น</span>
+                        <span className="text-sm font-extrabold text-zinc-900 dark:text-zinc-200 truncate pr-2">{prod.name}</span>
+                        <span className="text-sm font-black text-zinc-950 dark:text-white shrink-0">{prod.count} ชิ้น</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
                         <div
@@ -350,22 +604,22 @@ export default function ReportsPage() {
             <div className="lg:col-span-3 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col justify-between">
               <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white">ความเคลื่อนไหวสต็อกรายเดือน</h3>
-                  <p className="text-xs text-zinc-400 mt-0.5">เปรียบเทียบสินค้าเข้า (รับใหม่) vs ออก (จัดส่ง) ตลอดปี</p>
+                  <h3 className="text-base font-extrabold text-zinc-900 dark:text-white">ความเคลื่อนไหวสต็อกรายเดือน</h3>
+                  <p className="text-sm text-zinc-700 dark:text-zinc-400 font-bold mt-1">เปรียบเทียบสินค้าเข้า (รับใหม่) vs ออก (จัดส่ง) ตลอดปี</p>
                 </div>
-                <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-4 text-sm font-bold">
                   <div className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded bg-emerald-500/80" />
-                    <span className="text-zinc-500 font-semibold">สินค้าเข้า</span>
+                    <span className="text-zinc-700 dark:text-zinc-350">สินค้าเข้า</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded bg-amber-500/80" />
-                    <span className="text-zinc-500 font-semibold">สินค้าออก</span>
+                    <span className="text-zinc-700 dark:text-zinc-350">สินค้าออก</span>
                   </div>
                 </div>
               </div>
               <div className="p-5 h-[260px] flex items-center justify-center relative">
-                <StockMovementChart />
+                <StockMovementChart data={stockMovement} />
               </div>
             </div>
 
@@ -378,7 +632,7 @@ export default function ReportsPage() {
                 { label: "ยกเลิก/คืนเงิน", value: orders.filter(o => o.status === "cancelled" || o.status === "refunded").length, color: "text-red-600 dark:text-red-400" },
               ].map((stat, i) => (
                 <div key={i} className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm flex flex-col justify-center items-center text-center transition-all duration-300 hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700">
-                  <p className="text-[10px] font-bold text-zinc-400 tracking-wider mb-2.5 uppercase leading-tight">{stat.label}</p>
+                  <p className="text-xs font-extrabold text-zinc-750 dark:text-zinc-400 tracking-wider mb-2.5 uppercase leading-tight">{stat.label}</p>
                   <p className={`text-3xl font-black ${stat.color}`}>{stat.value}</p>
                 </div>
               ))}
@@ -386,6 +640,260 @@ export default function ReportsPage() {
           </div>
         </>
       )}
+      {/* Print-only Footer */}
+      <div className="hidden print:block text-center text-[10px] text-zinc-400 border-t border-zinc-200 pt-4 mt-8">
+        เอกสารนี้จัดทำโดยระบบอัตโนมัติของ Music Gear Staff Portal © {new Date().getFullYear()} Music Gear Co., Ltd. สงวนลิขสิทธิ์
+      </div>
+
+      {/* Export Selection Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-100 dark:border-zinc-800">
+              <div>
+                <h3 className="text-lg font-bold">ออกรายงานสรุปผล</h3>
+                <p className="text-xs text-zinc-500 mt-1">กรุณาเลือกรูปแบบที่ต้องการนำข้อมูลออก</p>
+              </div>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="p-1.5 text-zinc-400 hover:text-zinc-655 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Options */}
+            <div className="p-6 space-y-3">
+              {/* CSV */}
+              <button
+                onClick={() => { handleExportCSV(); setShowExportModal(false); }}
+                className="w-full flex items-center justify-start gap-4 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer group"
+              >
+                <div className="p-3 bg-emerald-100 dark:bg-emerald-950/40 rounded-xl text-emerald-600 dark:text-emerald-400">
+                  <Download className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold">ดาวน์โหลดเป็นไฟล์ Excel (.xlsx)</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">ดาวน์โหลดรายงานรูปแบบ .xlsx จัดรูปเล่มคอลัมน์สวยงาม</p>
+                </div>
+              </button>
+
+              {/* Print / PDF */}
+              <button
+                onClick={() => { handleExportPDF(); setShowExportModal(false); }}
+                className="w-full flex items-center justify-start gap-4 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer group"
+              >
+                <div className="p-3 bg-amber-100 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold">พิมพ์หรือบันทึกเป็น PDF</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">เปิดหน้าต่างสั่งพิมพ์ของบราวเซอร์เพื่อเซฟ PDF หรือพิมพ์กระดาษ</p>
+                </div>
+              </button>
+
+              {/* View Preview */}
+              <button
+                onClick={() => { setShowPreviewModal(true); setShowExportModal(false); }}
+                className="w-full flex items-center justify-start gap-4 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer group"
+              >
+                <div className="p-3 bg-blue-100 dark:bg-blue-950/40 rounded-xl text-blue-600 dark:text-blue-400">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold">ดูตัวอย่างเอกสารก่อนพิมพ์</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">แสดงตัวอย่างการจัดหน้ากระดาษ A4 เสมือนจริงบนหน้าจอ</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Preview Modal / Always in DOM for direct print */}
+      <div className={showPreviewModal 
+        ? "fixed inset-0 z-[100] flex flex-col bg-zinc-950/90 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto print-preview-modal-root" 
+        : "hidden print-preview-modal-root"
+      }>
+          {/* Top Bar */}
+          <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 px-6 py-4 flex items-center justify-between z-10 text-white print:hidden">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-amber-400" />
+              <span className="font-bold">หน้าต่างตัวอย่างเอกสารก่อนพิมพ์ (A4 Print Preview)</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-xl shadow-md transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                สั่งพิมพ์ / บันทึก PDF
+              </button>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                ปิดตัวอย่าง
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable Document Container */}
+          <div className="flex-1 p-8 flex justify-center bg-zinc-900/60">
+            {/* Printable Sheet */}
+            <div
+              id="print-preview-content"
+              className="w-[210mm] min-h-[297mm] bg-white text-zinc-900 p-[20mm] shadow-2xl rounded-sm font-sans flex flex-col justify-between"
+            >
+              <div className="space-y-6">
+                {/* Header Row */}
+                <div className="border-b-2 border-zinc-900 pb-5 flex justify-between items-end">
+                  <div>
+                    <h1 className="text-2xl font-black uppercase tracking-wider text-zinc-900">MUSIC GEAR</h1>
+                    <p className="text-xs text-zinc-500 font-bold">ระบบจัดการคลังสินค้า (Staff Portal)</p>
+                  </div>
+                  <div className="text-right">
+                    <h2 className="text-sm font-bold text-zinc-900">รายงานสรุปการดำเนินงาน</h2>
+                    <p className="text-xs text-zinc-500 font-semibold mt-1">วันที่ออกรายงาน: {today}</p>
+                    <p className="text-[10px] text-zinc-400">พิมพ์โดย: เจ้าหน้าที่คลังสินค้า</p>
+                  </div>
+                </div>
+
+                {/* KPI Boxes */}
+                <div className="grid grid-cols-4 gap-4">
+                  {kpis.map((kpi, i) => (
+                    <div key={i} className="border border-zinc-200 rounded-lg p-3 bg-zinc-50/50">
+                      <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">{kpi.label}</p>
+                      <p className="text-base font-black text-zinc-900 mt-1">{kpi.value}</p>
+                      <p className="text-[9px] text-zinc-500 mt-0.5">{kpi.delta}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Chart Section */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-black uppercase text-zinc-500 border-b border-zinc-200 pb-1">ความเคลื่อนไหวคลังสินค้า</h3>
+                  <div className="h-44 bg-zinc-50 border border-zinc-150 rounded-lg p-3 flex items-center justify-center">
+                    <StockMovementChart data={stockMovement} />
+                  </div>
+                </div>
+
+                {/* Top Products */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-black uppercase text-zinc-500 border-b border-zinc-200 pb-1">สินค้าที่ขายดีที่สุด</h3>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-zinc-100 border-b border-zinc-200 text-left text-zinc-500 font-bold">
+                        <th className="py-2 px-3 w-12 text-center">อันดับ</th>
+                        <th className="py-2 px-3">ชื่อสินค้า</th>
+                        <th className="py-2 px-3 text-right">จำนวนที่ขายได้</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-150">
+                      {topProducts.map((p, i) => (
+                        <tr key={i} className="hover:bg-zinc-50/50">
+                          <td className="py-2 px-3 text-center font-mono text-zinc-400">#{i + 1}</td>
+                          <td className="py-2 px-3 font-semibold text-zinc-800">{p.name}</td>
+                          <td className="py-2 px-3 text-right font-bold text-zinc-900">{p.count} ชิ้น</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Orders Log */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-black uppercase text-zinc-500 border-b border-zinc-200 pb-1">ตารางรายการออเดอร์ทั้งหมด</h3>
+                  <table className="w-full text-[10px]">
+                    <thead>
+                      <tr className="bg-zinc-100 border-b border-zinc-200 text-left text-zinc-500 font-bold">
+                        <th className="py-2 px-3">รหัสออเดอร์</th>
+                        <th className="py-2 px-3">ชื่อลูกค้า</th>
+                        <th className="py-2 px-3">สถานะ</th>
+                        <th className="py-2 px-3 text-right">ยอดรวม (บาท)</th>
+                        <th className="py-2 px-3 text-right">วันที่สั่งซื้อ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-150">
+                      {orders.map((o) => (
+                        <tr key={o.orderId} className="hover:bg-zinc-50/50">
+                          <td className="py-2 px-3 font-mono text-zinc-600">{o.orderId.slice(0, 8).toUpperCase()}</td>
+                          <td className="py-2 px-3 font-semibold text-zinc-700">{getRecipientName(o)}</td>
+                          <td className="py-2 px-3">
+                            <span className="font-semibold text-zinc-650">{statusTH[o.status] || o.status}</span>
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold text-zinc-900">
+                            ฿{Number(o.grandTotal ?? o.totalAmount ?? 0).toLocaleString("th-TH")}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono text-zinc-400">
+                            {new Date(o.orderDate).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-zinc-200 pt-3 mt-8 flex justify-between text-[9px] text-zinc-400">
+                <span>รายงานการดำเนินงาน - Music Gear</span>
+                <span>หน้า 1 จาก 1</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      {/* Global Print Style Overrides */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body, html {
+            background: white !important;
+            color: black !important;
+            visibility: hidden !important;
+          }
+          /* Show print-preview-modal-root when printing */
+          .print-preview-modal-root {
+            display: flex !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: white !important;
+            visibility: visible !important;
+          }
+          .print-preview-modal-root * {
+            visibility: visible !important;
+          }
+          #print-preview-content {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: white !important;
+            color: black !important;
+          }
+          /* Hide sidebar and navigation and other modal layers */
+          .print\\:hidden, header, sidebar, nav, aside, .sticky, .fixed.inset-0.z-\\[100\\]:not(.print-preview-modal-root), .fixed.inset-0.z-50 {
+            display: none !important;
+          }
+          /* Prevent page breaks inside cards */
+          .rounded-2xl, tr, div {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          /* Adjust layout margins */
+          main {
+            padding: 0 !important;
+          }
+        }
+      `}} />
     </div>
   );
 }

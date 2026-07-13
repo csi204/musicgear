@@ -2,10 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Search, SlidersHorizontal, PackagePlus, ChevronDown, X } from "lucide-react";
+import { Search, SlidersHorizontal, PackagePlus, ChevronDown, X, Loader2 } from "lucide-react";
 import { Badge } from "@workspace/ui/components/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
-import { getProducts, getInventory } from "@/lib/api";
+import { getProducts, getInventory, getInventoryLogs, updateMaxCapacity, InventoryLogRecord } from "@/lib/api";
+import { CustomSelect } from "@/components/custom-select";
+import { Pagination } from "@/components/pagination";
+import { useToast } from "@/components/toast-provider";
 
 type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
 
@@ -16,11 +19,13 @@ const statusConfig: Record<StockStatus, { label: string; badge: string; dot: str
 };
 
 interface DisplayInventory {
+  id: string;
   sku: string;
   name: string;
   category: string;
   currentQty: number;
   reserved: number;
+  maxCapacity: number;
   status: StockStatus;
 }
 
@@ -35,7 +40,7 @@ function InventoryRowSkeleton() {
       <TableCell><div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-8 mx-auto" /></TableCell>
       <TableCell><div className="h-6 bg-zinc-200 dark:bg-zinc-800 rounded w-10 mx-auto" /></TableCell>
       <TableCell><div className="h-6 bg-zinc-200 dark:bg-zinc-800 rounded w-16" /></TableCell>
-      <TableCell className="pr-6 text-right"><div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-16 inline-block" /></TableCell>
+      <TableCell className=""><div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-16 inline-block" /></TableCell>
     </TableRow>
   );
 }
@@ -52,37 +57,51 @@ export default function InventoryPage() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, search, selectedStatus]);
+
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const prodRes = await getProducts({ limit: 100 });
       const invRes = await getInventory();
       
       const invMap = new Map(invRes.inventories?.map((i) => [i.productId, i]) ?? []);
-      const mapped: DisplayInventory[] = prodRes.products.map((p) => {
-        const inv = invMap.get(p.productId);
-        const currentQty = inv?.quantity ?? 0;
-        const reserved = inv?.reservedQuantity ?? 0;
-        const available = currentQty - reserved;
-        const reorderPoint = inv?.reorderPoint ?? 0;
-        
-        let status: StockStatus = "in_stock";
-        if (available === 0) {
-          status = "out_of_stock";
-        } else if (available <= reorderPoint || available <= 5) {
-          status = "low_stock";
-        }
+      const mapped: DisplayInventory[] = prodRes.products
+        .filter((p) => p.status !== "discontinued" || (invMap.get(p.productId)?.quantity ?? 0) > 0)
+        .map((p) => {
+          const inv = invMap.get(p.productId);
+          const currentQty = inv?.quantity ?? 0;
+          const reserved = inv?.reservedQuantity ?? 0;
+          const available = currentQty - reserved;
+          const maxCapacity = inv?.maxCapacity ?? 100;
+          
+          let status: StockStatus = "in_stock";
+          if (available === 0) {
+            status = "out_of_stock";
+          } else if (available <= 0.3 * maxCapacity) {
+            status = "low_stock";
+          }
 
-        return {
-          sku: p.sku,
-          name: p.name,
-          category: p.category?.name ?? "ทั่วไป",
-          currentQty,
-          reserved,
-          status,
-        };
-      });
+          return {
+            id: p.productId,
+            sku: p.sku,
+            name: p.name,
+            category: p.category?.name ?? "ทั่วไป",
+            currentQty,
+            reserved,
+            maxCapacity,
+            status,
+          };
+        });
       setInventory(mapped);
     } catch (e: any) {
       setError(e.message ?? "ไม่สามารถโหลดข้อมูลคลังสินค้าได้");
@@ -111,13 +130,19 @@ export default function InventoryPage() {
     return matchCat && matchSearch && matchStatus;
   });
 
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedInventory = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">คลังสินค้า</h2>
-          <p className="text-zinc-500 text-sm mt-1">ตรวจสอบและจัดการสต็อกคลังสินค้า</p>
+          <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-400 mt-1">ตรวจสอบและจัดการสต็อกคลังสินค้า</p>
         </div>
         <Link
           href="/dashboard/inventory/receive"
@@ -154,27 +179,26 @@ export default function InventoryPage() {
               <SlidersHorizontal className="w-4 h-4" />
               กรองข้อมูล
             </button>
-            <span className="text-xs text-zinc-400 ml-auto">{filtered.length} รายการ</span>
+            <span className="text-sm font-semibold text-zinc-750 dark:text-zinc-300 ml-auto">{filtered.length} รายการ</span>
           </div>
 
           {/* Collapsible Status Filter Dropdown */}
           {showFilters && (
             <div className="mb-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 animate-in fade-in duration-200">
               <div className="max-w-xs">
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 block mb-1.5">สถานะสินค้า</label>
-                <div className="relative group">
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="w-full pl-3 pr-8 py-2 text-xs rounded-xl border border-zinc-250 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 cursor-pointer appearance-none"
-                  >
-                    <option value="all">สถานะทั้งหมด</option>
-                    <option value="in_stock">มีสินค้า</option>
-                    <option value="low_stock">สต็อกใกล้หมด</option>
-                    <option value="out_of_stock">สินค้าหมด</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none transition-transform duration-200 group-focus-within:rotate-180" />
-                </div>
+                <label className="text-sm font-extrabold text-zinc-700 dark:text-zinc-300 block mb-1.5">สถานะสินค้า</label>
+                <CustomSelect
+                  value={selectedStatus}
+                  onChange={setSelectedStatus}
+                  options={[
+                    { value: "all", label: "สถานะทั้งหมด" },
+                    { value: "in_stock", label: "มีสินค้า" },
+                    { value: "low_stock", label: "สต็อกใกล้หมด" },
+                    { value: "out_of_stock", label: "สินค้าหมด" }
+                  ]}
+                  triggerClassName="bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-250 dark:border-zinc-700 text-sm py-2 px-3 h-10"
+                  dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 divide-y divide-zinc-100 dark:divide-zinc-800"
+                />
               </div>
             </div>
           )}
@@ -185,10 +209,10 @@ export default function InventoryPage() {
               <button
                 key={tab}
                 onClick={() => setActiveCategory(tab)}
-                className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-all whitespace-nowrap border-b-2 ${
+                className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-all whitespace-nowrap border-b-2 ${
                   activeCategory === tab
-                    ? "text-amber-600 dark:text-amber-400 border-amber-500"
-                    : "text-zinc-500 dark:text-zinc-400 border-transparent hover:text-zinc-700 dark:hover:text-zinc-200"
+                    ? "text-amber-700 dark:text-amber-400 border-amber-500 font-extrabold"
+                    : "text-zinc-700 dark:text-zinc-400 border-transparent hover:text-zinc-900 dark:hover:text-zinc-200"
                 }`}
               >
                 {tab}
@@ -198,16 +222,17 @@ export default function InventoryPage() {
         </div>
 
         {/* Table */}
-        <Table>
+        <div className="overflow-x-auto w-full">
+          <Table className="min-w-[850px] md:min-w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider">SKU</TableHead>
-              <TableHead className="font-bold text-xs uppercase tracking-wider">ชื่อสินค้า</TableHead>
-              <TableHead className="font-bold text-center text-xs uppercase tracking-wider">คงคลังรวม</TableHead>
-              <TableHead className="font-bold text-center text-xs uppercase tracking-wider">จอง</TableHead>
-              <TableHead className="font-bold text-center text-xs uppercase tracking-wider">คงเหลือ</TableHead>
-              <TableHead className="font-bold text-xs uppercase tracking-wider">สถานะ</TableHead>
-              <TableHead className="font-bold text-right pr-6 text-xs uppercase tracking-wider">จัดการ</TableHead>
+              <TableHead className="font-extrabold pl-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">SKU</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ชื่อสินค้า</TableHead>
+              <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">คงคลังรวม</TableHead>
+              <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จอง</TableHead>
+              <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">คงเหลือ</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะ</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -224,17 +249,19 @@ export default function InventoryPage() {
                 <TableCell colSpan={7} className="text-center py-16 text-zinc-400">ไม่พบสินค้าที่ตรงกับเงื่อนไข</TableCell>
               </TableRow>
             ) : (
-              filtered.map((item) => {
+              paginatedInventory.map((item) => {
                 const available = item.currentQty - item.reserved;
                 const sc = statusConfig[item.status];
                 return (
                   <TableRow key={item.sku} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                    <TableCell className="pl-6 text-sm font-bold text-zinc-700 dark:text-zinc-300">{item.sku}</TableCell>
-                    <TableCell className="font-medium text-zinc-800 dark:text-zinc-200">{item.name}</TableCell>
-                    <TableCell className="text-center font-bold text-zinc-900 dark:text-white">{item.currentQty}</TableCell>
-                    <TableCell className="text-center text-zinc-500 dark:text-zinc-400 font-semibold">{item.reserved}</TableCell>
+                    <TableCell className="pl-6 text-sm font-extrabold text-zinc-950 dark:text-zinc-300">{item.sku}</TableCell>
+                    <TableCell className="font-bold text-zinc-900 dark:text-zinc-200">{item.name}</TableCell>
+                    <TableCell className="text-center font-bold text-zinc-950 dark:text-white">
+                      {item.currentQty} <span className="text-xs font-bold text-zinc-600 dark:text-zinc-450">/ {item.maxCapacity}</span>
+                    </TableCell>
+                    <TableCell className="text-center text-zinc-750 dark:text-zinc-400 font-extrabold">{item.reserved}</TableCell>
                     <TableCell className="text-center">
-                      <span className={`font-bold text-sm ${available === 0 ? "text-red-500" : available <= 5 ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"}`}>
+                      <span className={`font-bold text-sm ${available === 0 ? "text-red-500" : available <= 0.3 * item.maxCapacity ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"}`}>
                         {available}
                       </span>
                     </TableCell>
@@ -244,7 +271,7 @@ export default function InventoryPage() {
                         {sc.label}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right pr-6">
+                    <TableCell className="flex justify-start">
                       <button
                         onClick={() => setSelectedHistoryItem(item)}
                         className="px-3 py-1.5 text-sm font-bold rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors"
@@ -258,10 +285,24 @@ export default function InventoryPage() {
             )}
           </TableBody>
         </Table>
+        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalEntries={filtered.length}
+          itemsPerPage={itemsPerPage}
+        />
       </div>
 
       {selectedHistoryItem && (
-        <StockHistoryModal item={selectedHistoryItem} onClose={() => setSelectedHistoryItem(null)} />
+        <StockHistoryModal 
+          item={selectedHistoryItem} 
+          onClose={() => { 
+            setSelectedHistoryItem(null); 
+            loadData(true); 
+          }} 
+        />
       )}
     </div>
   );
@@ -276,57 +317,88 @@ interface StockHistoryModalProps {
 }
 
 function StockHistoryModal({ item, onClose }: StockHistoryModalProps) {
-  // Generate realistic stock log data dynamically based on the current SKU and quantity
-  const generateHistoryLogs = () => {
-    const logs = [];
-    const dateStr = (offsetDays: number, hourStr: string) => {
-      const d = new Date();
-      d.setDate(d.getDate() - offsetDays);
-      return d.toLocaleDateString("th-TH") + " " + hourStr;
-    };
+  const [logs, setLogs] = useState<InventoryLogRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-    if (item.currentQty > 0) {
-      logs.push({
-        date: dateStr(0, "10:15 น."),
-        action: "ตรวจรับและเพิ่มเข้าคลังสินค้าสำเร็จ (Goods Received)",
-        ref: "PO-2026-07-08-A",
-        qtyChange: `+${item.currentQty}`,
-        operator: "Miller Wise (Staff)",
-        color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-250 dark:border-emerald-900/50",
-        badge: "รับสินค้าเข้า"
-      });
+  const [customMaxCapacity, setCustomMaxCapacity] = useState<number | null>(null);
+  const [isUpdatingCap, setIsUpdatingCap] = useState(false);
+
+  const handleUpdateMaxCapacity = async () => {
+    const val = customMaxCapacity !== null ? customMaxCapacity : item.maxCapacity;
+    if (val < 1) return;
+    try {
+      setIsUpdatingCap(true);
+      await updateMaxCapacity(item.id, val);
+      item.maxCapacity = val;
+      setCustomMaxCapacity(val);
+      toast({ type: "success", title: "อัปเดตความจุสูงสุดเรียบร้อยแล้ว", description: `ตั้งค่าความจุสูงสุดเป็น ${val} ชิ้น` });
+    } catch (err: any) {
+      toast({ type: "error", title: "ไม่สามารถอัปเดตความจุสูงสุดได้", description: err.message });
+    } finally {
+      setIsUpdatingCap(false);
     }
-
-    if (item.reserved > 0) {
-      logs.push({
-        date: dateStr(1, "16:40 น."),
-        action: "ระบบจองสินค้าชั่วคราว (ชำระเงินออนไลน์เสร็จสิ้น)",
-        ref: `ORD-${item.sku.substring(0, 4)}-7715`,
-        qtyChange: `-${item.reserved}`,
-        operator: "System (Auto-reserve)",
-        color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-250 dark:border-amber-900/50",
-        badge: "จองสินค้า"
-      });
-    }
-
-    // Default base stock creation log
-    logs.push({
-      date: dateStr(5, "09:00 น."),
-      action: "ระบบปรับปรุงยอดเริ่มต้น/ตรวจเช็คระดับคลังสินค้าประจำสัปดาห์",
-      ref: "SYS-INIT-STOCK",
-      qtyChange: "+50",
-      operator: "Administrator (Stock-sync)",
-      color: "text-zinc-600 dark:text-zinc-450 bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-800/60",
-      badge: "อัปเดตระบบ"
-    });
-
-    return logs;
   };
 
-  const logs = generateHistoryLogs();
+  useEffect(() => {
+    async function loadLogs() {
+      try {
+        setLoading(true);
+        const res = await getInventoryLogs(item.id);
+        setLogs(res.logs ?? []);
+      } catch (err: any) {
+        setError(err.message ?? "ไม่สามารถโหลดประวัติสต็อกได้");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadLogs();
+  }, [item.id]);
+
+  const getActionDetails = (action: string) => {
+    switch (action) {
+      case "receive":
+        return {
+          label: "รับสินค้าเข้า",
+          actionText: "ตรวจรับและเพิ่มเข้าคลังสินค้าสำเร็จ (Goods Received)",
+          color: "text-emerald-600 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-250 dark:border-emerald-900/50",
+        };
+      case "adjust":
+        return {
+          label: "ปรับยอดมือ",
+          actionText: "ปรับปรุงยอดสต็อกสินค้าด้วยมือ (Manual Adjust)",
+          color: "text-zinc-650 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-850",
+        };
+      case "reserve":
+        return {
+          label: "จองสินค้า",
+          actionText: "ระบบจองสินค้าชั่วคราว (ชำระเงินออนไลน์เสร็จสิ้น)",
+          color: "text-amber-600 dark:text-amber-450 bg-amber-50 dark:bg-amber-950/40 border-amber-250 dark:border-amber-900/50",
+        };
+      case "release":
+        return {
+          label: "คืนสต็อก",
+          actionText: "คืนสินค้าเข้าสต็อกเนื่องจากยกเลิก/ชำระเงินไม่สำเร็จ",
+          color: "text-sky-600 dark:text-sky-450 bg-sky-50 dark:bg-sky-950/40 border-sky-250 dark:border-sky-900/50",
+        };
+      case "sale_deduct":
+        return {
+          label: "ตัดขายจริง",
+          actionText: "ตัดสต็อกสินค้าจริงออกเนื่องจากจัดส่งสำเร็จ (Sale Deducted)",
+          color: "text-rose-600 dark:text-rose-450 bg-rose-50 dark:bg-rose-950/40 border-rose-250 dark:border-rose-900/50",
+        };
+      default:
+        return {
+          label: "การเคลื่อนไหว",
+          actionText: "การเคลื่อนไหวคลังสินค้า",
+          color: "text-zinc-600 dark:text-zinc-450 bg-zinc-50 dark:bg-zinc-800",
+        };
+    }
+  };
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-xl w-full shadow-2xl animate-in zoom-in duration-200 overflow-hidden text-zinc-900 dark:text-zinc-100 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
@@ -346,47 +418,96 @@ function StockHistoryModal({ item, onClose }: StockHistoryModalProps) {
           {/* Current Stock Snapshot */}
           <div className="grid grid-cols-3 gap-3 bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-2xl border border-zinc-150 dark:border-zinc-800">
             <div className="text-center">
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">สต็อกในคลัง</span>
-              <span className="text-xl font-extrabold text-zinc-850 dark:text-zinc-200">{item.currentQty}</span>
+              <span className="text-[13px] text-zinc-750 dark:text-zinc-400 font-extrabold uppercase tracking-wider block">สต็อกในคลัง</span>
+              <span className="text-xl font-black text-zinc-950 dark:text-zinc-200">{item.currentQty}</span>
             </div>
             <div className="text-center border-l border-r border-zinc-200 dark:border-zinc-800">
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">จองจัดส่ง</span>
-              <span className="text-xl font-extrabold text-amber-500">{item.reserved}</span>
+              <span className="text-[13px] text-zinc-750 dark:text-zinc-400 font-extrabold uppercase tracking-wider block">จองจัดส่ง</span>
+              <span className="text-xl font-black text-amber-500">{item.reserved}</span>
             </div>
             <div className="text-center">
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">พร้อมใช้งาน</span>
-              <span className="text-xl font-extrabold text-emerald-500">{Math.max(0, item.currentQty - item.reserved)}</span>
+              <span className="text-[13px] text-zinc-750 dark:text-zinc-400 font-extrabold uppercase tracking-wider block">พร้อมใช้งาน</span>
+              <span className="text-xl font-black text-emerald-500">{Math.max(0, item.currentQty - item.reserved)}</span>
+            </div>
+          </div>
+
+          {/* Max Capacity Configuration */}
+          <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-2xl border border-zinc-150 dark:border-zinc-800">
+            <div>
+              <span className="text-[13px] text-zinc-800 dark:text-zinc-300 font-extrabold uppercase tracking-wider block">ความจุสต็อกสูงสุด (Max Capacity)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="1"
+                value={customMaxCapacity !== null ? customMaxCapacity : item.maxCapacity}
+                onChange={(e) => setCustomMaxCapacity(parseInt(e.target.value) || 1)}
+                className="w-20 px-2 py-1.5 text-center text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              />
+              <button
+                disabled={isUpdatingCap}
+                onClick={handleUpdateMaxCapacity}
+                className="px-3 py-1.5 text-sm font-extrabold text-white bg-amber-500 hover:bg-amber-650 rounded-lg transition-colors"
+              >
+                {isUpdatingCap ? "บันทึก..." : "บันทึก"}
+              </button>
             </div>
           </div>
 
           {/* Timeline */}
           <div className="space-y-4">
-            <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">บันทึกกิจกรรมล่าสุด (Timeline Logs)</h4>
-            <div className="relative border-l-2 border-zinc-200 dark:border-zinc-800 pl-6 ml-3 space-y-6">
-              {logs.map((log, idx) => (
-                <div key={idx} className="relative">
-                  {/* Circle dot on line */}
-                  <span className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-white dark:bg-zinc-900 border-2 border-amber-500 shadow-sm" />
-                  
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-zinc-400 font-mono font-semibold">{log.date}</span>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${log.color}`}>
-                        {log.badge}
-                      </span>
-                      <span className="ml-auto font-mono text-sm font-black text-zinc-800 dark:text-zinc-200">
-                        {log.qtyChange} ชิ้น
-                      </span>
+            <h4 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-300 uppercase tracking-wider">บันทึกกิจกรรมล่าสุด (Timeline Logs)</h4>
+            
+            {loading ? (
+              <div className="flex items-center justify-center py-12 gap-2 text-zinc-450">
+                <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
+                กำลังโหลดบันทึกประวัติสต็อก...
+              </div>
+            ) : error ? (
+              <div className="text-center py-12 text-red-500 font-semibold">{error}</div>
+            ) : logs.length === 0 ? (
+              <div className="text-center py-12 text-zinc-400 italic text-sm">
+                ไม่มีประวัติการเคลื่อนไหวสต็อกสำหรับสินค้านี้
+              </div>
+            ) : (
+              <div className="relative border-l-2 border-zinc-200 dark:border-zinc-800 pl-6 ml-3 space-y-6">
+                {logs.map((log) => {
+                  const details = getActionDetails(log.action);
+                  const isPositive = ["receive", "release"].includes(log.action);
+                  return (
+                    <div key={log.id} className="relative">
+                      {/* Circle dot on line */}
+                      <span className={`absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-white dark:bg-zinc-900 border-2 shadow-sm ${
+                        isPositive ? "border-emerald-500" : log.action === "reserve" ? "border-amber-500" : "border-rose-500"
+                      }`} />
+                      
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs text-zinc-400 font-mono font-semibold">
+                            {new Date(log.createdAt).toLocaleString("th-TH")}
+                          </span>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${details.color}`}>
+                            {details.label}
+                          </span>
+                          <span className={`ml-auto font-mono text-sm font-black ${isPositive ? "text-emerald-500" : "text-rose-500"}`}>
+                            {isPositive ? "+" : "-"}{Math.abs(log.changeQty)} ชิ้น
+                          </span>
+                        </div>
+                        <p className="text-sm font-bold leading-snug">{details.actionText}</p>
+                        <div className="flex items-center gap-4 text-xs text-zinc-400">
+                          {log.orderId && (
+                            <span>ออเดอร์อ้างอิง: <strong className="font-mono text-zinc-600 dark:text-zinc-350">{log.orderId.slice(0, 8).toUpperCase()}</strong></span>
+                          )}
+                          {log.staffId && (
+                            <span>ผู้ดำเนินการ: <strong className="text-zinc-650 dark:text-zinc-300">{log.staffId.slice(0, 8).toUpperCase()}</strong></span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm font-bold leading-snug">{log.action}</p>
-                    <div className="flex items-center gap-4 text-xs text-zinc-400">
-                      <span>เลขเอกสารอ้างอิง: <strong className="font-mono text-zinc-600 dark:text-zinc-350">{log.ref}</strong></span>
-                      <span>ดำเนินการโดย: <strong className="text-zinc-650 dark:text-zinc-300">{log.operator}</strong></span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

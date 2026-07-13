@@ -1,3 +1,5 @@
+
+// Force hot-reload to apply new Prisma Client schema with originalPrice
 import { Hono } from "hono";
 import { createClient } from "../db/client.js";
 import {
@@ -127,6 +129,42 @@ productRoutes.get("/bundles", async (c) => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// GET /products/bundles/:bundleId — ดึงข้อมูล bundle set ตาม ID
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.get("/bundles/:bundleId", async (c) => {
+  const bundleId = c.req.param("bundleId");
+  const db = createClient(c.env.DATABASE_URL);
+  
+  try {
+    const bundle = await db.bundle.findUnique({
+      where: { bundleId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                productId: true,
+                name: true,
+                sku: true,
+                price: true,
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!bundle) {
+      return c.json({ error: { code: "BUNDLE_NOT_FOUND", message: "Bundle not found" } }, 404);
+    }
+    return c.json({ status: "ok", bundle }, 200);
+  } catch (err) {
+    console.error("[GET /products/bundles/:bundleId]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch bundle" } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // POST /products/bundles — สร้าง Bundle ใหม่
 // ──────────────────────────────────────────────────────────────────────────────
 productRoutes.post("/bundles", async (c) => {
@@ -249,7 +287,219 @@ productRoutes.put("/bundles/:bundleId", async (c) => {
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// DELETE /products/bundles/:bundleId — ลบ Bundle
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.delete("/bundles/:bundleId", async (c) => {
+  const bundleId = c.req.param("bundleId");
+  const db = createClient(c.env.DATABASE_URL);
 
+  try {
+    // Delete associated bundle items first
+    await db.bundleItem.deleteMany({
+      where: { bundleId }
+    });
+
+    // Delete the bundle itself
+    const deleted = await db.bundle.delete({
+      where: { bundleId }
+    });
+
+    return c.json({ status: "ok", message: "Bundle deleted successfully", bundle: deleted }, 200);
+  } catch (err) {
+    console.error("[DELETE /products/bundles/:bundleId]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: err.message, stack: err.stack } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /products/categories — ดึงข้อมูลหมวดหมู่ทั้งหมด
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.get("/categories", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    const categories = await db.category.findMany();
+    return c.json({ status: "ok", categories }, 200);
+  } catch (err) {
+    console.error("[GET /products/categories]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch categories" } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /products/categories/:categoryId/specifications — ดึงสเปกฟิลด์จำเพาะของหมวดหมู่ (พร้อม Auto-Seeding)
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.get("/categories/:categoryId/specifications", async (c) => {
+  const categoryId = c.req.param("categoryId");
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    let specs = await db.categorySpecification.findMany({
+      where: { categoryId },
+      select: {
+        definition: {
+          select: {
+            definitionId: true,
+            name: true,
+            group: {
+              select: {
+                groupId: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (specs.length === 0) {
+      // ค้นหา Category name
+      const category = await db.category.findUnique({
+        where: { categoryId }
+      });
+
+      if (category) {
+        const catName = category.name.toLowerCase();
+        let targetDefs = [
+          { group: "ข้อมูลทั่วไป (General)", name: "ประเทศผู้ผลิต (Country of Origin)" },
+          { group: "ข้อมูลทั่วไป (General)", name: "การรับประกัน (Warranty)" },
+          { group: "ขนาดและน้ำหนัก (Dimensions)", name: "น้ำหนัก (Weight)" },
+          { group: "ขนาดและน้ำหนัก (Dimensions)", name: "ความกว้าง (Width)" },
+          { group: "ขนาดและน้ำหนัก (Dimensions)", name: "ความสูง (Height)" }
+        ];
+
+        if (catName.includes("guitar") || catName.includes("bass") || catName.includes("ukulele")) {
+          targetDefs.push(
+            { group: "บอดี้ (Body)", name: "ไม้หน้า (Top Wood)" },
+            { group: "บอดี้ (Body)", name: "วัสดุบอดี้ (Body Material)" },
+            { group: "คอ (Neck)", name: "วัสดุคอ (Neck Material)" },
+            { group: "คอ (Neck)", name: "ความยาวช่วงสาย (Scale Length)" },
+            { group: "ฟิงเกอร์บอร์ด (Fingerboard)", name: "วัสดุฟิงเกอร์บอร์ด (Fingerboard Material)" },
+            { group: "ฟิงเกอร์บอร์ด (Fingerboard)", name: "จำนวนเฟรต (Number of Frets)" },
+            { group: "ระบบไฟและเสียง (Electronics)", name: "รูปแบบปิกอัป (Pickup Configuration)" }
+          );
+        } else if (catName.includes("keyboard") || catName.includes("piano")) {
+          targetDefs.push(
+            { group: "คีย์บอร์ด (Keyboard)", name: "จำนวนคีย์ (Number of Keys)" },
+            { group: "คีย์บอร์ด (Keyboard)", name: "ระบบคีย์ (Key Action)" },
+            { group: "คีย์บอร์ด (Keyboard)", name: "โพลีโฟนีสูงสุด (Polyphony)" },
+            { group: "การเชื่อมต่อ (Connectivity)", name: "ช่องต่อ USB (USB)" },
+            { group: "การเชื่อมต่อ (Connectivity)", name: "บลูทูธ (Bluetooth)" }
+          );
+        } else if (catName.includes("drum")) {
+          targetDefs.push(
+            { group: "กลองชุด (Drum Kit)", name: "จำนวนแป้นกลอง (Number of Pads)" },
+            { group: "กลองชุด (Drum Kit)", name: "ประเภทสแนร์ (Snare Type)" },
+            { group: "การเชื่อมต่อ (Connectivity)", name: "ช่องต่อ USB (USB)" },
+            { group: "การเชื่อมต่อ (Connectivity)", name: "บลูทูธ (Bluetooth)" }
+          );
+        } else if (catName.includes("mic") || catName.includes("headphone") || catName.includes("speaker") || catName.includes("audio")) {
+          targetDefs.push(
+            { group: "รายละเอียดเสียง (Audio Specs)", name: "ช่วงความถี่เสียง (Frequency Response)" },
+            { group: "รายละเอียดเสียง (Audio Specs)", name: "ค่าความต้านทาน (Impedance)" },
+            { group: "รายละเอียดเสียง (Audio Specs)", name: "ค่าความไว (Sensitivity)" },
+            { group: "การเชื่อมต่อ (Connectivity)", name: "ประเภทขั้วต่อ (Connector Type)" }
+          );
+        }
+
+        // Upsert Groups, Definitions, and Link Category
+        for (const item of targetDefs) {
+          const group = await db.specificationGroup.upsert({
+            where: { name: item.group },
+            update: {},
+            create: { name: item.group }
+          });
+
+          const definition = await db.specificationDefinition.upsert({
+            where: { groupId_name: { groupId: group.groupId, name: item.name } },
+            update: {},
+            create: { groupId: group.groupId, name: item.name }
+          });
+
+          await db.categorySpecification.upsert({
+            where: { categoryId_definitionId: { categoryId, definitionId: definition.definitionId } },
+            update: {},
+            create: { categoryId, definitionId: definition.definitionId }
+          });
+        }
+
+        // ดึงความสัมพันธ์รอบใหม่
+        specs = await db.categorySpecification.findMany({
+          where: { categoryId },
+          select: {
+            definition: {
+              select: {
+                definitionId: true,
+                name: true,
+                group: {
+                  select: {
+                    groupId: true,
+                    name: true
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    const definitions = specs.map(s => ({
+      definitionId: s.definition.definitionId,
+      name: s.definition.name,
+      group: s.definition.group.name,
+      groupId: s.definition.group.groupId
+    }));
+
+    return c.json({ status: "ok", specifications: definitions }, 200);
+  } catch (err) {
+    console.error("[GET /products/categories/:categoryId/specifications]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch category specifications" } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /products/brands — ดึงข้อมูลแบรนด์ทั้งหมด
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.get("/brands", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    const brands = await db.brand.findMany();
+    return c.json({ status: "ok", brands }, 200);
+  } catch (err) {
+    console.error("[GET /products/brands]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch brands" } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /products/brands — สร้างแบรนด์ใหม่
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.post("/brands", async (c) => {
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    const body = await c.req.json().catch(() => null);
+    if (!body || !body.name) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "name is required" } }, 400);
+    }
+
+    const { name } = body;
+    // Check if brand already exists
+    let brand = await db.brand.findFirst({
+      where: { name: { equals: name } }
+    });
+
+    if (!brand) {
+      brand = await db.brand.create({
+        data: { name }
+      });
+    }
+
+    return c.json({ status: "ok", brand }, 201);
+  } catch (err) {
+    console.error("[POST /products/brands]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to create brand" } }, 500);
+  }
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // GET /products/:productId — ดึงข้อมูลสินค้าพร้อมรูปภาพด้วย UUID
@@ -277,6 +527,7 @@ productRoutes.get("/:productId", async (c) => {
       name: product.name,
       slug: product.slug,
       price: parseFloat(product.price.toString()),
+      originalPrice: product.originalPrice ? parseFloat(product.originalPrice.toString()) : null,
       sku: product.sku,
       status: product.status,
       description: product.description ?? null,
@@ -289,6 +540,15 @@ productRoutes.get("/:productId", async (c) => {
         isPrimary: img.isPrimary,
         sortOrder: img.sortOrder,
       })),
+      recommendations: product.recommendations?.map(r => ({
+        ...r,
+        recommended: {
+          ...r.recommended,
+          price: parseFloat(r.recommended.price.toString()),
+          originalPrice: r.recommended.originalPrice ? parseFloat(r.recommended.originalPrice.toString()) : null,
+        }
+      })) || [],
+      specifications: product.specifications || [],
     });
   } catch (err) {
     console.error("[GET /products/:productId]", err);
@@ -334,9 +594,40 @@ productRoutes.post("/", async (c) => {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "Price must be a valid number" } }, 400);
     }
 
-    const slug = body.slug || name.toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
+    let parsedOriginalPrice = null;
+    if (body.originalPrice !== undefined && body.originalPrice !== null && body.originalPrice !== "") {
+      parsedOriginalPrice = parseFloat(body.originalPrice);
+      if (isNaN(parsedOriginalPrice) || parsedOriginalPrice < 0) {
+        return c.json({ error: { code: "VALIDATION_ERROR", message: "originalPrice must be a valid non-negative number" } }, 400);
+      }
+    }
+
+    let slugBase = body.slug || name.toLowerCase()
+      .replace(/[^a-z0-9ก-๙]+/g, "-")
       .replace(/(^-|-$)/g, "");
+
+    if (!slugBase) {
+      slugBase = sku.toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+    }
+
+    if (!slugBase) {
+      slugBase = "product";
+    }
+
+    let slug = slugBase;
+    let suffix = 1;
+    while (true) {
+      const existingSlug = await db.product.findUnique({
+        where: { slug }
+      });
+      if (!existingSlug) {
+        break;
+      }
+      slug = `${slugBase}-${suffix}`;
+      suffix++;
+    }
 
     // ดึงไฟล์รูปภาพที่อัปโหลด
     const filesList = [];
@@ -353,8 +644,8 @@ productRoutes.post("/", async (c) => {
       }
     }
 
-    const dbImages = [];
-    if (c.env.PRODUCT_IMAGES) {
+    let dbImages = [];
+    if (c.env.PRODUCT_IMAGES && filesList.length > 0) {
       for (let i = 0; i < filesList.length; i++) {
         const file = filesList[i];
         const key = await uploadToR2(c.env.PRODUCT_IMAGES, file);
@@ -369,20 +660,56 @@ productRoutes.post("/", async (c) => {
           sortOrder: i
         });
       }
-    } else {
+    } else if (body.images) {
+      if (Array.isArray(body.images)) {
+        dbImages = body.images;
+      } else if (typeof body.images === "string") {
+        try {
+          const parsed = JSON.parse(body.images);
+          if (Array.isArray(parsed)) dbImages = parsed;
+        } catch {}
+      }
+    } else if (!c.env.PRODUCT_IMAGES) {
       console.warn("PRODUCT_IMAGES bucket not bound");
+    }
+
+    let recommendations = [];
+    if (body.recommendations) {
+      if (typeof body.recommendations === "string") {
+        try {
+          recommendations = JSON.parse(body.recommendations);
+        } catch {
+          recommendations = body.recommendations.split(",").map(id => id.trim()).filter(Boolean);
+        }
+      } else if (Array.isArray(body.recommendations)) {
+        recommendations = body.recommendations;
+      }
+    }
+
+    let specifications = undefined;
+    if (body.specifications) {
+      if (typeof body.specifications === "string") {
+        try {
+          specifications = JSON.parse(body.specifications);
+        } catch {}
+      } else {
+        specifications = body.specifications;
+      }
     }
 
     const productData = {
       name,
       slug,
       price: parsedPrice,
+      originalPrice: parsedOriginalPrice,
       sku,
       status: body.status || "active",
       skillLevel: body.skillLevel || null,
       brandId: finalBrandId,
       categoryId: finalCategoryId,
-      description: body.description || null
+      description: body.description || null,
+      recommendations,
+      specifications
     };
 
     const product = await createProduct(db, productData, dbImages);
@@ -399,27 +726,38 @@ productRoutes.post("/", async (c) => {
         productId: product.productId
       };
 
-      console.info(`[product-svc] Publishing product.created to QStash: ${subscriberUrl}`);
-
-      c.executionCtx.waitUntil(
-        fetch(`${qstashUrl}/v2/publish/${subscriberUrl}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${qstashToken}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
-        }).then(async (res) => {
-          if (!res.ok) {
-            const txt = await res.text();
-            console.error(`[product-svc] QStash publish error ${res.status}: ${txt}`);
-          } else {
-            console.info(`[product-svc] QStash event published successfully.`);
-          }
-        }).catch(err => {
-          console.error(`[product-svc] QStash publish failed:`, err);
-        })
-      );
+      // Bypass QStash for local development
+      if (qstashUrl.includes("localhost")) {
+        console.info(`[product-svc] Local Dev Mode: Direct webhook to ${subscriberUrl}`);
+        c.executionCtx.waitUntil(
+          fetch(subscriberUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          }).catch(err => console.error(`[product-svc] Direct webhook failed:`, err))
+        );
+      } else {
+        console.info(`[product-svc] Publishing product.created to QStash: ${subscriberUrl}`);
+        c.executionCtx.waitUntil(
+          fetch(`${qstashUrl}/v2/publish/${subscriberUrl}`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${qstashToken}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          }).then(async (res) => {
+            if (!res.ok) {
+              const txt = await res.text();
+              console.error(`[product-svc] QStash publish error ${res.status}: ${txt}`);
+            } else {
+              console.info(`[product-svc] QStash event published successfully.`);
+            }
+          }).catch(err => {
+            console.error(`[product-svc] QStash publish failed:`, err);
+          })
+        );
+      }
     } else {
       console.warn("[product-svc] QStash variables or INVENTORY_SVC_URL not set — skipping publish");
     }
@@ -427,7 +765,7 @@ productRoutes.post("/", async (c) => {
     return c.json({ status: "ok", product }, 201);
   } catch (err) {
     console.error("[POST /products]", err);
-    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to create product" } }, 500);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: err.message, stack: err.stack } }, 500);
   }
 });
 
@@ -461,11 +799,40 @@ productRoutes.patch("/:productId", async (c) => {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "Price must be a valid number" } }, 400);
     }
 
+    let originalPrice = undefined;
+    if (body.originalPrice !== undefined) {
+      if (body.originalPrice === null || body.originalPrice === "" || body.originalPrice === "null") {
+        originalPrice = null;
+      } else {
+        originalPrice = parseFloat(body.originalPrice);
+        if (isNaN(originalPrice) || originalPrice < 0) {
+          return c.json({ error: { code: "VALIDATION_ERROR", message: "originalPrice must be a valid non-negative number" } }, 400);
+        }
+      }
+    }
+
     // จัดการอัปโหลดรูปภาพใหม่ (ถ้าถูกส่งมาใน multipart request)
     let dbImages = null;
     if (contentType.includes("multipart/form-data")) {
       const filesList = [];
       const imageFields = ["images", "imageFiles"];
+      
+      let existingImages = [];
+      if (body.images) {
+        const imagesField = Array.isArray(body.images) ? body.images : [body.images];
+        for (const item of imagesField) {
+          if (typeof item === "string") {
+            try {
+              const parsed = JSON.parse(item);
+              if (Array.isArray(parsed)) {
+                existingImages = parsed;
+                break;
+              }
+            } catch {}
+          }
+        }
+      }
+
       for (const field of imageFields) {
         if (body[field]) {
           const val = body[field];
@@ -478,44 +845,90 @@ productRoutes.patch("/:productId", async (c) => {
         }
       }
 
-      if (filesList.length > 0 && c.env.PRODUCT_IMAGES) {
+      if (filesList.length > 0 || existingImages.length > 0) {
         dbImages = [];
-        for (let i = 0; i < filesList.length; i++) {
-          const file = filesList[i];
-          const key = await uploadToR2(c.env.PRODUCT_IMAGES, file);
-          const originUrl = new URL(c.req.url).origin;
-          const publicUrl = c.env.R2_PUBLIC_URL
-            ? `${c.env.R2_PUBLIC_URL}/${key}`
-            : `${originUrl}/products/images/${key}`;
-
+        existingImages.forEach((img, idx) => {
           dbImages.push({
-            imageUrl: publicUrl,
-            isPrimary: i === 0,
-            sortOrder: i
+            imageUrl: img.imageUrl,
+            isPrimary: img.isPrimary,
+            sortOrder: img.sortOrder
           });
+        });
+
+        if (filesList.length > 0 && c.env.PRODUCT_IMAGES) {
+          for (let i = 0; i < filesList.length; i++) {
+            const file = filesList[i];
+            const key = await uploadToR2(c.env.PRODUCT_IMAGES, file);
+            const originUrl = new URL(c.req.url).origin;
+            const publicUrl = c.env.R2_PUBLIC_URL
+              ? `${c.env.R2_PUBLIC_URL}/${key}`
+              : `${originUrl}/products/images/${key}`;
+
+            dbImages.push({
+              imageUrl: publicUrl,
+              isPrimary: dbImages.length === 0,
+              sortOrder: dbImages.length
+            });
+          }
         }
       }
-    } else if (body.images && Array.isArray(body.images)) {
-      dbImages = body.images;
+    } else if (body.images) {
+      if (Array.isArray(body.images)) {
+        dbImages = body.images;
+      } else if (typeof body.images === "string") {
+        try {
+          const parsed = JSON.parse(body.images);
+          if (Array.isArray(parsed)) dbImages = parsed;
+        } catch {}
+      }
+    }
+
+    let recommendations = undefined;
+    if (body.recommendations !== undefined) {
+      if (typeof body.recommendations === "string") {
+        try {
+          recommendations = JSON.parse(body.recommendations);
+        } catch {
+          recommendations = body.recommendations.split(",").map(id => id.trim()).filter(Boolean);
+        }
+      } else if (Array.isArray(body.recommendations)) {
+        recommendations = body.recommendations;
+      }
+    }
+
+    let specifications = undefined;
+    if (body.specifications !== undefined) {
+      if (typeof body.specifications === "string") {
+        try {
+          specifications = JSON.parse(body.specifications);
+        } catch {}
+      } else {
+        specifications = body.specifications;
+      }
     }
 
     const updateData = {
       name: body.name !== undefined ? body.name : existing.name,
       slug: body.slug !== undefined ? body.slug : existing.slug,
       price: price !== undefined ? price : existing.price,
+      originalPrice: originalPrice !== undefined ? originalPrice : existing.originalPrice,
       sku: body.sku !== undefined ? body.sku : existing.sku,
       status: body.status !== undefined ? body.status : existing.status,
-      skillLevel: body.skillLevel !== undefined ? body.skillLevel : existing.skillLevel,
+      skillLevel: body.skillLevel !== undefined 
+        ? (body.skillLevel === "" ? null : body.skillLevel) 
+        : existing.skillLevel,
       brandId: body.brandId !== undefined ? body.brandId : existing.brandId,
       categoryId: body.categoryId !== undefined ? body.categoryId : existing.categoryId,
-      description: body.description !== undefined ? body.description : existing.description
+      description: body.description !== undefined ? body.description : existing.description,
+      recommendations,
+      specifications
     };
 
     const updated = await updateProduct(db, productId, updateData, dbImages);
     return c.json({ status: "ok", product: updated });
   } catch (err) {
     console.error("[PATCH /products/:productId]", err);
-    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to update product" } }, 500);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: err.message, stack: err.stack } }, 500);
   }
 });
 
@@ -533,6 +946,44 @@ productRoutes.delete("/:productId", async (c) => {
     }
 
     await deleteProduct(db, productId);
+
+    // ยิง Event ไปหา QStash US region
+    const qstashUrl = c.env.QSTASH_URL;
+    const qstashToken = c.env.QSTASH_TOKEN;
+    const inventorySvcUrl = c.env.INVENTORY_SVC_URL;
+
+    if (qstashUrl && qstashToken && inventorySvcUrl) {
+      const subscriberUrl = `${inventorySvcUrl.replace(/\/$/, "")}/webhooks/qstash`;
+      const payload = {
+        event: "product.deleted",
+        productId: productId
+      };
+
+      console.info(`[product-svc] Publishing product.deleted to QStash: ${subscriberUrl}`);
+
+      c.executionCtx.waitUntil(
+        fetch(`${qstashUrl}/v2/publish/${subscriberUrl}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${qstashToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }).then(async (res) => {
+          if (!res.ok) {
+            const txt = await res.text();
+            console.error(`[product-svc] QStash publish error ${res.status}: ${txt}`);
+          } else {
+            console.info(`[product-svc] QStash event product.deleted published successfully.`);
+          }
+        }).catch(err => {
+          console.error(`[product-svc] QStash publish failed:`, err);
+        })
+      );
+    } else {
+      console.warn("[product-svc] QStash variables or INVENTORY_SVC_URL not set — skipping publish");
+    }
+
     return c.json({ status: "ok", message: "Product deleted successfully" });
   } catch (err) {
     console.error("[DELETE /products/:productId]", err);

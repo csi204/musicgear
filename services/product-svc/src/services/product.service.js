@@ -14,6 +14,7 @@ export async function getProductById(db, productId) {
       name: true,
       slug: true,
       price: true,
+      originalPrice: true,
       status: true,
       sku: true,
       description: true,
@@ -24,6 +25,40 @@ export async function getProductById(db, productId) {
         select: { imageId: true, imageUrl: true, isPrimary: true, sortOrder: true },
         orderBy: { sortOrder: "asc" },
       },
+      specifications: {
+        select: {
+          value: true,
+          definition: {
+            select: {
+              definitionId: true,
+              name: true,
+              group: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      },
+      recommendations: {
+        select: {
+          recommended: {
+            select: {
+              productId: true,
+              name: true,
+              price: true,
+              originalPrice: true,
+              sku: true,
+              images: {
+                select: { imageUrl: true },
+                where: { isPrimary: true },
+                take: 1,
+              }
+            }
+          }
+        }
+      }
     },
   });
 
@@ -66,6 +101,7 @@ export async function getAllProducts(db, filters = {}) {
         name: true,
         slug: true,
         price: true,
+        originalPrice: true,
         status: true,
         sku: true,
         description: true,
@@ -75,6 +111,22 @@ export async function getAllProducts(db, filters = {}) {
         images: {
           select: { imageId: true, imageUrl: true, isPrimary: true, sortOrder: true },
           orderBy: { sortOrder: "asc" },
+        },
+        specifications: {
+          select: {
+            value: true,
+            definition: {
+              select: {
+                definitionId: true,
+                name: true,
+                group: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            }
+          }
         },
       },
       orderBy: { createdAt: "desc" },
@@ -108,6 +160,7 @@ export async function getProductBySlug(db, slug) {
       name: true,
       slug: true,
       price: true,
+      originalPrice: true,
       status: true,
       sku: true,
       description: true,
@@ -118,6 +171,39 @@ export async function getProductBySlug(db, slug) {
         select: { imageId: true, imageUrl: true, isPrimary: true, sortOrder: true },
         orderBy: { sortOrder: "asc" },
       },
+      specifications: {
+        select: {
+          value: true,
+          definition: {
+            select: {
+              name: true,
+              group: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      },
+      recommendations: {
+        select: {
+          recommended: {
+            select: {
+              productId: true,
+              name: true,
+              price: true,
+              originalPrice: true,
+              sku: true,
+              images: {
+                select: { imageUrl: true },
+                where: { isPrimary: true },
+                take: 1,
+              }
+            }
+          }
+        }
+      }
     },
   });
 }
@@ -136,6 +222,7 @@ export async function createProduct(db, data, images = []) {
       name: data.name,
       slug: data.slug,
       price: data.price,
+      originalPrice: data.originalPrice,
       sku: data.sku,
       status: data.status || "active",
       skillLevel: data.skillLevel || null,
@@ -148,12 +235,44 @@ export async function createProduct(db, data, images = []) {
   if (images && images.length > 0) {
     await db.productImage.createMany({
       data: images.map((img) => ({
+        imageId: globalThis.crypto.randomUUID(),
         productId: product.productId,
         imageUrl: img.imageUrl,
         isPrimary: img.isPrimary || false,
         sortOrder: img.sortOrder || 0,
       })),
     });
+  }
+
+  if (Array.isArray(data.recommendations) && data.recommendations.length > 0) {
+    await db.productRecommendation.createMany({
+      data: data.recommendations.map((recId) => ({
+        productId: product.productId,
+        recommendedId: recId,
+      })),
+    });
+  }
+
+  if (data.specifications) {
+    let specsToCreate = [];
+    if (Array.isArray(data.specifications)) {
+      specsToCreate = data.specifications;
+    } else if (typeof data.specifications === "object" && data.specifications !== null) {
+      specsToCreate = Object.entries(data.specifications).map(([defId, val]) => ({
+        definitionId: defId,
+        value: String(val)
+      }));
+    }
+
+    if (specsToCreate.length > 0) {
+      await db.productSpecification.createMany({
+        data: specsToCreate.map((spec) => ({
+          productId: product.productId,
+          definitionId: spec.definitionId,
+          value: spec.value
+        }))
+      });
+    }
   }
 
   // ดึงสินค้าเวอร์ชันล่าสุดที่มี relation ครบถ้วน
@@ -163,6 +282,15 @@ export async function createProduct(db, data, images = []) {
       brand: true,
       category: true,
       images: true,
+      recommendations: {
+        include: {
+          recommended: {
+            include: {
+              images: true
+            }
+          }
+        }
+      }
     },
   });
 }
@@ -183,6 +311,7 @@ export async function updateProduct(db, productId, data, images = null) {
       name: data.name,
       slug: data.slug,
       price: data.price,
+      originalPrice: data.originalPrice,
       sku: data.sku,
       status: data.status,
       skillLevel: data.skillLevel,
@@ -201,11 +330,55 @@ export async function updateProduct(db, productId, data, images = null) {
     if (images.length > 0) {
       await db.productImage.createMany({
         data: images.map((img) => ({
+          imageId: globalThis.crypto.randomUUID(),
           productId,
           imageUrl: img.imageUrl,
           isPrimary: img.isPrimary || false,
           sortOrder: img.sortOrder || 0,
         })),
+      });
+    }
+  }
+
+  if (Array.isArray(data.recommendations)) {
+    // Clear old recommendations
+    await db.productRecommendation.deleteMany({
+      where: { productId },
+    });
+
+    if (data.recommendations.length > 0) {
+      await db.productRecommendation.createMany({
+        data: data.recommendations.map((recId) => ({
+          productId,
+          recommendedId: recId,
+        })),
+      });
+    }
+  }
+
+  if (data.specifications !== undefined) {
+    // Clear old specifications
+    await db.productSpecification.deleteMany({
+      where: { productId }
+    });
+
+    let specsToCreate = [];
+    if (Array.isArray(data.specifications)) {
+      specsToCreate = data.specifications;
+    } else if (typeof data.specifications === "object" && data.specifications !== null) {
+      specsToCreate = Object.entries(data.specifications).map(([defId, val]) => ({
+        definitionId: defId,
+        value: String(val)
+      }));
+    }
+
+    if (specsToCreate.length > 0) {
+      await db.productSpecification.createMany({
+        data: specsToCreate.map((spec) => ({
+          productId,
+          definitionId: spec.definitionId,
+          value: spec.value
+        }))
       });
     }
   }
@@ -216,6 +389,15 @@ export async function updateProduct(db, productId, data, images = null) {
       brand: true,
       category: true,
       images: true,
+      recommendations: {
+        include: {
+          recommended: {
+            include: {
+              images: true
+            }
+          }
+        }
+      }
     },
   });
 }

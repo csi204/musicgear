@@ -15,11 +15,11 @@ import {
   Truck 
 } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
-import { useCart } from "../../hooks/useCart";
-import { isAuthenticated, buildLoginUrl } from "../../lib/auth";
+import { useCartContext } from "../../components/cart-provider";
+import { isAuthenticated } from "../../lib/auth";
 
 export default function CartPage() {
-  const { items, updateQuantity, removeItem, totalPrice, totalItems, clearCart } = useCart();
+  const { items, updateQuantity, removeItem, totalPrice, totalItems, clearCart } = useCartContext();
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [shippingNote, setShippingNote] = useState("");
   const [isOpenShippingCalc, setIsOpenShippingCalc] = useState(false);
@@ -39,7 +39,7 @@ export default function CartPage() {
     if (!isUserLoggedIn) {
       e.preventDefault();
       // Redirect to Kinde Login flow and return to checkout
-      window.location.href = buildLoginUrl("/checkout");
+      window.location.href = "/login?callbackUrl=/checkout";
     }
   };
 

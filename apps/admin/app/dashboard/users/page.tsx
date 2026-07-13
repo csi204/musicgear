@@ -7,6 +7,7 @@ import { getAccessToken, clearSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { cn } from "@workspace/ui/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
+import { useDebounce } from "@/hooks/use-debounce";
 
 const ROLE_LABELS: Record<string, string> = { admin: "ผู้ดูแลระบบ", staff: "พนักงาน", customer: "ลูกค้า" };
 const ROLE_COLORS: Record<string, string> = {
@@ -27,7 +28,8 @@ export default function ManageUsers() {
   const [error, setError] = useState<string | null>(null);
 
   // Filters
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearchQuery = useDebounce(searchInput, 300);
   const [roleFilter, setRoleFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -85,8 +87,8 @@ export default function ManageUsers() {
   // Client-side filtering
   const filteredUsers = allUsers.filter(u => {
     if (roleFilter && u.role !== roleFilter) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+    if (debouncedSearchQuery) {
+      const q = debouncedSearchQuery.toLowerCase();
       if (!u.firstName.toLowerCase().includes(q) &&
           !u.lastName.toLowerCase().includes(q) &&
           !u.email.toLowerCase().includes(q)) {
@@ -222,8 +224,8 @@ export default function ManageUsers() {
             <input
               type="text"
               placeholder="ค้นหาชื่อ หรือ อีเมล..."
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              value={searchInput}
+              onChange={(e) => { setSearchInput(e.target.value); setCurrentPage(1); }}
               className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all shadow-sm"
             />
           </div>

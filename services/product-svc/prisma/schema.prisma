@@ -41,27 +41,43 @@ model Category {
   name        String    @unique
   description String?
   products    Product[]
+  specifications CategorySpecification[]
+}
+
+model CategorySpecification {
+  categoryId   String @db.Uuid
+  definitionId String @db.Uuid
+
+  category   Category                @relation(fields: [categoryId], references: [categoryId], onDelete: Cascade)
+  definition SpecificationDefinition @relation(fields: [definitionId], references: [definitionId], onDelete: Cascade)
+
+  @@id([categoryId, definitionId])
 }
 
 model Product {
-  productId   String        @id @default(uuid()) @db.Uuid
-  name        String
-  slug        String        @unique
-  description String?
-  price       Decimal       @db.Decimal(10,2)
-  sku         String        @unique
-  status      ProductStatus @default(active)
-  skillLevel  SkillLevel?
-  brandId     String        @db.Uuid
-  categoryId  String        @db.Uuid
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @default(now()) @updatedAt
+  productId     String        @id @default(uuid()) @db.Uuid
+  name          String
+  slug          String        @unique
+  description   String?
+  price         Decimal       @db.Decimal(10,2)
+  originalPrice Decimal?      @db.Decimal(10,2) // original undiscounted price
+  sku           String        @unique
+  status        ProductStatus @default(active)
+  skillLevel    SkillLevel?
+  brandId       String        @db.Uuid
+  categoryId    String        @db.Uuid
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now()) @updatedAt
 
   brand         Brand          @relation(fields: [brandId], references: [brandId])
   category      Category       @relation(fields: [categoryId], references: [categoryId])
   images        ProductImage[]
   bundleItems   BundleItem[]
   reviews       Review[]
+  specifications ProductSpecification[]
+
+  recommendations ProductRecommendation[] @relation("ProductRecommendations")
+  recommendedBy   ProductRecommendation[] @relation("RecommendedProducts")
 }
 
 model ProductImage {
@@ -105,4 +121,54 @@ model Review {
   createdAt  DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [productId])
+}
+
+model ProductRecommendation {
+  recommendationId String   @id @default(uuid()) @db.Uuid
+  productId        String   @db.Uuid
+  recommendedId    String   @db.Uuid
+  score            Float    @default(1.0)
+  createdAt        DateTime @default(now())
+
+  product          Product  @relation("ProductRecommendations", fields: [productId], references: [productId], onDelete: Cascade)
+  recommended      Product  @relation("RecommendedProducts", fields: [recommendedId], references: [productId], onDelete: Cascade)
+
+  @@unique([productId, recommendedId])
+}
+
+model SpecificationGroup {
+  groupId   String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  definitions SpecificationDefinition[]
+}
+
+model SpecificationDefinition {
+  definitionId String   @id @default(uuid()) @db.Uuid
+  groupId      String   @db.Uuid
+  name         String
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  group          SpecificationGroup     @relation(fields: [groupId], references: [groupId], onDelete: Cascade)
+  specifications ProductSpecification[]
+  categories     CategorySpecification[]
+
+  @@unique([groupId, name])
+}
+
+model ProductSpecification {
+  productId    String @db.Uuid
+  definitionId String @db.Uuid
+  value        String // e.g. "Mahogany", "Yes", "22"
+
+  product    Product                 @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  definition SpecificationDefinition @relation(fields: [definitionId], references: [definitionId], onDelete: Cascade)
+
+  @@id([productId, definitionId])
+  @@index([definitionId, value]) // Index for fast filtering & comparison
 }

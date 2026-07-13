@@ -97,64 +97,66 @@ export function SalesReportPDF({ data, startDate, endDate }: { data: any; startD
           <View style={s.kpiBox}><Text style={s.kpiLabel}>มูลค่าเฉลี่ย/รายการ</Text><Text style={s.kpiValue}>{THB(aov)}</Text></View>
         </View>
 
-        <Text style={s.sectionTitle}>ยอดขายรายวัน</Text>
-        <View style={s.tableHeader} fixed>
-          <Text style={[s.tableHeaderText, { flex: 2 }]}>วันที่</Text>
-          <Text style={[s.tableHeaderText, { flex: 1, textAlign: "right" }]}>จำนวนรายการ</Text>
-          <Text style={[s.tableHeaderText, { flex: 2, textAlign: "right" }]}>รายรับ (บาท)</Text>
+        <View>
+          <Text style={s.sectionTitle}>ยอดขายรายวัน</Text>
+          <View style={s.tableHeader} fixed>
+            <Text style={[s.tableHeaderText, { flex: 2 }]}>วันที่</Text>
+            <Text style={[s.tableHeaderText, { flex: 1, textAlign: "right" }]}>จำนวนรายการ</Text>
+            <Text style={[s.tableHeaderText, { flex: 2, textAlign: "right" }]}>รายรับ (บาท)</Text>
+          </View>
+          {trend.length === 0 && <Text style={s.noData}>ไม่มีข้อมูลในช่วงเวลานี้</Text>}
+          {trend.map((r, i) => (
+            <View key={i} style={i % 2 === 0 ? s.tableRowEven : s.tableRowOdd} wrap={false}>
+              <Text style={[s.tableCell, { flex: 2 }]}>{new Date(r.reportDate).toLocaleDateString("th-TH")}</Text>
+              <Text style={[s.tableCellR, { flex: 1 }]}>{NUM(Number(r.totalOrders))}</Text>
+              <Text style={[s.tableCellR, { flex: 2 }]}>{THB(Number(r.totalRevenue))}</Text>
+            </View>
+          ))}
+          {trend.length > 0 && (
+            <View style={s.tableFooter}>
+              <Text style={[s.tableFooterText, { flex: 2 }]}>รวมทั้งสิ้น</Text>
+              <Text style={[s.tableFooterTextR, { flex: 1 }]}>{NUM(totalOrders)}</Text>
+              <Text style={[s.tableFooterTextR, { flex: 2 }]}>{THB(totalRevenue)}</Text>
+            </View>
+          )}
         </View>
-        {trend.length === 0 && <Text style={s.noData}>ไม่มีข้อมูลในช่วงเวลานี้</Text>}
-        {trend.map((r, i) => (
-          <View key={i} style={i % 2 === 0 ? s.tableRowEven : s.tableRowOdd} wrap={false}>
-            <Text style={[s.tableCell, { flex: 2 }]}>{new Date(r.reportDate).toLocaleDateString("th-TH")}</Text>
-            <Text style={[s.tableCellR, { flex: 1 }]}>{NUM(Number(r.totalOrders))}</Text>
-            <Text style={[s.tableCellR, { flex: 2 }]}>{THB(Number(r.totalRevenue))}</Text>
-          </View>
-        ))}
-        {trend.length > 0 && (
-          <View style={s.tableFooter}>
-            <Text style={[s.tableFooterText, { flex: 2 }]}>รวมทั้งสิ้น</Text>
-            <Text style={[s.tableFooterTextR, { flex: 1 }]}>{NUM(totalOrders)}</Text>
-            <Text style={[s.tableFooterTextR, { flex: 2 }]}>{THB(totalRevenue)}</Text>
-          </View>
-        )}
 
         {products.length > 0 && (
-          <>
+          <View wrap={false}>
             <Text style={s.sectionTitle}>สินค้าขายดี</Text>
-            <View style={s.tableHeader} fixed>
+            <View style={s.tableHeader}>
               <Text style={[s.tableHeaderText, { width: 20 }]}>ที่</Text>
               <Text style={[s.tableHeaderText, { flex: 3 }]}>ชื่อสินค้า</Text>
               <Text style={[s.tableHeaderText, { flex: 2 }]}>หมวดหมู่</Text>
-              <Text style={[s.tableHeaderText, { flex: 1, textAlign: "right" }]}>จำนวนขาย</Text>
+              <Text style={[s.tableHeaderText, { flex: 2, textAlign: "right" }]}>จำนวนขาย</Text>
               <Text style={[s.tableHeaderText, { flex: 2, textAlign: "right" }]}>รายรับ (บาท)</Text>
             </View>
             {products.map((p, i) => (
-              <View key={i} style={i % 2 === 0 ? s.tableRowEven : s.tableRowOdd} wrap={false}>
+              <View key={i} style={i % 2 === 0 ? s.tableRowEven : s.tableRowOdd}>
                 <Text style={[s.tableCell, { width: 20 }]}>{i + 1}</Text>
                 <Text style={[s.tableCell, { flex: 3 }]}>{p.productName}</Text>
                 <Text style={[s.tableCell, { flex: 2 }]}>{p.category ?? "-"}</Text>
-                <Text style={[s.tableCellR, { flex: 1 }]}>{NUM(Number(p.quantitySold))}</Text>
+                <Text style={[s.tableCellR, { flex: 2 }]}>{NUM(Number(p.quantitySold))}</Text>
                 <Text style={[s.tableCellR, { flex: 2 }]}>{THB(Number(p.revenue ?? 0))}</Text>
               </View>
             ))}
-          </>
+          </View>
         )}
 
         {categories.length > 0 && (
-          <>
+          <View wrap={false}>
             <Text style={s.sectionTitle}>สัดส่วนยอดขายตามหมวดหมู่</Text>
-            <View style={s.tableHeader} fixed>
+            <View style={s.tableHeader}>
               <Text style={[s.tableHeaderText, { flex: 3 }]}>หมวดหมู่</Text>
-              <Text style={[s.tableHeaderText, { flex: 1, textAlign: "right" }]}>จำนวน</Text>
+              <Text style={[s.tableHeaderText, { flex: 2, textAlign: "right" }]}>จำนวน</Text>
             </View>
             {categories.map((c, i) => (
-              <View key={i} style={i % 2 === 0 ? s.tableRowEven : s.tableRowOdd} wrap={false}>
+              <View key={i} style={i % 2 === 0 ? s.tableRowEven : s.tableRowOdd}>
                 <Text style={[s.tableCell, { flex: 3 }]}>{c.category}</Text>
-                <Text style={[s.tableCellR, { flex: 1 }]}>{NUM(Number(c.value))}</Text>
+                <Text style={[s.tableCellR, { flex: 2 }]}>{NUM(Number(c.value))}</Text>
               </View>
             ))}
-          </>
+          </View>
         )}
 
         <View style={s.footer} fixed>
@@ -193,34 +195,36 @@ export function FinancialReportPDF({ data, startDate, endDate }: { data: any; st
           <View style={s.kpiBox}><Text style={s.kpiLabel}>มูลค่าเฉลี่ย/รายการ</Text><Text style={s.kpiValue}>{THB(aov)}</Text></View>
         </View>
 
-        <Text style={s.sectionTitle}>สรุปรายรับรายวัน</Text>
-        <View style={s.tableHeader} fixed>
-          <Text style={[s.tableHeaderText, { flex: 2 }]}>วันที่</Text>
-          <Text style={[s.tableHeaderText, { flex: 1, textAlign: "right" }]}>จำนวนรายการ</Text>
-          <Text style={[s.tableHeaderText, { flex: 2, textAlign: "right" }]}>รายรับ (บาท)</Text>
-          <Text style={[s.tableHeaderText, { flex: 2, textAlign: "right" }]}>เฉลี่ย/รายการ</Text>
-        </View>
-        {trend.length === 0 && <Text style={s.noData}>ไม่มีข้อมูลในช่วงเวลานี้</Text>}
-        {trend.map((r, i) => {
-          const orders = Number(r.totalOrders ?? 0);
-          const rev = Number(r.totalRevenue ?? 0);
-          return (
-            <View key={i} style={i % 2 === 0 ? s.tableRowEven : s.tableRowOdd} wrap={false}>
-              <Text style={[s.tableCell, { flex: 2 }]}>{new Date(r.reportDate).toLocaleDateString("th-TH")}</Text>
-              <Text style={[s.tableCellR, { flex: 1 }]}>{NUM(orders)}</Text>
-              <Text style={[s.tableCellR, { flex: 2 }]}>{THB(rev)}</Text>
-              <Text style={[s.tableCellR, { flex: 2 }]}>{THB(orders > 0 ? rev / orders : 0)}</Text>
-            </View>
-          );
-        })}
-        {trend.length > 0 && (
-          <View style={s.tableFooter}>
-            <Text style={[s.tableFooterText, { flex: 2 }]}>รวม</Text>
-            <Text style={[s.tableFooterTextR, { flex: 1 }]}>{NUM(totalOrders)}</Text>
-            <Text style={[s.tableFooterTextR, { flex: 2 }]}>{THB(totalRevenue)}</Text>
-            <Text style={[s.tableFooterTextR, { flex: 2 }]}>{THB(aov)}</Text>
+        <View>
+          <Text style={s.sectionTitle}>สรุปรายรับรายวัน</Text>
+          <View style={s.tableHeader} fixed>
+            <Text style={[s.tableHeaderText, { flex: 2 }]}>วันที่</Text>
+            <Text style={[s.tableHeaderText, { flex: 1, textAlign: "right" }]}>จำนวนรายการ</Text>
+            <Text style={[s.tableHeaderText, { flex: 2, textAlign: "right" }]}>รายรับ (บาท)</Text>
+            <Text style={[s.tableHeaderText, { flex: 2, textAlign: "right" }]}>เฉลี่ย/รายการ</Text>
           </View>
-        )}
+          {trend.length === 0 && <Text style={s.noData}>ไม่มีข้อมูลในช่วงเวลานี้</Text>}
+          {trend.map((r, i) => {
+            const orders = Number(r.totalOrders ?? 0);
+            const rev = Number(r.totalRevenue ?? 0);
+            return (
+              <View key={i} style={i % 2 === 0 ? s.tableRowEven : s.tableRowOdd} wrap={false}>
+                <Text style={[s.tableCell, { flex: 2 }]}>{new Date(r.reportDate).toLocaleDateString("th-TH")}</Text>
+                <Text style={[s.tableCellR, { flex: 1 }]}>{NUM(orders)}</Text>
+                <Text style={[s.tableCellR, { flex: 2 }]}>{THB(rev)}</Text>
+                <Text style={[s.tableCellR, { flex: 2 }]}>{THB(orders > 0 ? rev / orders : 0)}</Text>
+              </View>
+            );
+          })}
+          {trend.length > 0 && (
+            <View style={s.tableFooter}>
+              <Text style={[s.tableFooterText, { flex: 2 }]}>รวม</Text>
+              <Text style={[s.tableFooterTextR, { flex: 1 }]}>{NUM(totalOrders)}</Text>
+              <Text style={[s.tableFooterTextR, { flex: 2 }]}>{THB(totalRevenue)}</Text>
+              <Text style={[s.tableFooterTextR, { flex: 2 }]}>{THB(aov)}</Text>
+            </View>
+          )}
+        </View>
 
         <View style={s.footer} fixed>
           <Text style={s.footerText}>MusicGear — เอกสารสร้างโดยระบบอัตโนมัติ</Text>
@@ -258,24 +262,26 @@ export function InventoryReportPDF({ data }: { data: any }) {
           <View style={s.kpiBox}><Text style={s.kpiLabel}>วิกฤต / หมดสต็อก</Text><Text style={s.kpiValue}>{NUM(critical)} รายการ</Text></View>
         </View>
 
-        <Text style={s.sectionTitle}>รายการสินค้าคงคลัง</Text>
-        <View style={s.tableHeader} fixed>
-          <Text style={[s.tableHeaderText, { flex: 3 }]}>ชื่อสินค้า</Text>
-          <Text style={[s.tableHeaderText, { flex: 2 }]}>รหัส (SKU)</Text>
-          <Text style={[s.tableHeaderText, { flex: 1, textAlign: "right" }]}>คงเหลือ</Text>
-          <Text style={[s.tableHeaderText, { flex: 1, textAlign: "right" }]}>จุดสั่งซื้อ</Text>
-          <Text style={[s.tableHeaderText, { flex: 1, textAlign: "center" }]}>สถานะ</Text>
-        </View>
-        {items.length === 0 && <Text style={s.noData}>ไม่มีข้อมูลสินค้า</Text>}
-        {items.map((item, i) => (
-          <View key={i} style={i % 2 === 0 ? s.tableRowEven : s.tableRowOdd} wrap={false}>
-            <Text style={[s.tableCell, { flex: 3 }]}>{item.productName ?? item.name}</Text>
-            <Text style={[s.tableCell, { flex: 2 }]}>{item.sku}</Text>
-            <Text style={[s.tableCellR, { flex: 1 }]}>{NUM(item.stockLevel ?? item.stock ?? 0)}</Text>
-            <Text style={[s.tableCellR, { flex: 1 }]}>{NUM(item.reorderPoint ?? item.threshold ?? 0)}</Text>
-            <Text style={[s.tableCellR, { flex: 1 }]}>{item.status === "Critical" ? "วิกฤต" : item.status === "Low" ? "ต่ำ" : "ปกติ"}</Text>
+        <View>
+          <Text style={s.sectionTitle}>รายการสินค้าคงคลัง</Text>
+          <View style={s.tableHeader} fixed>
+            <Text style={[s.tableHeaderText, { flex: 3 }]}>ชื่อสินค้า</Text>
+            <Text style={[s.tableHeaderText, { flex: 2 }]}>รหัส (SKU)</Text>
+            <Text style={[s.tableHeaderText, { flex: 1, textAlign: "right" }]}>คงเหลือ</Text>
+            <Text style={[s.tableHeaderText, { flex: 1, textAlign: "right" }]}>จุดสั่งซื้อ</Text>
+            <Text style={[s.tableHeaderText, { flex: 1, textAlign: "center" }]}>สถานะ</Text>
           </View>
-        ))}
+          {items.length === 0 && <Text style={s.noData}>ไม่มีข้อมูลสินค้า</Text>}
+          {items.map((item, i) => (
+            <View key={i} style={i % 2 === 0 ? s.tableRowEven : s.tableRowOdd} wrap={false}>
+              <Text style={[s.tableCell, { flex: 3 }]}>{item.productName ?? item.name}</Text>
+              <Text style={[s.tableCell, { flex: 2 }]}>{item.sku}</Text>
+              <Text style={[s.tableCellR, { flex: 1 }]}>{NUM(item.stockLevel ?? item.stock ?? 0)}</Text>
+              <Text style={[s.tableCellR, { flex: 1 }]}>{NUM(item.reorderPoint ?? item.threshold ?? 0)}</Text>
+              <Text style={[s.tableCellR, { flex: 1 }]}>{item.status === "Critical" ? "วิกฤต" : item.status === "Low" ? "ต่ำ" : "ปกติ"}</Text>
+            </View>
+          ))}
+        </View>
 
         <View style={s.footer} fixed>
           <Text style={s.footerText}>MusicGear — เอกสารสร้างโดยระบบอัตโนมัติ</Text>

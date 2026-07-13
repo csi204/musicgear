@@ -39,3 +39,9 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+scratch/
+seed-inventory-stock.js
+apps/web/seed-inventory-stock.js
+
+# Prisma generated client
+**/generated/prisma

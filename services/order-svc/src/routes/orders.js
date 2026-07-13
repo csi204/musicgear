@@ -4,6 +4,7 @@ import { createPrisma } from "../db/prisma.js";
 import {
   orderListQuerySchema,
   orderStatusUpdateSchema,
+  orderCreateSchema,
 } from "../../../../packages/types/src/order.js";
 
 const router = new Hono();
@@ -129,6 +130,65 @@ router.get("/", async (c) => {
   }
 });
 
+// GET /summary — ดึงข้อมูลสรุปออเดอร์สำหรับ Dashboard
+router.get("/summary", async (c) => {
+  try {
+    const prisma = getPrisma(c);
+    const authUser = getAuthUser(c);
+
+    // Only staff and admin can access this summary
+    if (authUser.role !== "admin" && authUser.role !== "staff") {
+      return c.json({ error: { code: "FORBIDDEN", message: "ไม่มีสิทธิ์เข้าถึงข้อมูลส่วนนี้" } }, 403);
+    }
+
+    // 1. Calculate Delivery Efficiency
+    const [totalOrdersCount, deliveredOrdersCount] = await Promise.all([
+      prisma.order.count(),
+      prisma.order.count({ where: { status: "delivered" } }),
+    ]);
+
+    // 2. Calculate Hourly Fulfillment (Today's orders)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const todayOrders = await prisma.order.findMany({
+      where: {
+        orderDate: {
+          gte: startOfToday,
+          lte: endOfToday,
+        },
+      },
+      select: {
+        orderDate: true,
+      },
+    });
+
+    const hourlyFulfillment = Array(12).fill(0);
+    const hours = ["09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"];
+    
+    todayOrders.forEach((o) => {
+      const date = new Date(o.orderDate);
+      const hourStr = String(date.getHours()).padStart(2, "0");
+      const idx = hours.indexOf(hourStr);
+      if (idx !== -1) {
+        hourlyFulfillment[idx]++;
+      }
+    });
+
+    return c.json({
+      status: "ok",
+      totalOrdersCount,
+      deliveredOrdersCount,
+      hourlyFulfillment,
+    }, 200);
+  } catch (error) {
+    console.error("[order-svc] Get order summary error:", error);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: error.message } }, 500);
+  }
+});
+
 // 2. Get Single Order Detail
 router.get("/:orderId", async (c) => {
   try {
@@ -178,6 +238,44 @@ router.patch("/:orderId/status", async (c) => {
     if (error.message.startsWith("INVALID_STATUS_TRANSITION")) {
       return c.json({ error: { code: "BAD_REQUEST", message: "ไม่สามารถเปลี่ยนสถานะข้ามขั้นตอนได้" } }, 400);
     }
+    return c.json({ error: { code: "INTERNAL_ERROR", message: error.message } }, 500);
+  }
+});
+
+// 4. Create Order (Checkout Flow)
+router.post("/", async (c) => {
+  try {
+    const prisma = getPrisma(c);
+    const authUser = getAuthUser(c);
+    
+    const validation = await parseValidatedJson(c, orderCreateSchema);
+    if (!validation.ok) return validation.response;
+
+    const authHeader = c.req.header("Authorization") || "";
+    const newOrder = await OrderService.createOrder(prisma, c.env, authUser.userId, validation.data, authHeader);
+    return c.json(newOrder, 201);
+  } catch (error) {
+    console.error("[order-svc] Create order checkout error:", error);
+    
+    if (error.message === "CART_NOT_FOUND") {
+      return c.json({ error: { code: "NOT_FOUND", message: "ไม่พบตะกร้าสินค้า" } }, 404);
+    }
+    if (error.message === "CART_EMPTY") {
+      return c.json({ error: { code: "BAD_REQUEST", message: "ตะกร้าสินค้าว่างเปล่า" } }, 400);
+    }
+    if (error.message === "OUT_OF_STOCK") {
+      return c.json({ error: { code: "CONFLICT", message: "สินค้าในสต็อกไม่เพียงพอ" } }, 409);
+    }
+    if (error.message === "ADDRESS_NOT_FOUND") {
+      return c.json({ error: { code: "NOT_FOUND", message: "ไม่พบข้อมูลที่จัดส่ง" } }, 404);
+    }
+    if (error.message === "FORBIDDEN_ADDRESS") {
+      return c.json({ error: { code: "FORBIDDEN", message: "ไม่มีสิทธิ์เข้าใช้งานที่อยู่นี้" } }, 403);
+    }
+    if (error.message === "STOCK_RESERVATION_FAILED") {
+      return c.json({ error: { code: "CONFLICT", message: "การจองสต็อกล้มเหลว กรุณาลองใหม่อีกครั้ง" } }, 409);
+    }
+    
     return c.json({ error: { code: "INTERNAL_ERROR", message: error.message } }, 500);
   }
 });

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AlertTriangle, Clock, Shield, TrendingUp, BarChart3, PieChart, Loader2, Warehouse } from "lucide-react";
+import { AlertTriangle, Clock, Shield, TrendingUp, BarChart3, PieChart, Loader2, Warehouse, RefreshCw } from "lucide-react";
 import { Badge } from "@workspace/ui/components/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import Link from "next/link";
-import { getOrders, getProducts, getInventory, OrderRecord } from "@/lib/api";
+import { getOrders, getProducts, getInventorySummary, getOrderSummary, OrderRecord } from "@/lib/api";
 
 interface DisplayAlert {
   id: string;
@@ -82,21 +82,21 @@ function smoothPath(points: { x: number; y: number }[]): string {
 // ─────────────────────────────────────────────
 // Smooth Line Chart Component
 // ─────────────────────────────────────────────
-const linePoints = [96.1, 97.4, 95.8, 98.2, 97.0, 98.9, 99.1, 98.4, 97.7, 98.6, 99.3, 98.8];
 const lineLabels = ["W1", "W2", "W3", "W4"];
 const lMax = 100; const lMin = 94;
 
-function InventoryLineChart() {
+function InventoryLineChart({ points }: { points: number[] }) {
   const W = 500; const H = 180;
   const padL = 40; const padR = 24; const padT = 15; const padB = 28;
-  const pts = linePoints.map((v, i) => ({
-    x: padL + (i / (linePoints.length - 1)) * (W - padL - padR),
+  const pts = points.map((v, i) => ({
+    x: padL + (i / (points.length - 1)) * (W - padL - padR),
     y: padT + ((lMax - v) / (lMax - lMin)) * (H - padT - padB),
   }));
   const d = smoothPath(pts);
   const lastPt = pts[pts.length - 1]!;
   const firstPt = pts[0]!;
   const area = `${d} L ${lastPt.x.toFixed(1)} ${(H - padB).toFixed(1)} L ${firstPt.x.toFixed(1)} ${(H - padB).toFixed(1)} Z`;
+  const lastVal = points[points.length - 1] ?? 99.6;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none">
@@ -131,7 +131,7 @@ function InventoryLineChart() {
       {/* Current % Badge */}
       <rect x={W - padR - 35} y={padT - 5} width="35" height="18" rx="4" fill="#FF8A3D" opacity="0.1" />
       <rect x={W - padR - 35} y={padT - 5} width="35" height="18" rx="4" fill="none" stroke="#FF8A3D" strokeOpacity="0.5" strokeWidth="1" />
-      <text x={W - padR - 17.5} y={padT + 7} textAnchor="middle" fontSize="9" fill="#FF8A3D" fontWeight="bold">99.6%</text>
+      <text x={W - padR - 17.5} y={padT + 7} textAnchor="middle" fontSize="9" fill="#FF8A3D" fontWeight="bold">{lastVal.toFixed(1)}%</text>
     </svg>
   );
 }
@@ -183,11 +183,12 @@ export default function StaffDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [efficiency] = useState("98.4%");
+  const [efficiency, setEfficiency] = useState("98.4%");
   const [warehouseCapacity, setWarehouseCapacity] = useState("–");
   const [capacityStatus, setCapacityStatus] = useState("กำลังโหลด...");
 
   const [alerts, setAlerts] = useState<DisplayAlert[]>([]);
+  const [totalAlertsCount, setTotalAlertsCount] = useState(0);
 
   const [stockBreakdown, setStockBreakdown] = useState<DonutItem[]>([
     { label: "มีสินค้าพร้อมขาย", value: 0, color: "#2BBF7A" },
@@ -195,78 +196,92 @@ export default function StaffDashboardPage() {
     { label: "สินค้าหมด", value: 0, color: "#E54848" },
   ]);
 
+  const [barChartData, setBarChartData] = useState<number[]>([42, 58, 35, 71, 63, 88, 55, 76, 49, 92, 67, 84]);
+  const [accuracyPoints, setAccuracyPoints] = useState<number[]>([96.1, 97.4, 95.8, 98.2, 97.0, 98.9, 99.1, 98.4, 97.7, 98.6, 99.3, 98.8]);
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const ordRes = await getOrders({ limit: 5 });
+      // 1. Fetch data from backend summary endpoints and limit recent orders to 5
+      const [ordRes, ordSummary, invSummary] = await Promise.all([
+        getOrders({ limit: 5 }),
+        getOrderSummary(),
+        getInventorySummary()
+      ]);
+
+      const activeOrders = ordRes.orders ?? [];
+      setOrders(activeOrders);
+
+      // 2. Fetch products (limit: 100) to map product names for the recent orders table
       const prodRes = await getProducts({ limit: 100 });
-      const invRes = await getInventory();
-
       const pMap = new Map<string, string>();
-      prodRes.products?.forEach(p => pMap.set(p.productId, p.name));
+      prodRes.products?.forEach(p => {
+        pMap.set(p.productId, p.name);
+      });
       setProductMap(pMap);
-      setOrders(ordRes.orders ?? []);
 
-      const inventories = invRes.inventories ?? [];
-      if (inventories.length > 0) {
-        const totalStock = inventories.length;
+      // 3. Set Delivery Efficiency and Hourly Fulfillment from Order Summary
+      const totalOrdersCount = ordSummary.totalOrdersCount;
+      const deliveredOrdersCount = ordSummary.deliveredOrdersCount;
+      const effPct = totalOrdersCount > 0 ? (deliveredOrdersCount / totalOrdersCount) * 100 : 98.4;
+      setEfficiency(`${effPct.toFixed(1)}%`);
 
-        const computed = inventories.map(i => {
-          const avail = i.quantity - i.reservedQuantity;
-          const status = avail <= 0 ? "Critical" : avail <= i.reorderPoint ? "Low" : "In Stock";
-          return { ...i, computedStatus: status };
-        });
-
-        const ok = computed.filter(i => i.computedStatus === "In Stock").length;
-        const low = computed.filter(i => i.computedStatus === "Low").length;
-        const critical = computed.filter(i => i.computedStatus === "Critical").length;
-
-        const okPct = Math.round((ok / totalStock) * 100);
-        const lowPct = Math.round((low / totalStock) * 100);
-        const critPct = 100 - okPct - lowPct;
-
-        setStockBreakdown([
-          { label: "มีสินค้าพร้อมขาย", value: okPct, color: "#2BBF7A" },
-          { label: "สต็อกใกล้หมด", value: lowPct, color: "#FF8A3D" },
-          { label: "สินค้าหมด", value: Math.max(0, critPct), color: "#E54848" },
-        ]);
-
-        const occupied = inventories.filter(i => i.quantity > 0).length;
-        const capacityPct = totalStock > 0 ? Math.round((occupied / totalStock) * 100) : 0;
-        setWarehouseCapacity(`${capacityPct}%`);
-        setCapacityStatus(capacityPct >= 90 ? "ใกล้เต็มคลัง" : capacityPct >= 60 ? "ใช้งานเหมาะสม" : "ยังว่างมาก");
-
-        const lowItems = computed.filter(i => i.computedStatus === "Low" || i.computedStatus === "Critical").slice(0, 4);
-        if (lowItems.length > 0) {
-          setAlerts(lowItems.map((item, idx) => ({
-            id: item.productId,
-            title: item.computedStatus === "Critical" ? "สต็อกวิกฤต" : "สต็อกสินค้าต่ำ",
-            time: `${idx * 15 + 5} นาทีที่แล้ว`,
-            desc: `สินค้า '${pMap.get(item.productId) ?? "สินค้า"}' ต่ำกว่าเกณฑ์ความปลอดภัย (เหลือ: ${item.quantity} ชิ้น)`,
-            priority: item.computedStatus === "Critical" ? "วิกฤต" : "เตือน",
-            zone: idx % 2 === 0 ? "โซน A" : "โซน B",
-            borderColor: item.computedStatus === "Critical" ? "border-l-red-500" : "border-l-amber-500",
-            badgeColor: item.computedStatus === "Critical"
-              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-              : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-            isCritical: item.computedStatus === "Critical",
-          })));
-        } else {
-          setAlerts([
-            {
-              id: "1",
-              title: "ตรวจพบข้อผิดพลาดในการหยิบสินค้า",
-              time: "10 นาทีที่แล้ว",
-              desc: "พบความไม่ตรงกันในโซน C แถว 4 คาดหวัง: XLR-10M (x5) สแกนพบ: XLR-5M",
-              priority: "สำคัญมาก",
-              zone: "โซน C",
-              borderColor: "border-l-amber-500",
-              badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-              isCritical: true,
-            }
-          ]);
+      if (ordSummary.hourlyFulfillment && ordSummary.hourlyFulfillment.some(c => c > 0)) {
+        setBarChartData(ordSummary.hourlyFulfillment);
+      } else {
+        if (totalOrdersCount > 0) {
+          const mockHourly = [2, 4, 3, 5, 4, 6, 5, 4, 3, 2, 1, 1].map(x => Math.round(x * (totalOrdersCount / 30)));
+          setBarChartData(mockHourly);
         }
+      }
+
+      // 4. Set Inventory stats from Inventory Summary
+      const capacityPct = invSummary.capacityPct;
+      setWarehouseCapacity(`${capacityPct}%`);
+      
+      let statusText = "ยังว่างมาก";
+      if (capacityPct >= 100) {
+        statusText = "เต็มคลัง";
+      } else if (capacityPct >= 90) {
+        statusText = "ใกล้เต็มคลัง";
+      } else if (capacityPct >= 65) {
+        statusText = "ใช้งานหนาแน่น";
+      } else if (capacityPct >= 35) {
+        statusText = "ใช้งานเหมาะสม";
+      }
+      setCapacityStatus(statusText);
+
+      setStockBreakdown([
+        { label: "มีสินค้าพร้อมขาย", value: invSummary.okPct, color: "#2BBF7A" },
+        { label: "สต็อกใกล้หมด", value: invSummary.lowPct, color: "#FF8A3D" },
+        { label: "สินค้าหมด", value: invSummary.critPct, color: "#E54848" },
+      ]);
+
+      // Compute Stock Accuracy based on okPct
+      const accuracyPct = Math.min(100, Math.max(94, 94 + (invSummary.okPct * 6 / 100)));
+      setAccuracyPoints([96.1, 97.4, 95.8, 98.2, 97.0, 98.9, 99.1, 98.4, 97.7, 98.6, 99.3, accuracyPct]);
+
+      // Set Alerts and Total Alerts Count
+      setTotalAlertsCount(invSummary.totalAlertsCount);
+
+      const displayAlerts = invSummary.alerts.slice(0, 4);
+      if (displayAlerts.length > 0) {
+        setAlerts(displayAlerts.map((item, idx) => ({
+          id: item.productId,
+          title: item.computedStatus === "Critical" ? "สต็อกวิกฤต" : "สต็อกสินค้าต่ำ",
+          time: `${idx * 15 + 5} นาทีที่แล้ว`,
+          desc: `สินค้า '${item.productName}' ต่ำกว่าเกณฑ์ความปลอดภัย (พร้อมขาย: ${item.available} ชิ้น / ทั้งหมด: ${item.quantity} ชิ้น)`,
+          priority: item.computedStatus === "Critical" ? "วิกฤต" : "เตือน",
+          zone: idx % 2 === 0 ? "โซน A" : "โซน B",
+          borderColor: item.computedStatus === "Critical" ? "border-l-red-500" : "border-l-amber-500",
+          badgeColor: item.computedStatus === "Critical"
+            ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+            : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+          isCritical: item.computedStatus === "Critical",
+        })));
+      } else {
+        setAlerts([]);
       }
     } catch (e: any) {
       setError(e.message ?? "ไม่สามารถโหลดข้อมูลสถิติหน้า Dashboard ได้");
@@ -280,6 +295,7 @@ export default function StaffDashboardPage() {
   const getRecipientName = (order: OrderRecord) => {
     const snap = order.shippingAddressSnapshot;
     if (!snap) return "ไม่ทราบชื่อ";
+    if (snap.receiverName) return snap.receiverName;
     if (snap.name) return snap.name;
     return `${snap.firstName ?? ""} ${snap.lastName ?? ""}`.trim() || "ไม่ทราบชื่อ";
   };
@@ -310,38 +326,68 @@ export default function StaffDashboardPage() {
       progressBarWidth: warehouseCapacity !== "–" ? warehouseCapacity : "0%",
     },
     {
-      title: "อุบัติเหตุในคลังสินค้า",
-      value: "0",
-      change: "30 วันที่ผ่านมา",
-      status: "positive",
-      desc: "ไม่มีรายงานอุบัติเหตุ",
-      bgGradient: "from-blue-500/10 to-indigo-500/10",
-      iconColor: "text-blue-600 dark:text-blue-400",
-      iconBg: "bg-blue-50 dark:bg-blue-500/20",
-      icon: <Shield className="w-6 h-6" />,
-      progressBarWidth: "100%",
+      title: "รายการแจ้งเตือนคลังสินค้า",
+      value: String(totalAlertsCount),
+      change: totalAlertsCount > 0 ? "มีรายการสต็อกต่ำ" : "ปกติ",
+      status: totalAlertsCount > 0 ? "warning" : "positive",
+      desc: totalAlertsCount > 0 ? "มีสินค้าต่ำกว่าเกณฑ์" : "สต็อกทุกรายการปกติ",
+      bgGradient: "from-red-500/10 to-orange-500/10",
+      iconColor: "text-red-600 dark:text-red-400",
+      iconBg: "bg-red-50 dark:bg-red-500/20",
+      icon: <AlertTriangle className="w-6 h-6" />,
+      progressBarWidth: totalAlertsCount > 0 ? `${Math.min(100, totalAlertsCount * 25)}%` : "0%",
     },
   ];
 
-  const statusOrderColor: Record<string, string> = {
-    delivered: "bg-emerald-500",
-    shipped: "bg-sky-500",
-    packed: "bg-violet-500",
-    confirmed: "bg-blue-500",
-    pending: "bg-amber-500",
-    cancelled: "bg-zinc-400",
-    refunded: "bg-zinc-400",
+  const statusOrderConfig: Record<string, { label: string; badge: string; dot: string }> = {
+    pending: { label: "รอดำเนินการ", badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400", dot: "bg-amber-500" },
+    confirmed: { label: "ยืนยันแล้ว", badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", dot: "bg-blue-500" },
+    packed: { label: "แพ็คสินค้าแล้ว", badge: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400", dot: "bg-purple-500" },
+    shipped: { label: "กำลังจัดส่ง", badge: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400", dot: "bg-sky-500" },
+    delivered: { label: "ส่งสำเร็จแล้ว", badge: "bg-emerald-100 text-emerald-400 dark:bg-emerald-900/30 dark:text-emerald-450", dot: "bg-emerald-500" },
+    cancelled: { label: "ยกเลิกแล้ว", badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400", dot: "bg-zinc-500" },
+    refunded: { label: "คืนเงินแล้ว", badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400", dot: "bg-zinc-500" },
   };
 
-  const statusOrderLabel: Record<string, string> = {
-    delivered: "ส่งแล้ว",
-    shipped: "กำลังจัดส่ง",
-    packed: "แพ็คแล้ว",
-    confirmed: "ยืนยันแล้ว",
-    pending: "รอดำเนินการ",
-    cancelled: "ยกเลิก",
-    refunded: "คืนเงินแล้ว",
+  const getSystemStatus = () => {
+    if (error) {
+      return {
+        label: `ขาดการติดต่อกับเซิร์ฟเวอร์ (${error})`,
+        dotColor: "bg-red-500",
+        badgeBg: "bg-red-50 dark:bg-red-500/10",
+        borderColor: "border-red-200 dark:border-red-500/20",
+        textColor: "text-red-700 dark:text-red-400",
+      };
+    }
+    const hasCritical = alerts.some((a) => a.isCritical);
+    if (hasCritical) {
+      return {
+        label: `พบคลังสินค้าวิกฤต (${alerts.filter(a => a.isCritical).length} รายการ)`,
+        dotColor: "bg-red-500 animate-pulse",
+        badgeBg: "bg-red-50 dark:bg-red-500/10",
+        borderColor: "border-red-250 dark:border-red-500/25",
+        textColor: "text-red-700 dark:text-red-400",
+      };
+    }
+    if (alerts.length > 0) {
+      return {
+        label: `พบสต็อกต่ำกว่าเกณฑ์ (${alerts.length} รายการ)`,
+        dotColor: "bg-amber-500 animate-pulse",
+        badgeBg: "bg-amber-50 dark:bg-amber-500/10",
+        borderColor: "border-amber-200 dark:border-amber-500/20",
+        textColor: "text-amber-700 dark:text-amber-400",
+      };
+    }
+    return {
+      label: "ระบบทำงานปกติ",
+      dotColor: "bg-emerald-500 animate-pulse",
+      badgeBg: "bg-emerald-50 dark:bg-emerald-500/10",
+      borderColor: "border-emerald-200 dark:border-emerald-500/20",
+      textColor: "text-emerald-700 dark:text-emerald-400",
+    };
   };
+
+  const sysStatus = getSystemStatus();
 
   return (
     <div className="flex-1 space-y-6 animate-in fade-in duration-500 pb-12">
@@ -349,11 +395,21 @@ export default function StaffDashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
           <h2 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-white">ภาพรวมการดำเนินงาน</h2>
-          <p className="text-zinc-500 mt-2 text-sm">LIVE TELEMETRY • ติดตามความเคลื่อนไหวภายในคลังสินค้า</p>
+          <p className="text-zinc-650 dark:text-zinc-400 mt-2 text-sm font-semibold">LIVE TELEMETRY • ติดตามความเคลื่อนไหวภายในคลังสินค้า</p>
         </div>
-        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-semibold text-sm w-fit">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          ระบบทำงานปกติ
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-2.5 px-4 py-2 rounded-full border font-semibold text-sm w-fit transition-all duration-300 ${sysStatus.badgeBg} ${sysStatus.borderColor} ${sysStatus.textColor}`}>
+            <span className={`w-2.5 h-2.5 rounded-full ${sysStatus.dotColor}`} />
+            {sysStatus.label}
+          </div>
+          <button 
+            onClick={loadData}
+            disabled={isLoading}
+            className="p-2 rounded-xl bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700/60 border border-zinc-250 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-250 transition-all disabled:opacity-50 shadow-sm"
+            title="รีเฟรชข้อมูลคลัง"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
         </div>
       </div>
 
@@ -382,7 +438,7 @@ export default function StaffDashboardPage() {
                 <div className={`absolute inset-0 bg-gradient-to-br ${metric.bgGradient} opacity-0 group-hover:opacity-100 transition-opacity`} />
                 <div className="relative z-10 flex flex-col justify-between h-full w-full">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-zinc-500 dark:text-[#ddc1b3] tracking-[0.7px]">
+                    <span className="text-sm font-extrabold text-zinc-900 dark:text-[#ddc1b3] tracking-[0.7px]">
                       {metric.title}
                     </span>
                     <div className={`w-11 h-11 rounded-xl ${metric.iconBg} flex items-center justify-center ${metric.iconColor} shrink-0`}>
@@ -394,14 +450,14 @@ export default function StaffDashboardPage() {
                       <span className="text-4xl font-black text-zinc-900 dark:text-[#e5e1e6] tracking-[0.56px]">
                         {metric.value}
                       </span>
-                      <span className="text-xs font-semibold text-[#ffb68d]">
+                      <span className="text-sm font-bold text-amber-700 dark:text-[#ffb68d]">
                         {metric.change}
                       </span>
                     </div>
                     <div className="w-full bg-zinc-100 dark:bg-[#353438] h-1 rounded-full overflow-hidden mt-3">
                       <div className="bg-[#ffb68d] h-full rounded-full" style={{ width: metric.progressBarWidth }} />
                     </div>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2 font-medium">
+                    <p className="text-sm text-zinc-800 dark:text-[#e5e1e6] mt-2 font-bold">
                       {metric.desc}
                     </p>
                   </div>
@@ -416,28 +472,29 @@ export default function StaffDashboardPage() {
             <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col justify-between">
               <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
                 <div>
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-amber-500" />
+                  <h3 className="text-base font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-amber-550" />
                     ออเดอร์ที่จัดส่งสำเร็จต่อชั่วโมง
                   </h3>
-                  <p className="text-xs text-zinc-400 mt-0.5">ปริมาณออเดอร์ที่จัดการสำเร็จแต่ละชั่วโมง (วันนี้)</p>
+                  <p className="text-sm text-zinc-800 dark:text-zinc-400 font-semibold mt-1">ปริมาณออเดอร์ที่จัดการสำเร็จแต่ละชั่วโมง (วันนี้)</p>
                 </div>
                 <div className="flex gap-4">
-                  <span className="flex items-center gap-1.5 text-xs text-zinc-500"><div className="w-2 h-2 rounded-full bg-amber-500"></div> วันนี้</span>
-                  <span className="flex items-center gap-1.5 text-xs text-zinc-500"><div className="w-2 h-2 rounded-full bg-zinc-700"></div> เมื่อวาน</span>
+                  <span className="flex items-center gap-1.5 text-sm font-bold text-zinc-700 dark:text-zinc-400"><div className="w-2 h-2 rounded-full bg-amber-500"></div> วันนี้</span>
+                  <span className="flex items-center gap-1.5 text-sm font-bold text-zinc-700 dark:text-zinc-400"><div className="w-2 h-2 rounded-full bg-zinc-600"></div> เมื่อวาน</span>
                 </div>
               </div>
               <div className="p-6 h-[280px] flex items-center justify-center">
-                <svg viewBox={`0 0 ${barData.length * 44 + 24} 150`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                  {barData.map((val, i) => {
-                    const barH = (val / maxBar) * 92;
+                <svg viewBox={`0 0 ${barChartData.length * 44 + 24} 150`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+                  {barChartData.map((val, i) => {
+                    const localMaxBar = Math.max(...barChartData, 1);
+                    const barH = (val / localMaxBar) * 92;
                     const x = i * 44 + 12;
                     const barW = 28;
-                    const isMax = val === maxBar;
+                    const isMax = val === localMaxBar;
                     return (
                       <g key={i}>
                         <rect x={x} y={10} width={barW} height={110} rx="5" fill="currentColor" opacity="0.03" />
-                        <rect x={x} y={120 - barH} width={barW} height={barH} rx="5" fill="#FF8A3D" opacity={0.3 + (val / maxBar) * 0.7} />
+                        <rect x={x} y={120 - barH} width={barW} height={barH} rx="5" fill="#FF8A3D" opacity={0.3 + (val / localMaxBar) * 0.7} />
                         <text x={x + barW / 2} y="142" textAnchor="middle" fontSize="10" fill="currentColor" opacity="0.45" className="font-semibold">{barLabels[i]}</text>
                         <text x={x + barW / 2} y={114 - barH} textAnchor="middle" fontSize="10" fill="currentColor" opacity={isMax ? "0.5" : "0.5"} fontWeight={isMax ? "700" : "600"}>{val}</text>
                       </g>
@@ -451,15 +508,15 @@ export default function StaffDashboardPage() {
             <div className="lg:col-span-1 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
               <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-amber-500" />
+                  <h3 className="text-base font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-amber-550" />
                     ความแม่นยำสต็อก
                   </h3>
                 </div>
-                <p className="text-xs text-zinc-400">แนวโน้มย้อนหลัง 4 สัปดาห์</p>
+                <p className="text-sm text-zinc-800 dark:text-zinc-400 font-bold">แนวโน้มย้อนหลัง 4 สัปดาห์</p>
               </div>
               <div className="p-6 h-[280px] flex items-center justify-center relative">
-                <InventoryLineChart />
+                <InventoryLineChart points={accuracyPoints} />
               </div>
             </div>
           </div>
@@ -467,13 +524,13 @@ export default function StaffDashboardPage() {
           {/* แถวที่ 3: Donut Chart + Alerts */}
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Donut Chart */}
-            <div className="lg:col-span-1 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col justify-between min-h-[340px]">
+            <div className="lg:col-span-1 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col justify-between h-[340px] w-full">
               <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800">
-                <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <h3 className="text-lg font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
                   <PieChart className="w-5 h-5 text-amber-500" />
                   สถานะสินค้าคงคลัง
                 </h3>
-                <p className="text-sm text-zinc-400 mt-0.5">สัดส่วนสถานะสินค้าในคลัง</p>
+                <p className="text-sm text-zinc-800 dark:text-zinc-300 font-bold mt-0.5">สัดส่วนสถานะสินค้าในคลัง</p>
               </div>
               <div className="p-6 flex flex-col items-center justify-center flex-1">
                 <div className="flex items-center gap-6 w-full justify-center">
@@ -484,15 +541,15 @@ export default function StaffDashboardPage() {
                       <span className="text-3xl font-black text-zinc-900 dark:text-white">
                         {stockBreakdown[0]?.value ?? 0}%
                       </span>
-                      <span className="text-[11px] text-zinc-400 font-bold tracking-wider mt-1">มีสินค้า</span>
+                      <span className="text-sm text-zinc-800 dark:text-zinc-300 font-extrabold tracking-wider mt-1">มีสินค้า</span>
                     </div>
                   </div>
                   <div className="space-y-4">
                     {stockBreakdown.map((item) => (
                       <div key={item.label} className="flex items-center gap-3 text-sm">
                         <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                        <span className="text-zinc-650 dark:text-zinc-300 font-semibold">{item.label}</span>
-                        <span className="ml-auto font-bold text-zinc-800 dark:text-zinc-100 pl-3 text-base">{item.value}%</span>
+                        <span className="text-zinc-800 dark:text-zinc-300 font-extrabold">{item.label}</span>
+                        <span className="ml-auto font-black text-zinc-900 dark:text-zinc-100 pl-3 text-base">{item.value}%</span>
                       </div>
                     ))}
                   </div>
@@ -501,13 +558,13 @@ export default function StaffDashboardPage() {
             </div>
 
             {/* Alerts */}
-            <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col min-h-[340px]">
+            <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col h-[340px]">
               <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <h3 className="text-lg font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-amber-500" />
                   การแจ้งเตือนล่าสุด
                 </h3>
-                <Link href="/dashboard/inventory" className="px-4 py-2 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700/60 transition-colors uppercase tracking-wide">
+                <Link href="/dashboard/inventory" className="px-4 py-2 text-sm font-extrabold text-zinc-800 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700/60 transition-colors uppercase tracking-wide">
                   View All
                 </Link>
               </div>
@@ -519,16 +576,16 @@ export default function StaffDashboardPage() {
                         <span className={`w-2.5 h-2.5 rounded-full ${alert.isCritical ? "bg-red-500" : "bg-amber-500"}`}></span>
                         <h4 className="font-bold text-base text-zinc-900 dark:text-white leading-tight">{alert.title}</h4>
                       </div>
-                      <span className="text-sm text-zinc-500 font-medium whitespace-nowrap pt-0.5">
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300 font-bold whitespace-nowrap pt-0.5">
                         {alert.time}
                       </span>
                     </div>
-                    <p className="text-[15px] text-zinc-400 mt-2.5 ml-6 leading-relaxed">{alert.desc}</p>
+                    <p className="text-[15px] text-zinc-700 dark:text-zinc-300 font-semibold mt-2.5 ml-6 leading-relaxed">{alert.desc}</p>
                     <div className="flex gap-2.5 mt-4 ml-6">
                       <Badge variant="outline" className={`text-[11px] px-2.5 py-1 font-bold border-none uppercase tracking-wide ${alert.badgeColor}`}>
                         {alert.priority}
                       </Badge>
-                      <Badge variant="outline" className="text-[11px] px-2.5 py-1 font-bold bg-zinc-800 text-zinc-300 border-none uppercase tracking-wide">
+                      <Badge variant="outline" className="text-[11px] px-2.5 py-1 font-bold bg-zinc-800 dark:bg-zinc-800 text-zinc-100 dark:text-zinc-300 border-none uppercase tracking-wide">
                         {alert.zone}
                       </Badge>
                     </div>
@@ -537,7 +594,7 @@ export default function StaffDashboardPage() {
                 
                 {/* เพิ่มข้อความ fallback กรณีที่การแจ้งเตือนมีแค่ 1 อัน เพื่อไม่ให้ขอบล่างดูโล่งเกินไป */}
                 {alerts.length < 2 && (
-                  <div className="p-6 flex items-center justify-center text-sm text-zinc-500 italic opacity-60 h-32">
+                  <div className="p-6 flex items-center justify-center text-sm text-zinc-800 dark:text-zinc-300 font-bold italic h-32">
                     ไม่มีการแจ้งเตือนเพิ่มเติม
                   </div>
                 )}
@@ -549,21 +606,21 @@ export default function StaffDashboardPage() {
           <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden mt-6">
             <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-white">ออเดอร์ล่าสุด</h3>
+                <h3 className="text-base font-extrabold text-zinc-900 dark:text-white">ออเดอร์ล่าสุด</h3>
               </div>
-              <Link href="/dashboard/orders" className="px-3 py-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700/60 transition-colors">
+              <Link href="/dashboard/orders" className="px-3 py-1.5 text-sm font-extrabold text-zinc-800 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700/60 transition-colors">
                 VIEW ALL
               </Link>
             </div>
-            <div className="p-0">
-              <Table>
+            <div className="p-0 overflow-x-auto w-full">
+              <Table className="min-w-[800px] md:min-w-full">
                 <TableHeader className="bg-zinc-50/50 dark:bg-zinc-900/50">
                   <TableRow>
-                    <TableHead className="font-bold text-[11px] uppercase tracking-wider pl-6 text-zinc-500 h-12">ORDER ID</TableHead>
-                    <TableHead className="font-bold text-[11px] uppercase tracking-wider text-zinc-500">CUSTOMER NAME</TableHead>
-                    <TableHead className="font-bold text-[11px] uppercase tracking-wider text-zinc-500">ITEMS</TableHead>
-                    <TableHead className="font-bold text-[11px] uppercase tracking-wider text-zinc-500">STATUS</TableHead>
-                    <TableHead className="font-bold text-[11px] uppercase tracking-wider text-right pr-6 text-zinc-500">ACTION</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider pl-6 text-zinc-750 dark:text-zinc-300 h-12">รหัสคำสั่งซื้อ</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-750 dark:text-zinc-300">ชื่อลูกค้า</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-750 dark:text-zinc-300">สินค้า</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-750 dark:text-zinc-300">สถานะ</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-right pr-6 text-zinc-750 dark:text-zinc-300">การจัดการ</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -572,28 +629,31 @@ export default function StaffDashboardPage() {
                       <TableCell colSpan={5} className="text-center py-12 text-zinc-400 text-sm">ไม่มีออเดอร์คงค้างในขณะนี้</TableCell>
                     </TableRow>
                   ) : (
-                    orders.map((order) => {
+                    orders.slice(0, 5).map((order) => {
                       const recipient = getRecipientName(order);
-                      const dotColor = statusOrderColor[order.status] ?? "bg-zinc-400";
-                      const statusLabel = statusOrderLabel[order.status] ?? order.status;
+                      const sc = statusOrderConfig[order.status] ?? {
+                        label: order.status,
+                        badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400",
+                        dot: "bg-zinc-500"
+                      };
                       return (
                         <TableRow key={order.orderId} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                          <TableCell className="font-bold text-zinc-300 text-[12px] pl-6 py-4">
+                          <TableCell className="font-extrabold text-zinc-700 dark:text-zinc-400 text-sm pl-6 py-4">
                             {order.orderId.slice(0, 8).toUpperCase()}
                           </TableCell>
-                          <TableCell className="font-medium text-sm text-white">{recipient}</TableCell>
-                          <TableCell className="text-zinc-400 text-sm truncate max-w-[250px]">
+                          <TableCell className="font-bold text-sm text-zinc-900 dark:text-white">{recipient}</TableCell>
+                          <TableCell className="text-zinc-650 dark:text-zinc-300 text-sm font-semibold truncate max-w-[250px]">
                             {order.items?.map(i => `${productMap.get(i.productId) ?? "สินค้า"} (×${i.quantity})`).join(", ")}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-                              <span className={`text-sm font-bold uppercase ${dotColor.replace("bg-", "text-")}`}>{statusLabel}</span>
-                            </div>
+                            <Badge variant="outline" className={`text-sm px-2.5 py-1 font-bold border-none flex items-center gap-1.5 w-fit ${sc.badge}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                              {sc.label}
+                            </Badge>
                           </TableCell>
                           <TableCell className="text-right pr-6">
                             <Link href="/dashboard/orders" className="px-4 py-2 text-sm font-bold rounded bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/20 transition-colors inline-block tracking-wider uppercase">
-                              {order.status === 'pending' ? 'ตรวจสอบสินค้า' : order.status === 'confirmed' ? 'แพ็คสินค้า' : order.status === 'packed' ? 'ส่งสินค้า' : 'VIEW'}
+                              {order.status === 'pending' ? 'ตรวจสอบสินค้า' : order.status === 'confirmed' ? 'แพ็คสินค้า' : order.status === 'packed' ? 'ส่งสินค้า' : 'ดูออเดอร์'}
                             </Link>
                           </TableCell>
                         </TableRow>

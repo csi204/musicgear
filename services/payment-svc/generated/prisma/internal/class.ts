@@ -11,7 +11,7 @@
  * Please import the `PrismaClient` class from the `client.ts` file instead.
  */
 
-import * as runtime from "@prisma/client/runtime/client"
+import * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import type * as Prisma from "./prismaNamespace.ts"
 
 
@@ -20,7 +20,7 @@ const config: runtime.GetPrismaClientConfig = {
   "clientVersion": "7.8.0",
   "engineVersion": "3c6e192761c0362d496ed980de936e2f3cebcd3a",
   "activeProvider": "postgresql",
-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Get a free hosted Postgres database in seconds: `npx create-db`\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\nenum PaymentMethod {\n  credit_card\n  promptpay\n  bank_transfer\n}\n\nenum PaymentStatus {\n  pending\n  paid\n  failed\n  refunded\n}\n\nmodel Payment {\n  paymentId      String        @id @default(uuid()) @db.Uuid\n  orderId        String        @db.Uuid // Soft ref to order-svc\n  paymentMethod  PaymentMethod\n  provider       String        @default(\"omise\")\n  amount         Decimal       @db.Decimal(10, 2)\n  status         PaymentStatus @default(pending)\n  transactionRef String?\n  paidAt         DateTime?\n  createdAt      DateTime      @default(now())\n}\n",
+  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Get a free hosted Postgres database in seconds: `npx create-db`\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../generated/prisma\"\n  runtime  = \"workerd\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\nenum PaymentMethod {\n  credit_card\n  promptpay\n  bank_transfer\n}\n\nenum PaymentStatus {\n  pending\n  paid\n  failed\n  refunded\n}\n\nmodel Payment {\n  paymentId      String        @id @default(uuid()) @db.Uuid\n  orderId        String        @db.Uuid // Soft ref to order-svc\n  paymentMethod  PaymentMethod\n  provider       String        @default(\"omise\")\n  amount         Decimal       @db.Decimal(10, 2)\n  status         PaymentStatus @default(pending)\n  transactionRef String?\n  paidAt         DateTime?\n  createdAt      DateTime      @default(now())\n}\n",
   "runtimeDataModel": {
     "models": {},
     "enums": {},
@@ -37,22 +37,18 @@ config.parameterizationSchema = {
   strings: JSON.parse("[\"where\",\"Payment.findUnique\",\"Payment.findUniqueOrThrow\",\"orderBy\",\"cursor\",\"Payment.findFirst\",\"Payment.findFirstOrThrow\",\"Payment.findMany\",\"data\",\"Payment.createOne\",\"Payment.createMany\",\"Payment.createManyAndReturn\",\"Payment.updateOne\",\"Payment.updateMany\",\"Payment.updateManyAndReturn\",\"create\",\"update\",\"Payment.upsertOne\",\"Payment.deleteOne\",\"Payment.deleteMany\",\"having\",\"_count\",\"_avg\",\"_sum\",\"_min\",\"_max\",\"Payment.groupBy\",\"Payment.aggregate\",\"AND\",\"OR\",\"NOT\",\"paymentId\",\"orderId\",\"PaymentMethod\",\"paymentMethod\",\"provider\",\"amount\",\"PaymentStatus\",\"status\",\"transactionRef\",\"paidAt\",\"createdAt\",\"equals\",\"in\",\"notIn\",\"lt\",\"lte\",\"gt\",\"gte\",\"not\",\"contains\",\"startsWith\",\"endsWith\",\"set\",\"increment\",\"decrement\",\"multiply\",\"divide\"]"),
   graph: "SgsQDBwAADQAMB0AAAQAEB4AADQAMB8BAAAAASABADUAISIAADYiIiMBADcAISQQADgAISYAADkmIicBADoAIShAADsAISlAADwAIQEAAAABACABAAAAAQAgDBwAADQAMB0AAAQAEB4AADQAMB8BADUAISABADUAISIAADYiIiMBADcAISQQADgAISYAADkmIicBADoAIShAADsAISlAADwAIQInAAA-ACAoAAA-ACADAAAABAAgAwAABQAwBAAAAQAgAwAAAAQAIAMAAAUAMAQAAAEAIAMAAAAEACADAAAFADAEAAABACAJHwEAAAABIAEAAAABIgAAACICIwEAAAABJBAAAAABJgAAACYCJwEAAAABKEAAAAABKUAAAAABAQgAAAkAIAkfAQAAAAEgAQAAAAEiAAAAIgIjAQAAAAEkEAAAAAEmAAAAJgInAQAAAAEoQAAAAAEpQAAAAAEBCAAACwAwAQgAAAsAMAkfAQBEACEgAQBEACEiAABFIiIjAQBEACEkEABGACEmAABHJiInAQBIACEoQABJACEpQABKACECAAAAAQAgCAAADgAgCR8BAEQAISABAEQAISIAAEUiIiMBAEQAISQQAEYAISYAAEcmIicBAEgAIShAAEkAISlAAEoAIQIAAAAEACAIAAAQACACAAAABAAgCAAAEAAgAwAAAAEAIA8AAAkAIBAAAA4AIAEAAAABACABAAAABAAgBxUAAD8AIBYAAEAAIBcAAEMAIBgAAEIAIBkAAEEAICcAAD4AICgAAD4AIAwcAAAaADAdAAAXABAeAAAaADAfAQAbACEgAQAbACEiAAAcIiIjAQAdACEkEAAeACEmAAAfJiInAQAgACEoQAAhACEpQAAiACEDAAAABAAgAwAAFgAwFAAAFwAgAwAAAAQAIAMAAAUAMAQAAAEAIAwcAAAaADAdAAAXABAeAAAaADAfAQAbACEgAQAbACEiAAAcIiIjAQAdACEkEAAeACEmAAAfJiInAQAgACEoQAAhACEpQAAiACELFQAAJAAgGAAAMAAgGQAAMAAgKgEAAAABKwEAAAAELAEAAAAELQEAAAABLgEAAAABLwEAAAABMAEAAAABMQEAMwAhBxUAACQAIBgAADIAIBkAADIAICoAAAAiAisAAAAiCCwAAAAiCDEAADEiIg4VAAAkACAYAAAwACAZAAAwACAqAQAAAAErAQAAAAQsAQAAAAQtAQAAAAEuAQAAAAEvAQAAAAEwAQAAAAExAQAvACEyAQAAAAEzAQAAAAE0AQAAAAENFQAAJAAgFgAALgAgFwAALgAgGAAALgAgGQAALgAgKhAAAAABKxAAAAAELBAAAAAELRAAAAABLhAAAAABLxAAAAABMBAAAAABMRAALQAhBxUAACQAIBgAACwAIBkAACwAICoAAAAmAisAAAAmCCwAAAAmCDEAACsmIg4VAAAnACAYAAAqACAZAAAqACAqAQAAAAErAQAAAAUsAQAAAAUtAQAAAAEuAQAAAAEvAQAAAAEwAQAAAAExAQApACEyAQAAAAEzAQAAAAE0AQAAAAELFQAAJwAgGAAAKAAgGQAAKAAgKkAAAAABK0AAAAAFLEAAAAAFLUAAAAABLkAAAAABL0AAAAABMEAAAAABMUAAJgAhCxUAACQAIBgAACUAIBkAACUAICpAAAAAAStAAAAABCxAAAAABC1AAAAAAS5AAAAAAS9AAAAAATBAAAAAATFAACMAIQsVAAAkACAYAAAlACAZAAAlACAqQAAAAAErQAAAAAQsQAAAAAQtQAAAAAEuQAAAAAEvQAAAAAEwQAAAAAExQAAjACEIKgIAAAABKwIAAAAELAIAAAAELQIAAAABLgIAAAABLwIAAAABMAIAAAABMQIAJAAhCCpAAAAAAStAAAAABCxAAAAABC1AAAAAAS5AAAAAAS9AAAAAATBAAAAAATFAACUAIQsVAAAnACAYAAAoACAZAAAoACAqQAAAAAErQAAAAAUsQAAAAAUtQAAAAAEuQAAAAAEvQAAAAAEwQAAAAAExQAAmACEIKgIAAAABKwIAAAAFLAIAAAAFLQIAAAABLgIAAAABLwIAAAABMAIAAAABMQIAJwAhCCpAAAAAAStAAAAABSxAAAAABS1AAAAAAS5AAAAAAS9AAAAAATBAAAAAATFAACgAIQ4VAAAnACAYAAAqACAZAAAqACAqAQAAAAErAQAAAAUsAQAAAAUtAQAAAAEuAQAAAAEvAQAAAAEwAQAAAAExAQApACEyAQAAAAEzAQAAAAE0AQAAAAELKgEAAAABKwEAAAAFLAEAAAAFLQEAAAABLgEAAAABLwEAAAABMAEAAAABMQEAKgAhMgEAAAABMwEAAAABNAEAAAABBxUAACQAIBgAACwAIBkAACwAICoAAAAmAisAAAAmCCwAAAAmCDEAACsmIgQqAAAAJgIrAAAAJggsAAAAJggxAAAsJiINFQAAJAAgFgAALgAgFwAALgAgGAAALgAgGQAALgAgKhAAAAABKxAAAAAELBAAAAAELRAAAAABLhAAAAABLxAAAAABMBAAAAABMRAALQAhCCoQAAAAASsQAAAABCwQAAAABC0QAAAAAS4QAAAAAS8QAAAAATAQAAAAATEQAC4AIQ4VAAAkACAYAAAwACAZAAAwACAqAQAAAAErAQAAAAQsAQAAAAQtAQAAAAEuAQAAAAEvAQAAAAEwAQAAAAExAQAvACEyAQAAAAEzAQAAAAE0AQAAAAELKgEAAAABKwEAAAAELAEAAAAELQEAAAABLgEAAAABLwEAAAABMAEAAAABMQEAMAAhMgEAAAABMwEAAAABNAEAAAABBxUAACQAIBgAADIAIBkAADIAICoAAAAiAisAAAAiCCwAAAAiCDEAADEiIgQqAAAAIgIrAAAAIggsAAAAIggxAAAyIiILFQAAJAAgGAAAMAAgGQAAMAAgKgEAAAABKwEAAAAELAEAAAAELQEAAAABLgEAAAABLwEAAAABMAEAAAABMQEAMwAhDBwAADQAMB0AAAQAEB4AADQAMB8BADUAISABADUAISIAADYiIiMBADcAISQQADgAISYAADkmIicBADoAIShAADsAISlAADwAIQgqAQAAAAErAQAAAAQsAQAAAAQtAQAAAAEuAQAAAAEvAQAAAAEwAQAAAAExAQA9ACEEKgAAACICKwAAACIILAAAACIIMQAAMiIiCyoBAAAAASsBAAAABCwBAAAABC0BAAAAAS4BAAAAAS8BAAAAATABAAAAATEBADAAITIBAAAAATMBAAAAATQBAAAAAQgqEAAAAAErEAAAAAQsEAAAAAQtEAAAAAEuEAAAAAEvEAAAAAEwEAAAAAExEAAuACEEKgAAACYCKwAAACYILAAAACYIMQAALCYiCyoBAAAAASsBAAAABSwBAAAABS0BAAAAAS4BAAAAAS8BAAAAATABAAAAATEBACoAITIBAAAAATMBAAAAATQBAAAAAQgqQAAAAAErQAAAAAUsQAAAAAUtQAAAAAEuQAAAAAEvQAAAAAEwQAAAAAExQAAoACEIKkAAAAABK0AAAAAELEAAAAAELUAAAAABLkAAAAABL0AAAAABMEAAAAABMUAAJQAhCCoBAAAAASsBAAAABCwBAAAABC0BAAAAAS4BAAAAAS8BAAAAATABAAAAATEBAD0AIQAAAAAAAAE1AQAAAAEBNQAAACICBTUQAAAAATYQAAAAATcQAAAAATgQAAAAATkQAAAAAQE1AAAAJgIBNQEAAAABATVAAAAAAQE1QAAAAAEAAAAABRUABhYABxcACBgACRkACgAAAAAABRUABhYABxcACBgACRkACgECAQIDAQUGAQYHAQcIAQkKAQoMAgsNAwwPAQ0RAg4SBBETARIUARMVAhoYBRsZCw"
 }
-
-async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Module> {
-  const { Buffer } = await import('node:buffer')
-  const wasmArray = Buffer.from(wasmBase64, 'base64')
-  return new WebAssembly.Module(wasmArray)
-}
-
 config.compilerWasm = {
-  getRuntime: async () => await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.mjs"),
+  getRuntime: async () => await import("./query_compiler_fast_bg.js"),
 
   getQueryCompilerWasmModule: async () => {
-    const { wasm } = await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs")
-    return await decodeBase64AsWasm(wasm)
+    const { default: module } = await import("./query_compiler_fast_bg.wasm?module")
+    return module
   },
 
   importName: "./query_compiler_fast_bg.js"
+}
+if (typeof globalThis !== 'undefined' && globalThis['DEBUG'] || (typeof process !== 'undefined' && process.env && process.env.DEBUG) || undefined) {
+  runtime.Debug.enable(typeof globalThis !== 'undefined' && globalThis['DEBUG'] || (typeof process !== 'undefined' && process.env && process.env.DEBUG) || undefined)
 }
 
 

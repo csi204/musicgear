@@ -9,6 +9,20 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  "services": [
+    {
+      "binding": "CART_SVC",
+      "service": "cart-svc"
+    },
+    {
+      "binding": "INVENTORY_SVC",
+      "service": "inventory-svc"
+    },
+    {
+      "binding": "USER_SVC",
+      "service": "user-svc"
+    }
+  ],
   // "vars": {
   //   "MY_VAR": "my-variable"
   // },

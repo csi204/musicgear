@@ -7,17 +7,18 @@ import { Search, ScanLine, TrendingDown, TrendingUp, Clock, X, Check, Loader2, P
 import { Badge } from "@workspace/ui/components/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { getOrders, getProducts, updateOrderStatus, OrderRecord } from "@/lib/api";
+import { Pagination } from "@/components/pagination";
 
 type OrderStatus = "pending" | "confirmed" | "packed" | "shipped" | "delivered" | "cancelled" | "refunded";
 
-const statusConfig: Record<OrderStatus, { label: string; dot: string}> = {
-  pending: { label: "รอดำเนินการ", dot: "bg-amber-500"},
-  confirmed: { label: "ยืนยันแล้ว", dot: "bg-blue-500"},
-  packed: { label: "แพ็คสินค้าแล้ว", dot: "bg-purple-500"},
-  shipped: { label: "กำลังจัดส่ง", dot: "bg-sky-500"},
-  delivered: { label: "ส่งสำเร็จแล้ว", dot: "bg-emerald-500"},
-  cancelled: { label: "ยกเลิกแล้ว", dot: "bg-zinc-500"},
-  refunded: { label: "คืนเงินแล้ว", dot: "bg-zinc-500"},
+const statusConfig: Record<OrderStatus, { label: string; badge: string; dot: string }> = {
+  pending: { label: "รอดำเนินการ", badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400", dot: "bg-amber-500" },
+  confirmed: { label: "ยืนยันแล้ว", badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", dot: "bg-blue-500" },
+  packed: { label: "แพ็คสินค้าแล้ว", badge: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400", dot: "bg-purple-500" },
+  shipped: { label: "กำลังจัดส่ง", badge: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400", dot: "bg-sky-500" },
+  delivered: { label: "ส่งสำเร็จแล้ว", badge: "bg-emerald-100 text-emerald-400 dark:bg-emerald-900/30 dark:text-emerald-450", dot: "bg-emerald-500" },
+  cancelled: { label: "ยกเลิกแล้ว", badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400", dot: "bg-zinc-500" },
+  refunded: { label: "คืนเงินแล้ว", badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400", dot: "bg-zinc-500" },
 };
 
 const nextStatusMap: Partial<Record<OrderStatus, OrderStatus>> = {
@@ -66,7 +67,7 @@ function OrderRowSkeleton() {
       <TableCell><div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-32" /></TableCell>
       <TableCell><div className="h-6 bg-zinc-200 dark:bg-zinc-800 rounded w-16" /></TableCell>
       <TableCell><div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-24" /></TableCell>
-      <TableCell className="pr-6 text-right"><div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-16 inline-block" /></TableCell>
+      <TableCell className=""><div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-16 inline-block" /></TableCell>
     </TableRow>
   );
 }
@@ -84,6 +85,19 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [pickedItems, setPickedItems] = useState<Record<string, boolean>>({});
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Batch selection state
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [isBatchUpdating, setIsBatchUpdating] = useState(false);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedOrderIds([]);
+  }, [activeTab, search]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -124,9 +138,41 @@ export default function OrdersPage() {
     }
   };
 
+  const handleBatchTransition = async (targetStatus: OrderStatus) => {
+    setIsBatchUpdating(true);
+    try {
+      const transitionMap: Record<string, string> = {
+        confirmed: "pending",
+        packed: "confirmed",
+        shipped: "packed",
+      };
+
+      const eligibleOrders = orders.filter(
+        o => selectedOrderIds.includes(o.orderId) && o.status === transitionMap[targetStatus]
+      );
+
+      if (eligibleOrders.length === 0) {
+        alert("ไม่มีออเดอร์ใดอยู่ในสถานะที่เหมาะสมสำหรับการปรับเป็นสถานะนี้");
+        return;
+      }
+
+      const confirmMsg = `คุณต้องการเปลี่ยนสถานะออเดอร์จำนวน ${eligibleOrders.length} รายการ เป็น '${statusConfig[targetStatus].label}' ใช่หรือไม่?`;
+      if (!window.confirm(confirmMsg)) return;
+
+      await Promise.all(eligibleOrders.map(o => updateOrderStatus(o.orderId, targetStatus)));
+      setSelectedOrderIds([]);
+      await loadData();
+    } catch (e: any) {
+      alert(`ไม่สามารถปรับปรุงสถานะรายการกลุ่มได้: ${e.message}`);
+    } finally {
+      setIsBatchUpdating(false);
+    }
+  };
+
   const getRecipientName = (order: OrderRecord) => {
     const snap = order.shippingAddressSnapshot;
     if (!snap) return "ไม่ทราบชื่อ";
+    if (snap.receiverName) return snap.receiverName;
     if (snap.name) return snap.name;
     return `${snap.firstName ?? ""} ${snap.lastName ?? ""}`.trim() || "ไม่ทราบชื่อ";
   };
@@ -150,6 +196,12 @@ export default function OrdersPage() {
       customer.includes(search.toLowerCase());
     return matchTab && matchSearch;
   });
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedOrders = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // KPI Calculations
   const pendingCount = orders.filter((o) => o.status === "pending").length;
@@ -256,54 +308,89 @@ export default function OrdersPage() {
               <Table>
                 <TableHeader className="bg-zinc-50/50 dark:bg-zinc-900/50">
                   <TableRow>
-                    <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider text-zinc-500 h-12">รหัสออเดอร์</TableHead>
-                    <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500">ลูกค้า</TableHead>
-                    <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500">รายการสินค้า</TableHead>
-                    <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500">สถานะ</TableHead>
-                    <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500">วันที่สั่งซื้อ</TableHead>
-                    <TableHead className="font-bold text-right pr-6 text-xs uppercase tracking-wider text-zinc-500">จัดการ</TableHead>
+                    <TableHead className="w-12 pl-6">
+                      <input
+                        type="checkbox"
+                        checked={paginatedOrders.length > 0 && paginatedOrders.every(o => selectedOrderIds.includes(o.orderId))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedOrderIds(prev => {
+                              const newIds = paginatedOrders.map(o => o.orderId);
+                              return Array.from(new Set([...prev, ...newIds]));
+                            });
+                          } else {
+                            setSelectedOrderIds(prev => {
+                              const idsToExclude = paginatedOrders.map(o => o.orderId);
+                              return prev.filter(id => !idsToExclude.includes(id));
+                            });
+                          }
+                        }}
+                        className="rounded border-zinc-300 dark:border-zinc-700 accent-amber-500 cursor-pointer w-4 h-4"
+                      />
+                    </TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300 h-12">รหัสออเดอร์</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ลูกค้า</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">รายการสินค้า</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะ</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">วันที่สั่งซื้อ</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-16 text-zinc-400">ไม่พบออเดอร์ในหมวดหมู่นี้</TableCell>
+                      <TableCell colSpan={7} className="text-center py-16 text-zinc-400">ไม่พบออเดอร์ในหมวดหมู่นี้</TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((order) => {
+                    paginatedOrders.map((order) => {
                       const sc = statusConfig[order.status as OrderStatus] ?? statusConfig.pending;
                       const recipient = getRecipientName(order);
                       const address = getAddressText(order);
+                      const isSelected = selectedOrderIds.includes(order.orderId);
                       return (
-                        <TableRow key={order.orderId} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                          <TableCell className="font-bold text-zinc-900 dark:text-white pl-6 font-mono text-sm py-4">
+                        <TableRow key={order.orderId} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors ${isSelected ? "bg-amber-500/5 dark:bg-amber-500/5" : ""}`}>
+                          <TableCell className="pl-6 w-12">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedOrderIds(prev => [...prev, order.orderId]);
+                                } else {
+                                  setSelectedOrderIds(prev => prev.filter(id => id !== order.orderId));
+                                }
+                              }}
+                              className="rounded border-zinc-300 dark:border-zinc-700 accent-amber-500 cursor-pointer w-4 h-4"
+                            />
+                          </TableCell>
+                          <TableCell className="font-extrabold text-zinc-900 dark:text-white font-mono text-sm py-4">
                             {order.orderId.slice(0, 8).toUpperCase()}
                           </TableCell>
                           <TableCell>
-                            <div className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{recipient}</div>
-                            <div className="text-xs text-zinc-400 mt-1 max-w-[220px] truncate">{address}</div>
+                            <div className="font-bold text-zinc-950 dark:text-zinc-200 text-sm">{recipient}</div>
+                            <div className="text-xs font-semibold text-zinc-650 dark:text-zinc-400 mt-1 max-w-[220px] truncate">{address}</div>
                           </TableCell>
                           <TableCell className="max-w-[240px]">
                             <div className="space-y-1">
                               {order.items?.map((item) => (
-                                <div key={item.orderItemId} className="text-sm text-zinc-650 dark:text-zinc-400 truncate flex items-center gap-2">
-                                  <span className="font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-[11px]">×{item.quantity}</span>
+                                <div key={item.orderItemId} className="text-sm text-zinc-850 dark:text-zinc-300 font-semibold truncate flex items-center gap-2">
+                                  <span className="font-bold text-zinc-900 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-xs">×{item.quantity}</span>
                                   {productMap.get(item.productId) ?? "Guitar Product"}
                                 </div>
                               ))}
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className={`text-sm px-3 py-1.5 font-bold border-none flex items-center gap-2 w-fit`}>
-                              <span className={`w-2 h-2 rounded-full ${sc.dot}`} />
+                            <Badge variant="outline" className={`text-sm px-2.5 py-1 font-bold border-none flex items-center gap-1.5 w-fit ${sc.badge}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
                               {sc.label}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-sm text-zinc-500 dark:text-zinc-400">
+                          <TableCell className="text-sm font-bold text-zinc-700 dark:text-zinc-400">
                             {new Date(order.orderDate).toLocaleString("th-TH")}
                           </TableCell>
-                          <TableCell className="text-right pr-6">
-                            <div className="flex items-center justify-end gap-2.5">
+                          <TableCell className="">
+                            <div className="flex items-center justify-start gap-2.5">
                               {(order.status === "packed" || order.status === "shipped") && (
                                 <Link
                                   href={`/dashboard/orders/print?orderId=${order.orderId}`}
@@ -331,13 +418,66 @@ export default function OrdersPage() {
                 </TableBody>
               </Table>
             </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalEntries={filtered.length}
+              itemsPerPage={itemsPerPage}
+            />
           </div>
+          {/* Batch Action Toolbar */}
+          {selectedOrderIds.length > 0 && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-900/95 dark:bg-zinc-950/95 border border-zinc-200 dark:border-zinc-800 backdrop-blur-xl px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 z-40 animate-in slide-in-from-bottom-4 duration-300">
+              <div className="text-zinc-800 dark:text-zinc-200 text-xs font-semibold whitespace-nowrap">
+                เลือกออเดอร์แล้ว <span className="text-amber-500 font-extrabold text-sm">{selectedOrderIds.length}</span> รายการ
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleBatchTransition("confirmed")}
+                  disabled={isBatchUpdating}
+                  className="px-3.5 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-bold text-zinc-700 dark:text-zinc-300 disabled:opacity-40 transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-250 dark:border-zinc-700"
+                >
+                  รับออเดอร์ (Confirm)
+                </button>
+                <button
+                  onClick={() => handleBatchTransition("packed")}
+                  disabled={isBatchUpdating}
+                  className="px-3.5 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-bold text-zinc-700 dark:text-zinc-300 disabled:opacity-40 transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-250 dark:border-zinc-700"
+                >
+                  แพ็คเสร็จ (Pack)
+                </button>
+                <button
+                  onClick={() => handleBatchTransition("shipped")}
+                  disabled={isBatchUpdating}
+                  className="px-3.5 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-bold text-zinc-700 dark:text-zinc-300 disabled:opacity-40 transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-250 dark:border-zinc-700"
+                >
+                  กำลังส่ง (Ship)
+                </button>
+                <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-800 mx-1" />
+                <Link
+                  href={`/dashboard/orders/print?orderIds=${selectedOrderIds.join(",")}`}
+                  className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-xs font-bold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/15"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  พิมพ์ใบปะหน้าสินค้า ({selectedOrderIds.length})
+                </Link>
+                <button
+                  onClick={() => setSelectedOrderIds([])}
+                  className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-white transition-colors cursor-pointer"
+                  title="ยกเลิกการเลือก"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
-      {/* Fulfillment Modal Overlay - (No UI changes needed here as it looks fine, but included for completeness) */}
+      {/* Fulfillment Modal Overlay */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col gap-4 animate-in zoom-in duration-200 text-zinc-100 p-6 relative">
             <button
               onClick={() => setSelectedOrder(null)}

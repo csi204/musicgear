@@ -4,8 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { Search, SlidersHorizontal, Package, CheckCircle, AlertTriangle, Plus, X, Loader2, Check, AlertCircle, ChevronDown } from "lucide-react";
 import { Badge } from "@workspace/ui/components/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
-import { getBundles, getInventory, getProducts, BundleRecord, InventoryRecord } from "@/lib/api";
+import { getBundles, getInventory, getProducts, deleteBundleById, BundleRecord, InventoryRecord } from "@/lib/api";
 import { getAccessToken, getApiBaseUrl } from "@/lib/auth";
+import { CustomSelect } from "@/components/custom-select";
+import { Pagination } from "@/components/pagination";
+import { useUser } from "@/hooks/useUser";
 
 type BundleStatus = "healthy" | "low_component" | "out_of_stock";
 
@@ -218,18 +221,26 @@ function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">ประเภทส่วนลด</label>
-              <div className="relative group">
-                <select value={form.discountType} onChange={(e) => setForm(prev => ({ ...prev, discountType: e.target.value }))}
-                  className="w-full pl-3 pr-10 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer appearance-none">
-                  <option value="percentage">เปอร์เซ็นต์ (%)</option>
-                  <option value="fixed_amount">จำนวนเงิน (บาท)</option>
-                </select>
-                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none transition-transform duration-200 group-focus-within:rotate-180" />
-              </div>
+              <CustomSelect
+                value={form.discountType}
+                onChange={(val) => setForm(prev => ({ ...prev, discountType: val }))}
+                options={[
+                  { value: "percentage", label: "เปอร์เซ็นต์ (%)" },
+                  { value: "fixed_amount", label: "จำนวนเงิน (บาท)" }
+                ]}
+                triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-2.5 h-10"
+                dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
+              />
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">มูลค่าส่วนลด *</label>
-              <input type="number" placeholder={form.discountType === "percentage" ? "เช่น 10 (10%)" : "เช่น 500 (500 บาท)"} value={form.discountValue} onChange={(e) => setForm(prev => ({ ...prev, discountValue: e.target.value }))}
+              <input type="number" min="1" placeholder={form.discountType === "percentage" ? "เช่น 10 (10%)" : "เช่น 500 (500 บาท)"} value={form.discountValue}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || Number(val) > 0) {
+                    setForm(prev => ({ ...prev, discountValue: val }));
+                  }
+                }}
                 className="w-full px-3 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
             </div>
           </div>
@@ -240,20 +251,26 @@ function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
             <div className="flex gap-2 items-end">
               <div className="flex-1">
                 <label className="text-[10px] font-bold text-zinc-500 block mb-1">เลือกสินค้า</label>
-                <div className="relative group">
-                  <select value={currentProductId} onChange={(e) => setCurrentProductId(e.target.value)}
-                    className="w-full pl-3 pr-10 py-2.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer appearance-none">
-                    <option value="">-- เลือกสินค้า --</option>
-                    {productList.map(p => (
-                      <option key={p.productId} value={p.productId}>{p.name} ({p.sku})</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none transition-transform duration-200 group-focus-within:rotate-180" />
-                </div>
+                <CustomSelect
+                  value={currentProductId}
+                  onChange={setCurrentProductId}
+                  options={[
+                    { value: "", label: "-- เลือกสินค้า --" },
+                    ...productList.map(p => ({ value: p.productId, label: `${p.name} (${p.sku})` }))
+                  ]}
+                  triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-2.5 h-10 text-xs"
+                  dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
+                />
               </div>
               <div className="w-20">
                 <label className="text-[10px] font-bold text-zinc-500 block mb-1">จำนวน</label>
-                <input type="number" min={1} value={currentQty} onChange={(e) => setCurrentQty(Math.max(1, Number(e.target.value)))}
+                <input type="number" min={1} value={currentQty}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "" || Number(val) > 0) {
+                      if (val !== "") setCurrentQty(Math.max(1, Number(val)));
+                    }
+                  }}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 text-center font-bold" />
               </div>
               <button type="button" onClick={handleAddItem}
@@ -465,18 +482,26 @@ function EditBundleModal({ bundle, onClose, onSuccess }: EditBundleModalProps) {
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">ประเภทส่วนลด</label>
-              <div className="relative group">
-                <select value={form.discountType} onChange={(e) => setForm(prev => ({ ...prev, discountType: e.target.value }))}
-                  className="w-full pl-3 pr-10 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer appearance-none">
-                  <option value="percentage">เปอร์เซ็นต์ (%)</option>
-                  <option value="fixed_amount">จำนวนเงิน (บาท)</option>
-                </select>
-                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none transition-transform duration-200 group-focus-within:rotate-180" />
-              </div>
+              <CustomSelect
+                value={form.discountType}
+                onChange={(val) => setForm(prev => ({ ...prev, discountType: val }))}
+                options={[
+                  { value: "percentage", label: "เปอร์เซ็นต์ (%)" },
+                  { value: "fixed_amount", label: "จำนวนเงิน (บาท)" }
+                ]}
+                triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-2.5 h-10"
+                dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
+              />
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">มูลค่าส่วนลด *</label>
-              <input type="number" placeholder={form.discountType === "percentage" ? "เช่น 10 (10%)" : "เช่น 500 (500 บาท)"} value={form.discountValue} onChange={(e) => setForm(prev => ({ ...prev, discountValue: e.target.value }))}
+              <input type="number" min="1" placeholder={form.discountType === "percentage" ? "เช่น 10 (10%)" : "เช่น 500 (500 บาท)"} value={form.discountValue}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || Number(val) > 0) {
+                    setForm(prev => ({ ...prev, discountValue: val }));
+                  }
+                }}
                 className="w-full px-3 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
             </div>
           </div>
@@ -487,20 +512,26 @@ function EditBundleModal({ bundle, onClose, onSuccess }: EditBundleModalProps) {
             <div className="flex gap-2 items-end">
               <div className="flex-1">
                 <label className="text-[10px] font-bold text-zinc-500 block mb-1">เลือกสินค้า</label>
-                <div className="relative group">
-                  <select value={currentProductId} onChange={(e) => setCurrentProductId(e.target.value)}
-                    className="w-full pl-3 pr-10 py-2.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer appearance-none">
-                    <option value="">-- เลือกสินค้า --</option>
-                    {productList.map(p => (
-                      <option key={p.productId} value={p.productId}>{p.name} ({p.sku})</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none transition-transform duration-200 group-focus-within:rotate-180" />
-                </div>
+                <CustomSelect
+                  value={currentProductId}
+                  onChange={setCurrentProductId}
+                  options={[
+                    { value: "", label: "-- เลือกสินค้า --" },
+                    ...productList.map(p => ({ value: p.productId, label: `${p.name} (${p.sku})` }))
+                  ]}
+                  triggerClassName="bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 py-2.5 h-10 text-xs"
+                  dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 divide-y divide-zinc-100 dark:divide-zinc-800"
+                />
               </div>
               <div className="w-20">
                 <label className="text-[10px] font-bold text-zinc-500 block mb-1">จำนวน</label>
-                <input type="number" min={1} value={currentQty} onChange={(e) => setCurrentQty(Math.max(1, Number(e.target.value)))}
+                <input type="number" min={1} value={currentQty}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "" || Number(val) > 0) {
+                      if (val !== "") setCurrentQty(Math.max(1, Number(val)));
+                    }
+                  }}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 text-center font-bold" />
               </div>
               <button type="button" onClick={handleAddItem}
@@ -578,6 +609,7 @@ function EditBundleModal({ bundle, onClose, onSuccess }: EditBundleModalProps) {
 // Main Page
 // ─────────────────────────────────────────────────────
 export default function BundlesPage() {
+  const { isAdmin } = useUser();
   const [search, setSearch] = useState("");
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -589,6 +621,14 @@ export default function BundlesPage() {
   // Status Filter state
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedStatus]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -653,6 +693,12 @@ export default function BundlesPage() {
     return matchSearch && matchStatus;
   });
 
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedBundles = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const totalActive = bundles.length;
   const healthy = bundles.filter((b) => b.status === "healthy").length;
   const stockIssues = bundles.filter((b) => b.status !== "healthy").length;
@@ -665,13 +711,15 @@ export default function BundlesPage() {
           <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">จัดการเซ็ตสินค้า</h2>
           <p className="text-zinc-500 text-sm mt-1">ติดตามสถานะการจัดเซ็ตและความพร้อมของสินค้าในแต่ละเซ็ต</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors shadow-md shadow-amber-500/20"
-        >
-          <Plus className="w-4 h-4" />
-          สร้าง Bundle ใหม่
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors shadow-md shadow-amber-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            สร้าง Bundle ใหม่
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -767,31 +815,31 @@ export default function BundlesPage() {
               <div className="px-6 py-4 bg-zinc-50/50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800 animate-in fade-in duration-200">
                 <div className="max-w-xs">
                   <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 block mb-1.5">สถานะความพร้อม</label>
-                  <div className="relative group">
-                    <select
-                      value={selectedStatus}
-                      onChange={(e) => setSelectedStatus(e.target.value)}
-                      className="w-full pl-3 pr-8 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 cursor-pointer appearance-none"
-                    >
-                      <option value="all" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">สถานะทั้งหมด</option>
-                      <option value="healthy" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">พร้อมประกอบ</option>
-                      <option value="low_component" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">ส่วนประกอบใกล้หมด</option>
-                      <option value="out_of_stock" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">วัตถุดิบไม่พอ</option>
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none transition-transform duration-200 group-focus-within:rotate-180" />
-                  </div>
+                  <CustomSelect
+                    value={selectedStatus}
+                    onChange={setSelectedStatus}
+                    options={[
+                      { value: "all", label: "สถานะทั้งหมด" },
+                      { value: "healthy", label: "พร้อมประกอบ" },
+                      { value: "low_component", label: "ส่วนประกอบใกล้หมด" },
+                      { value: "out_of_stock", label: "วัตถุดิบไม่พอ" }
+                    ]}
+                    triggerClassName="bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700 text-xs py-2 px-3 h-9"
+                    dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
+                  />
                 </div>
               </div>
             )}
 
-            <Table>
+            <div className="overflow-x-auto w-full">
+              <Table className="min-w-[800px] md:min-w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider">เซ็ตสินค้า</TableHead>
-                  <TableHead className="font-bold text-xs uppercase tracking-wider">สถานะวัตถุดิบ</TableHead>
-                  <TableHead className="font-bold text-center text-xs uppercase tracking-wider">ประกอบแล้ว</TableHead>
-                  <TableHead className="font-bold text-center text-xs uppercase tracking-wider">ผลิตได้สูงสุด</TableHead>
-                  <TableHead className="font-bold text-right pr-6 text-xs uppercase tracking-wider">จัดการ</TableHead>
+                  <TableHead className="font-extrabold pl-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">เซ็ตสินค้า</TableHead>
+                  <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะวัตถุดิบ</TableHead>
+                  <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ประกอบแล้ว</TableHead>
+                  <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ผลิตได้สูงสุด</TableHead>
+                  <TableHead className="font-extrabold text-right pr-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -800,7 +848,7 @@ export default function BundlesPage() {
                     <TableCell colSpan={5} className="text-center py-16 text-zinc-400">ไม่พบเซ็ตสินค้าที่ตรงกัน</TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((bundle) => {
+                  paginatedBundles.map((bundle) => {
                     const sc = statusConfig[bundle.status];
                     const potential = getPotentialBuild(bundle);
                     return (
@@ -812,8 +860,8 @@ export default function BundlesPage() {
                             {bundle.components.map((comp) => (
                               <div key={comp.sku} className="flex items-center gap-2 text-xs">
                                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${comp.available === 0 ? "bg-red-500" : comp.available < comp.required * 5 ? "bg-amber-500" : "bg-emerald-500"}`} />
-                                <span className="text-zinc-500 dark:text-zinc-400">×{comp.required} {comp.name}</span>
-                                <span className={`ml-auto font-semibold ${comp.available === 0 ? "text-red-500" : "text-zinc-650 dark:text-zinc-300"}`}>
+                                <span className="text-zinc-700 dark:text-zinc-400 font-semibold">×{comp.required} {comp.name}</span>
+                                <span className={`ml-auto font-bold ${comp.available === 0 ? "text-red-500" : "text-zinc-800 dark:text-zinc-300"}`}>
                                   (เหลือ {comp.available} ชิ้น)
                                 </span>
                               </div>
@@ -821,7 +869,7 @@ export default function BundlesPage() {
                           </div>
                         </TableCell>
                         <TableCell className="py-4">
-                          <Badge variant="outline" className={`text-[10px] px-2.5 py-1 font-bold border-none flex items-center gap-1.5 w-fit ${sc.badge}`}>
+                          <Badge variant="outline" className={`text-[12px] px-2.5 py-1 font-bold border-none flex items-center gap-1.5 w-fit ${sc.badge}`}>
                             {sc.icon}
                             {sc.label}
                           </Badge>
@@ -836,16 +884,18 @@ export default function BundlesPage() {
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={() => setSelectedBundle(bundle)}
-                              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors"
+                              className="px-3 py-1.5 text-sm font-bold rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors"
                             >
                               ดูรายละเอียด
                             </button>
-                            <button
-                              onClick={() => setEditingBundle(bundle)}
-                              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
-                            >
-                              แก้ไข
-                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditingBundle(bundle)}
+                                className="px-3 py-1.5 text-sm font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                              >
+                                แก้ไข
+                              </button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -854,6 +904,14 @@ export default function BundlesPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalEntries={filtered.length}
+              itemsPerPage={itemsPerPage}
+            />
           </div>
         </>
       )}
@@ -863,7 +921,7 @@ export default function BundlesPage() {
       )}
 
       {selectedBundle && (
-        <BundleDetailModal bundle={selectedBundle} onClose={() => setSelectedBundle(null)} />
+        <BundleDetailModal bundle={selectedBundle} onClose={() => setSelectedBundle(null)} onSuccess={loadData} />
       )}
 
       {editingBundle && (
@@ -879,13 +937,40 @@ export default function BundlesPage() {
 interface BundleDetailModalProps {
   bundle: Bundle;
   onClose: () => void;
+  onSuccess: () => void;
 }
 
-function BundleDetailModal({ bundle, onClose }: BundleDetailModalProps) {
+function BundleDetailModal({ bundle, onClose, onSuccess }: BundleDetailModalProps) {
+  const { isAdmin } = useUser();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const statusLabels: Record<string, string> = {
     healthy: "พร้อมประกอบสมบูรณ์",
     low_component: "ส่วนประกอบสต็อกเหลือน้อย",
     out_of_stock: "วัตถุดิบหมด / ไม่พอประกอบ",
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`คุณแน่ใจหรือไม่ที่จะลบเซ็ตสินค้า "${bundle.name}"? การดำเนินการนี้ไม่สามารถย้อนกลับได้`)) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      setError(null);
+      const token = getAccessToken();
+      const res = await deleteBundleById(bundle.id, token || undefined);
+      if (res.status !== "ok") {
+        throw new Error(res.message ?? "Failed to delete bundle");
+      }
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err.message ?? "ไม่สามารถลบเซ็ตสินค้าได้");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -904,11 +989,17 @@ function BundleDetailModal({ bundle, onClose }: BundleDetailModalProps) {
 
         {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
+          {error && (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0" />{error}
+            </div>
+          )}
+
           {/* Main Info */}
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <h4 className="text-xl font-bold leading-tight">{bundle.name}</h4>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              <span className={`text-[12px] font-bold px-2 py-0.5 rounded-full ${
                 bundle.status === "healthy" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400" :
                 bundle.status === "low_component" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400" :
                 "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
@@ -939,7 +1030,7 @@ function BundleDetailModal({ bundle, onClose }: BundleDetailModalProps) {
 
           {/* Component Inventory Table */}
           <div className="space-y-3">
-            <h5 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">รายการส่วนประกอบภายในเซ็ต</h5>
+            <h5 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">รายการส่วนประกอบภายในเซ็ต</h5>
             <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-50 dark:bg-zinc-950/20">
               <table className="w-full text-xs">
                 <thead>
@@ -962,7 +1053,7 @@ function BundleDetailModal({ bundle, onClose }: BundleDetailModalProps) {
                         <td className="py-2.5 px-4 text-center font-bold text-zinc-700 dark:text-zinc-350">{comp.required}</td>
                         <td className="py-2.5 px-4 text-center font-bold text-zinc-700 dark:text-zinc-350">{comp.available}</td>
                         <td className="py-2.5 px-4 text-right pr-4">
-                          <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
+                          <span className={`font-bold px-2 py-0.5 rounded text-[12px] ${
                             sufficient ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400" :
                             "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
                           }`}>
@@ -980,11 +1071,11 @@ function BundleDetailModal({ bundle, onClose }: BundleDetailModalProps) {
           {/* Assembly Stats */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">จำนวนที่ประกอบแล้ว</span>
+              <span className="text-[12px] text-zinc-400 font-bold uppercase tracking-wider block">จำนวนที่ประกอบแล้ว</span>
               <p className="text-2xl font-black text-zinc-800 dark:text-zinc-200 mt-1">{bundle.assembled}</p>
             </div>
             <div className="bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">ผลิตเพิ่มได้สูงสุด</span>
+              <span className="text-[12px] text-zinc-400 font-bold uppercase tracking-wider block">ผลิตเพิ่มได้สูงสุด</span>
               <p className={`text-2xl font-black mt-1 ${bundle.assembled === 0 ? "text-red-500" : "text-emerald-500"}`}>
                 {bundle.assembled} ชุด
               </p>
@@ -993,7 +1084,17 @@ function BundleDetailModal({ bundle, onClose }: BundleDetailModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end">
+        <div className={`px-6 py-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center ${isAdmin ? "justify-between" : "justify-end"}`}>
+          {isAdmin && (
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="px-5 py-2.5 bg-red-600 hover:bg-red-750 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
+              ลบเซ็ตสินค้า
+            </button>
+          )}
           <button onClick={onClose} className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-xl transition-all">
             ปิดหน้าต่าง
           </button>

@@ -51,26 +51,43 @@ export async function publishStockUpdated(env, productId, beforeQty, afterQty, s
     status: snapshot?.status ?? (afterQty === 0 ? "Critical" : afterQty <= 5 ? "Low" : "In Stock"),
   };
 
-  // Publish ไปยัง subscriber แต่ละตัว (fire-and-forget)
-  for (const subscriberUrl of subscribers) {
-    console.info(`[publishStockUpdated] Publishing stock.updated to: ${subscriberUrl}`);
+  // ถ้ารันบน Local (http://localhost:8080) ให้ยิง Webhook ตรงๆ เลยเพื่อลดปัญหา
+  const isLocal = !qstashUrl || !qstashToken || qstashUrl.includes("localhost");
 
-    fetch(`${qstashUrl}/v2/publish/${subscriberUrl}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${qstashToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }).then(async (res) => {
-      if (!res.ok) {
-        const text = await res.text();
-        console.error(`[publishStockUpdated] QStash error ${res.status}: ${text}`);
-      } else {
-        console.info(`[publishStockUpdated] Event published successfully to ${subscriberUrl}`);
+  await Promise.all(subscribers.map(async (subscriberUrl) => {
+    if (isLocal) {
+      console.info(`[publishStockUpdated] Local Dev Mode: Direct webhook to ${subscriberUrl}`);
+      try {
+        const res = await fetch(subscriberUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) console.error(`[publishStockUpdated] Direct webhook error: ${res.status}`);
+      } catch (err) {
+        console.error(`[publishStockUpdated] Direct webhook failed:`, err.message);
       }
-    }).catch(err => {
-      console.error(`[publishStockUpdated] QStash publish failed:`, err);
-    });
-  }
+    } else {
+      console.info(`[publishStockUpdated] Publishing stock.updated to QStash: ${subscriberUrl}`);
+      try {
+        const res = await fetch(`${qstashUrl}/v2/publish/${subscriberUrl}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${qstashToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          console.error(`[publishStockUpdated] QStash error ${res.status}: ${text}`);
+        } else {
+          console.info(`[publishStockUpdated] Event published successfully to ${subscriberUrl}`);
+        }
+      } catch (err) {
+        console.error(`[publishStockUpdated] QStash publish failed:`, err);
+      }
+    }
+  }));
 }

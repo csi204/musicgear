@@ -2090,6 +2090,10 @@ export namespace Prisma {
     productId: string | null
     quantity: number | null
     price: Decimal | null
+    color: string | null
+    title: string | null
+    imageUrl: string | null
+    brand: string | null
   }
 
   export type CartItemMaxAggregateOutputType = {
@@ -2098,6 +2102,10 @@ export namespace Prisma {
     productId: string | null
     quantity: number | null
     price: Decimal | null
+    color: string | null
+    title: string | null
+    imageUrl: string | null
+    brand: string | null
   }
 
   export type CartItemCountAggregateOutputType = {
@@ -2106,6 +2114,10 @@ export namespace Prisma {
     productId: number
     quantity: number
     price: number
+    color: number
+    title: number
+    imageUrl: number
+    brand: number
     _all: number
   }
 
@@ -2126,6 +2138,10 @@ export namespace Prisma {
     productId?: true
     quantity?: true
     price?: true
+    color?: true
+    title?: true
+    imageUrl?: true
+    brand?: true
   }
 
   export type CartItemMaxAggregateInputType = {
@@ -2134,6 +2150,10 @@ export namespace Prisma {
     productId?: true
     quantity?: true
     price?: true
+    color?: true
+    title?: true
+    imageUrl?: true
+    brand?: true
   }
 
   export type CartItemCountAggregateInputType = {
@@ -2142,6 +2162,10 @@ export namespace Prisma {
     productId?: true
     quantity?: true
     price?: true
+    color?: true
+    title?: true
+    imageUrl?: true
+    brand?: true
     _all?: true
   }
 
@@ -2237,6 +2261,10 @@ export namespace Prisma {
     productId: string
     quantity: number
     price: Decimal
+    color: string | null
+    title: string | null
+    imageUrl: string | null
+    brand: string | null
     _count: CartItemCountAggregateOutputType | null
     _avg: CartItemAvgAggregateOutputType | null
     _sum: CartItemSumAggregateOutputType | null
@@ -2264,6 +2292,10 @@ export namespace Prisma {
     productId?: boolean
     quantity?: boolean
     price?: boolean
+    color?: boolean
+    title?: boolean
+    imageUrl?: boolean
+    brand?: boolean
     cart?: boolean | CartDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["cartItem"]>
 
@@ -2273,6 +2305,10 @@ export namespace Prisma {
     productId?: boolean
     quantity?: boolean
     price?: boolean
+    color?: boolean
+    title?: boolean
+    imageUrl?: boolean
+    brand?: boolean
     cart?: boolean | CartDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["cartItem"]>
 
@@ -2282,6 +2318,10 @@ export namespace Prisma {
     productId?: boolean
     quantity?: boolean
     price?: boolean
+    color?: boolean
+    title?: boolean
+    imageUrl?: boolean
+    brand?: boolean
     cart?: boolean | CartDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["cartItem"]>
 
@@ -2291,9 +2331,13 @@ export namespace Prisma {
     productId?: boolean
     quantity?: boolean
     price?: boolean
+    color?: boolean
+    title?: boolean
+    imageUrl?: boolean
+    brand?: boolean
   }
 
-  export type CartItemOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"cartItemId" | "cartId" | "productId" | "quantity" | "price", ExtArgs["result"]["cartItem"]>
+  export type CartItemOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"cartItemId" | "cartId" | "productId" | "quantity" | "price" | "color" | "title" | "imageUrl" | "brand", ExtArgs["result"]["cartItem"]>
   export type CartItemInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     cart?: boolean | CartDefaultArgs<ExtArgs>
   }
@@ -2315,6 +2359,10 @@ export namespace Prisma {
       productId: string
       quantity: number
       price: Prisma.Decimal
+      color: string | null
+      title: string | null
+      imageUrl: string | null
+      brand: string | null
     }, ExtArgs["result"]["cartItem"]>
     composites: {}
   }
@@ -2744,6 +2792,10 @@ export namespace Prisma {
     readonly productId: FieldRef<"CartItem", 'String'>
     readonly quantity: FieldRef<"CartItem", 'Int'>
     readonly price: FieldRef<"CartItem", 'Decimal'>
+    readonly color: FieldRef<"CartItem", 'String'>
+    readonly title: FieldRef<"CartItem", 'String'>
+    readonly imageUrl: FieldRef<"CartItem", 'String'>
+    readonly brand: FieldRef<"CartItem", 'String'>
   }
     
 
@@ -3193,7 +3245,11 @@ export namespace Prisma {
     cartId: 'cartId',
     productId: 'productId',
     quantity: 'quantity',
-    price: 'price'
+    price: 'price',
+    color: 'color',
+    title: 'title',
+    imageUrl: 'imageUrl',
+    brand: 'brand'
   };
 
   export type CartItemScalarFieldEnum = (typeof CartItemScalarFieldEnum)[keyof typeof CartItemScalarFieldEnum]
@@ -3306,7 +3362,7 @@ export namespace Prisma {
     OR?: CartWhereInput[]
     NOT?: CartWhereInput | CartWhereInput[]
     cartId?: UuidFilter<"Cart"> | string
-    customerId?: UuidNullableFilter<"Cart"> | string | null
+    customerId?: StringNullableFilter<"Cart"> | string | null
     sessionId?: StringNullableFilter<"Cart"> | string | null
     createdAt?: DateTimeFilter<"Cart"> | Date | string
     updatedAt?: DateTimeFilter<"Cart"> | Date | string
@@ -3327,7 +3383,7 @@ export namespace Prisma {
     AND?: CartWhereInput | CartWhereInput[]
     OR?: CartWhereInput[]
     NOT?: CartWhereInput | CartWhereInput[]
-    customerId?: UuidNullableFilter<"Cart"> | string | null
+    customerId?: StringNullableFilter<"Cart"> | string | null
     sessionId?: StringNullableFilter<"Cart"> | string | null
     createdAt?: DateTimeFilter<"Cart"> | Date | string
     updatedAt?: DateTimeFilter<"Cart"> | Date | string
@@ -3350,7 +3406,7 @@ export namespace Prisma {
     OR?: CartScalarWhereWithAggregatesInput[]
     NOT?: CartScalarWhereWithAggregatesInput | CartScalarWhereWithAggregatesInput[]
     cartId?: UuidWithAggregatesFilter<"Cart"> | string
-    customerId?: UuidNullableWithAggregatesFilter<"Cart"> | string | null
+    customerId?: StringNullableWithAggregatesFilter<"Cart"> | string | null
     sessionId?: StringNullableWithAggregatesFilter<"Cart"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Cart"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Cart"> | Date | string
@@ -3365,6 +3421,10 @@ export namespace Prisma {
     productId?: UuidFilter<"CartItem"> | string
     quantity?: IntFilter<"CartItem"> | number
     price?: DecimalFilter<"CartItem"> | Decimal | DecimalJsLike | number | string
+    color?: StringNullableFilter<"CartItem"> | string | null
+    title?: StringNullableFilter<"CartItem"> | string | null
+    imageUrl?: StringNullableFilter<"CartItem"> | string | null
+    brand?: StringNullableFilter<"CartItem"> | string | null
     cart?: XOR<CartScalarRelationFilter, CartWhereInput>
   }
 
@@ -3374,6 +3434,10 @@ export namespace Prisma {
     productId?: SortOrder
     quantity?: SortOrder
     price?: SortOrder
+    color?: SortOrderInput | SortOrder
+    title?: SortOrderInput | SortOrder
+    imageUrl?: SortOrderInput | SortOrder
+    brand?: SortOrderInput | SortOrder
     cart?: CartOrderByWithRelationInput
   }
 
@@ -3386,6 +3450,10 @@ export namespace Prisma {
     productId?: UuidFilter<"CartItem"> | string
     quantity?: IntFilter<"CartItem"> | number
     price?: DecimalFilter<"CartItem"> | Decimal | DecimalJsLike | number | string
+    color?: StringNullableFilter<"CartItem"> | string | null
+    title?: StringNullableFilter<"CartItem"> | string | null
+    imageUrl?: StringNullableFilter<"CartItem"> | string | null
+    brand?: StringNullableFilter<"CartItem"> | string | null
     cart?: XOR<CartScalarRelationFilter, CartWhereInput>
   }, "cartItemId">
 
@@ -3395,6 +3463,10 @@ export namespace Prisma {
     productId?: SortOrder
     quantity?: SortOrder
     price?: SortOrder
+    color?: SortOrderInput | SortOrder
+    title?: SortOrderInput | SortOrder
+    imageUrl?: SortOrderInput | SortOrder
+    brand?: SortOrderInput | SortOrder
     _count?: CartItemCountOrderByAggregateInput
     _avg?: CartItemAvgOrderByAggregateInput
     _max?: CartItemMaxOrderByAggregateInput
@@ -3411,6 +3483,10 @@ export namespace Prisma {
     productId?: UuidWithAggregatesFilter<"CartItem"> | string
     quantity?: IntWithAggregatesFilter<"CartItem"> | number
     price?: DecimalWithAggregatesFilter<"CartItem"> | Decimal | DecimalJsLike | number | string
+    color?: StringNullableWithAggregatesFilter<"CartItem"> | string | null
+    title?: StringNullableWithAggregatesFilter<"CartItem"> | string | null
+    imageUrl?: StringNullableWithAggregatesFilter<"CartItem"> | string | null
+    brand?: StringNullableWithAggregatesFilter<"CartItem"> | string | null
   }
 
   export type CartCreateInput = {
@@ -3478,6 +3554,10 @@ export namespace Prisma {
     productId: string
     quantity: number
     price: Decimal | DecimalJsLike | number | string
+    color?: string | null
+    title?: string | null
+    imageUrl?: string | null
+    brand?: string | null
     cart: CartCreateNestedOneWithoutItemsInput
   }
 
@@ -3487,6 +3567,10 @@ export namespace Prisma {
     productId: string
     quantity: number
     price: Decimal | DecimalJsLike | number | string
+    color?: string | null
+    title?: string | null
+    imageUrl?: string | null
+    brand?: string | null
   }
 
   export type CartItemUpdateInput = {
@@ -3494,6 +3578,10 @@ export namespace Prisma {
     productId?: StringFieldUpdateOperationsInput | string
     quantity?: IntFieldUpdateOperationsInput | number
     price?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    color?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    brand?: NullableStringFieldUpdateOperationsInput | string | null
     cart?: CartUpdateOneRequiredWithoutItemsNestedInput
   }
 
@@ -3503,6 +3591,10 @@ export namespace Prisma {
     productId?: StringFieldUpdateOperationsInput | string
     quantity?: IntFieldUpdateOperationsInput | number
     price?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    color?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    brand?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type CartItemCreateManyInput = {
@@ -3511,6 +3603,10 @@ export namespace Prisma {
     productId: string
     quantity: number
     price: Decimal | DecimalJsLike | number | string
+    color?: string | null
+    title?: string | null
+    imageUrl?: string | null
+    brand?: string | null
   }
 
   export type CartItemUpdateManyMutationInput = {
@@ -3518,6 +3614,10 @@ export namespace Prisma {
     productId?: StringFieldUpdateOperationsInput | string
     quantity?: IntFieldUpdateOperationsInput | number
     price?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    color?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    brand?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type CartItemUncheckedUpdateManyInput = {
@@ -3526,6 +3626,10 @@ export namespace Prisma {
     productId?: StringFieldUpdateOperationsInput | string
     quantity?: IntFieldUpdateOperationsInput | number
     price?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    color?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    brand?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type UuidFilter<$PrismaModel = never> = {
@@ -3538,18 +3642,6 @@ export namespace Prisma {
     gte?: string | StringFieldRefInput<$PrismaModel>
     mode?: QueryMode
     not?: NestedUuidFilter<$PrismaModel> | string
-  }
-
-  export type UuidNullableFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    mode?: QueryMode
-    not?: NestedUuidNullableFilter<$PrismaModel> | string | null
   }
 
   export type StringNullableFilter<$PrismaModel = never> = {
@@ -3632,21 +3724,6 @@ export namespace Prisma {
     _max?: NestedStringFilter<$PrismaModel>
   }
 
-  export type UuidNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    mode?: QueryMode
-    not?: NestedUuidNullableWithAggregatesFilter<$PrismaModel> | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedStringNullableFilter<$PrismaModel>
-    _max?: NestedStringNullableFilter<$PrismaModel>
-  }
-
   export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -3712,6 +3789,10 @@ export namespace Prisma {
     productId?: SortOrder
     quantity?: SortOrder
     price?: SortOrder
+    color?: SortOrder
+    title?: SortOrder
+    imageUrl?: SortOrder
+    brand?: SortOrder
   }
 
   export type CartItemAvgOrderByAggregateInput = {
@@ -3725,6 +3806,10 @@ export namespace Prisma {
     productId?: SortOrder
     quantity?: SortOrder
     price?: SortOrder
+    color?: SortOrder
+    title?: SortOrder
+    imageUrl?: SortOrder
+    brand?: SortOrder
   }
 
   export type CartItemMinOrderByAggregateInput = {
@@ -3733,6 +3818,10 @@ export namespace Prisma {
     productId?: SortOrder
     quantity?: SortOrder
     price?: SortOrder
+    color?: SortOrder
+    title?: SortOrder
+    imageUrl?: SortOrder
+    brand?: SortOrder
   }
 
   export type CartItemSumOrderByAggregateInput = {
@@ -3867,17 +3956,6 @@ export namespace Prisma {
     not?: NestedUuidFilter<$PrismaModel> | string
   }
 
-  export type NestedUuidNullableFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    not?: NestedUuidNullableFilter<$PrismaModel> | string | null
-  }
-
   export type NestedStringNullableFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -3942,31 +4020,6 @@ export namespace Prisma {
     not?: NestedStringFilter<$PrismaModel> | string
   }
 
-  export type NestedUuidNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    not?: NestedUuidNullableWithAggregatesFilter<$PrismaModel> | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedStringNullableFilter<$PrismaModel>
-    _max?: NestedStringNullableFilter<$PrismaModel>
-  }
-
-  export type NestedIntNullableFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel> | null
-    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntNullableFilter<$PrismaModel> | number | null
-  }
-
   export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -3982,6 +4035,17 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedStringNullableFilter<$PrismaModel>
     _max?: NestedStringNullableFilter<$PrismaModel>
+  }
+
+  export type NestedIntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
   export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
@@ -4057,6 +4121,10 @@ export namespace Prisma {
     productId: string
     quantity: number
     price: Decimal | DecimalJsLike | number | string
+    color?: string | null
+    title?: string | null
+    imageUrl?: string | null
+    brand?: string | null
   }
 
   export type CartItemUncheckedCreateWithoutCartInput = {
@@ -4064,6 +4132,10 @@ export namespace Prisma {
     productId: string
     quantity: number
     price: Decimal | DecimalJsLike | number | string
+    color?: string | null
+    title?: string | null
+    imageUrl?: string | null
+    brand?: string | null
   }
 
   export type CartItemCreateOrConnectWithoutCartInput = {
@@ -4101,6 +4173,10 @@ export namespace Prisma {
     productId?: UuidFilter<"CartItem"> | string
     quantity?: IntFilter<"CartItem"> | number
     price?: DecimalFilter<"CartItem"> | Decimal | DecimalJsLike | number | string
+    color?: StringNullableFilter<"CartItem"> | string | null
+    title?: StringNullableFilter<"CartItem"> | string | null
+    imageUrl?: StringNullableFilter<"CartItem"> | string | null
+    brand?: StringNullableFilter<"CartItem"> | string | null
   }
 
   export type CartCreateWithoutItemsInput = {
@@ -4156,6 +4232,10 @@ export namespace Prisma {
     productId: string
     quantity: number
     price: Decimal | DecimalJsLike | number | string
+    color?: string | null
+    title?: string | null
+    imageUrl?: string | null
+    brand?: string | null
   }
 
   export type CartItemUpdateWithoutCartInput = {
@@ -4163,6 +4243,10 @@ export namespace Prisma {
     productId?: StringFieldUpdateOperationsInput | string
     quantity?: IntFieldUpdateOperationsInput | number
     price?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    color?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    brand?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type CartItemUncheckedUpdateWithoutCartInput = {
@@ -4170,6 +4254,10 @@ export namespace Prisma {
     productId?: StringFieldUpdateOperationsInput | string
     quantity?: IntFieldUpdateOperationsInput | number
     price?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    color?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    brand?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type CartItemUncheckedUpdateManyWithoutCartInput = {
@@ -4177,6 +4265,10 @@ export namespace Prisma {
     productId?: StringFieldUpdateOperationsInput | string
     quantity?: IntFieldUpdateOperationsInput | number
     price?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    color?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    brand?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
 
