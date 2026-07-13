@@ -10,6 +10,8 @@ import { getAccessToken, getApiBaseUrl } from "@/lib/auth";
 import { CustomSelect } from "@/components/custom-select";
 import { Pagination } from "@/components/pagination";
 import { useUser } from "@/hooks/useUser";
+import { useToast } from "@/components/toast-provider";
+
 
 type ProductStatus = "active" | "inactive" | "out_of_stock" | "discontinued";
 
@@ -22,6 +24,7 @@ interface DisplayProduct {
   price: number;
   stock: number;
   reserved: number;
+  maxCapacity: number;
   status: ProductStatus;
   description: string;
   skillLevel: string;
@@ -122,6 +125,7 @@ interface AddProductModalProps {
 }
 
 function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
+  const { toast } = useToast();
   const [form, setForm] = useState({
     name: "",
     sku: "",
@@ -163,7 +167,7 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
           setBrands(prev => [...prev, newBrand]);
           setForm(prev => ({ ...prev, brandId: newBrand.brandId }));
         } catch (err: any) {
-          alert(err.message ?? "เกิดข้อผิดพลาดในการสร้างแบรนด์");
+          toast({ type: "error", title: "ไม่สามารถสร้างแบรนด์ได้", description: err.message ?? "เกิดข้อผิดพลาดในการสร้างแบรนด์" });
         }
       }
     } else {
@@ -513,8 +517,8 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-[#1f1f22] border border-zinc-200 dark:border-[#2a2a2d] rounded-2xl max-w-4xl w-full shadow-2xl animate-in zoom-in duration-200 overflow-y-auto max-h-[92vh] text-zinc-900 dark:text-[#e5e1e6] flex flex-col">
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#1f1f22] border border-zinc-200 dark:border-[#2a2a2d] rounded-2xl max-w-4xl w-full shadow-2xl animate-in zoom-in duration-200 overflow-hidden max-h-[92vh] h-[90vh] text-zinc-900 dark:text-[#e5e1e6] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-zinc-200 dark:border-[#2a2a2d]">
           <div>
@@ -984,8 +988,9 @@ export default function ProductsPage() {
         const inv = invMap.get(p.productId);
         const stock = inv?.quantity ?? 0;
         const reserved = inv?.reservedQuantity ?? 0;
+        const maxCapacity = inv?.maxCapacity ?? 100;
         let status: ProductStatus = p.status as ProductStatus;
-        if (p.status === "active" && stock <= 0) status = "out_of_stock";
+        if (p.status === "active" && (stock - reserved) <= 0) status = "out_of_stock";
         return {
           id: p.productId,
           name: p.name,
@@ -995,6 +1000,7 @@ export default function ProductsPage() {
           price: p.price,
           stock,
           reserved,
+          maxCapacity,
           status,
           description: p.description ?? "ไม่มีคำอธิบายเพิ่มเติมสำหรับสินค้านี้",
           skillLevel: p.skillLevel ?? "ไม่ระบุระดับ",
@@ -1078,7 +1084,7 @@ export default function ProductsPage() {
               <SlidersHorizontal className="w-4 h-4" />
               กรองข้อมูล
             </button>
-            <span className="text-xs text-zinc-400 ml-auto">{filtered.length} รายการ</span>
+            <span className="text-sm font-semibold text-zinc-750 dark:text-zinc-300 ml-auto">{filtered.length} รายการ</span>
           </div>
 
           {/* Expanded Filter Panel */}
@@ -1086,7 +1092,7 @@ export default function ProductsPage() {
             <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in duration-200">
               {/* Category Filter */}
               <div>
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 block mb-1.5">หมวดหมู่</label>
+                <label className="text-sm font-extrabold text-zinc-700 dark:text-zinc-300 block mb-1.5">หมวดหมู่</label>
                 <CustomSelect
                   value={selectedCategory}
                   onChange={setSelectedCategory}
@@ -1094,14 +1100,14 @@ export default function ProductsPage() {
                     { value: "all", label: "หมวดหมู่ทั้งหมด" },
                     ...categories.map((cat) => ({ value: cat, label: cat }))
                   ]}
-                  triggerClassName="bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-250 dark:border-zinc-700 text-xs py-2 px-3 h-9"
+                  triggerClassName="bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-250 dark:border-zinc-700 text-sm py-2 px-3 h-10"
                   dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 divide-y divide-zinc-100 dark:divide-zinc-800"
                 />
               </div>
 
               {/* Status Filter */}
               <div>
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 block mb-1.5">สถานะ</label>
+                <label className="text-sm font-extrabold text-zinc-700 dark:text-zinc-300 block mb-1.5">สถานะ</label>
                 <CustomSelect
                   value={selectedStatus}
                   onChange={setSelectedStatus}
@@ -1112,7 +1118,7 @@ export default function ProductsPage() {
                     { value: "inactive", label: "ปิดใช้งาน" },
                     { value: "discontinued", label: "ยกเลิกผลิต" }
                   ]}
-                  triggerClassName="bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-250 dark:border-zinc-700 text-xs py-2 px-3 h-9"
+                  triggerClassName="bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-250 dark:border-zinc-700 text-sm py-2 px-3 h-10"
                   dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 divide-y divide-zinc-100 dark:divide-zinc-800"
                 />
               </div>
@@ -1125,13 +1131,13 @@ export default function ProductsPage() {
           <Table className="min-w-[900px] md:min-w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider">สินค้า</TableHead>
-              <TableHead className="font-bold text-xs uppercase tracking-wider">หมวดหมู่</TableHead>
-              <TableHead className="font-bold text-xs uppercase tracking-wider">แบรนด์</TableHead>
-              <TableHead className="font-bold text-xs uppercase tracking-wider">ราคา</TableHead>
-              <TableHead className="font-bold text-xs uppercase tracking-wider">คงเหลือ</TableHead>
-              <TableHead className="font-bold text-xs uppercase tracking-wider">สถานะ</TableHead>
-              <TableHead className="font-bold text-xs uppercase tracking-wider text-right pr-6">จัดการ</TableHead>
+              <TableHead className="font-extrabold pl-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สินค้า</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">หมวดหมู่</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">แบรนด์</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ราคา</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">คงเหลือ</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะ</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-right pr-6 text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1149,7 +1155,8 @@ export default function ProductsPage() {
               </TableRow>
             ) : (
               paginatedProducts.map((p) => {
-                const lowStock = p.status === "active" && (p.stock - p.reserved) <= 5 && p.stock > 0;
+                const available = p.stock - p.reserved;
+                const lowStock = p.status === "active" && available <= 0.3 * p.maxCapacity && available > 0;
                 const sc = statusConfig[p.status];
                 return (
                   <TableRow key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
@@ -1165,11 +1172,11 @@ export default function ProductsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-xs font-medium text-zinc-650 dark:text-zinc-300">
+                      <span className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-sm font-bold text-zinc-750 dark:text-zinc-300">
                         {p.category}
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">{p.brand}</TableCell>
+                    <TableCell className="text-sm text-zinc-900 dark:text-zinc-300 font-bold">{p.brand}</TableCell>
                     <TableCell className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
                       ฿{Number(p.price).toLocaleString("th-TH")}
                     </TableCell>
@@ -1245,17 +1252,24 @@ interface ProductDetailModalProps {
 
 function ProductDetailModal({ product, onClose, onEdit, onSuccess }: ProductDetailModalProps) {
   const { isAdmin } = useUser();
+  const { toast, confirm } = useToast();
   const handleDelete = async () => {
-    const confirmDelete = window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบสินค้า "${product.name}"? การดำเนินการนี้ไม่สามารถย้อนกลับได้`);
+    const confirmDelete = await confirm({
+      title: "ต้องการลบสินค้า?",
+      description: `คุณแน่ใจหรือไม่ว่าต้องการลบสินค้า "${product.name}"? การดำเนินการนี้ไม่สามารถย้อนกลับได้`,
+      confirmLabel: "ลบสินค้า",
+      cancelLabel: "ยกเลิก",
+      variant: "danger",
+    });
     if (!confirmDelete) return;
 
     try {
       await deleteProductById(product.id);
-      alert("ลบสินค้าเรียบร้อยแล้ว");
+      toast({ type: "success", title: "ลบสินค้าเรียบร้อยแล้ว" });
       onSuccess();
       onClose();
     } catch (err: any) {
-      alert(err.message ?? "เกิดข้อผิดพลาดในการลบสินค้า");
+      toast({ type: "error", title: "ไม่สามารถลบสินค้าได้", description: err.message ?? "เกิดข้อผิดพลาดในการลบสินค้า" });
     }
   };
 
@@ -1278,7 +1292,7 @@ function ProductDetailModal({ product, onClose, onEdit, onSuccess }: ProductDeta
                        "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=300&auto=format&fit=crop&q=60";
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full shadow-2xl animate-in zoom-in duration-200 overflow-hidden text-zinc-900 dark:text-zinc-100 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
@@ -1390,6 +1404,7 @@ interface EditProductModalProps {
 }
 
 function EditProductModal({ productId, onClose, onSuccess }: EditProductModalProps) {
+  const { toast } = useToast();
   const [form, setForm] = useState({
     name: "",
     sku: "",
@@ -1433,7 +1448,7 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
           setBrands(prev => [...prev, newBrand]);
           setForm(prev => ({ ...prev, brandId: newBrand.brandId }));
         } catch (err: any) {
-          alert(err.message ?? "เกิดข้อผิดพลาดในการสร้างแบรนด์");
+          toast({ type: "error", title: "ไม่สามารถสร้างแบรนด์ได้", description: err.message ?? "เกิดข้อผิดพลาดในการสร้างแบรนด์" });
         }
       }
     } else {
@@ -1790,8 +1805,8 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
   }
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-[#1f1f22] border border-zinc-200 dark:border-[#2a2a2d] rounded-2xl max-w-4xl w-full shadow-2xl animate-in zoom-in duration-200 overflow-y-auto max-h-[92vh] text-zinc-900 dark:text-[#e5e1e6] flex flex-col">
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#1f1f22] border border-zinc-200 dark:border-[#2a2a2d] rounded-2xl max-w-4xl w-full shadow-2xl animate-in zoom-in duration-200 overflow-hidden max-h-[92vh] h-[90vh] text-zinc-900 dark:text-[#e5e1e6] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-zinc-200 dark:border-[#2a2a2d]">
           <div>

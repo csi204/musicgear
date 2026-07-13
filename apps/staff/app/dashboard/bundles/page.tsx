@@ -835,11 +835,11 @@ export default function BundlesPage() {
               <Table className="min-w-[800px] md:min-w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider">เซ็ตสินค้า</TableHead>
-                  <TableHead className="font-bold text-xs uppercase tracking-wider">สถานะวัตถุดิบ</TableHead>
-                  <TableHead className="font-bold text-center text-xs uppercase tracking-wider">ประกอบแล้ว</TableHead>
-                  <TableHead className="font-bold text-center text-xs uppercase tracking-wider">ผลิตได้สูงสุด</TableHead>
-                  <TableHead className="font-bold text-right pr-6 text-xs uppercase tracking-wider">จัดการ</TableHead>
+                  <TableHead className="font-extrabold pl-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">เซ็ตสินค้า</TableHead>
+                  <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะวัตถุดิบ</TableHead>
+                  <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ประกอบแล้ว</TableHead>
+                  <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ผลิตได้สูงสุด</TableHead>
+                  <TableHead className="font-extrabold text-right pr-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -860,8 +860,8 @@ export default function BundlesPage() {
                             {bundle.components.map((comp) => (
                               <div key={comp.sku} className="flex items-center gap-2 text-xs">
                                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${comp.available === 0 ? "bg-red-500" : comp.available < comp.required * 5 ? "bg-amber-500" : "bg-emerald-500"}`} />
-                                <span className="text-zinc-500 dark:text-zinc-400">×{comp.required} {comp.name}</span>
-                                <span className={`ml-auto font-semibold ${comp.available === 0 ? "text-red-500" : "text-zinc-650 dark:text-zinc-300"}`}>
+                                <span className="text-zinc-700 dark:text-zinc-400 font-semibold">×{comp.required} {comp.name}</span>
+                                <span className={`ml-auto font-bold ${comp.available === 0 ? "text-red-500" : "text-zinc-800 dark:text-zinc-300"}`}>
                                   (เหลือ {comp.available} ชิ้น)
                                 </span>
                               </div>

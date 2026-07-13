@@ -6,6 +6,7 @@ import { ArrowLeft, Barcode, CheckCircle, AlertTriangle, XCircle, Plus, Loader2,
 import { getProducts, adjustStock, ProductRecord } from "@/lib/api";
 import { CustomSelect } from "@/components/custom-select";
 import { cn } from "@workspace/ui/lib/utils";
+import { useToast } from "@/components/toast-provider";
 
 type Condition = "good" | "damaged" | "missing";
 type MatchStatus = "full_match" | "shortage" | "damaged";
@@ -46,6 +47,7 @@ export default function ReceiveStockPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [expectedQty, setExpectedQty] = useState<number | string>(10);
+  const { toast, confirm } = useToast();
   
   const [poNumber, setPoNumber] = useState("");
   const [supplier, setSupplier] = useState("");
@@ -180,7 +182,7 @@ export default function ReceiveStockPage() {
 
   const handleAddMultipleItems = () => {
     if (selectedProductIds.length === 0) {
-      alert("กรุณาเลือกสินค้าอย่างน้อย 1 รายการ");
+      toast({ type: "warning", title: "กรุณาเลือกสินค้าກ่อน", description: "เลือกสินค้าอย่างน้อย 1 รายการจากรายการด้านซ้าย" });
       return;
     }
 
@@ -212,15 +214,19 @@ export default function ReceiveStockPage() {
 
   const handleFinalize = async () => {
     if (items.length === 0) {
-      alert("กรุณาเพิ่มสินค้าลงในรายการก่อน");
+      toast({ type: "warning", title: "ยังไม่มีสินค้าในรายการ", description: "กรุณาเพิ่มสินค้าลงในรายการก่อนทำการยืนยัน" });
       return;
     }
 
     // Check for discrepancies (quantity mismatch or damaged condition)
     if (discrepancies > 0) {
-      const confirmProceed = window.confirm(
-        `มีสินค้าที่ได้รับจริงไม่ตรงกับจำนวนคาดหวัง หรือสภาพสินค้าชำรุดเสียหาย ทั้งหมด ${discrepancies} รายการ คุณยังคงต้องการยืนยันการรับเข้าคลังสินค้าใช่หรือไม่?`
-      );
+      const confirmProceed = await confirm({
+        title: "ยืนยันทั้งที่มีข้อผิดพลาด?",
+        description: `มีสินค้าที่ได้รับจริงไม่ตรงกับจำนวนคาดหวัง หรือสภาพสินค้าชำรุดเสียหาย ทั้งหมด ${discrepancies} รายการ คุณยังคงต้องการยืนยันการรับเข้าคลังสินค้าใช่หรือไม่?`,
+        confirmLabel: "ยืนยัน รับเข้าคลัง",
+        cancelLabel: "ยกเลิก",
+        variant: "warning",
+      });
       if (!confirmProceed) return;
     }
 
@@ -347,11 +353,11 @@ export default function ReceiveStockPage() {
             <h3 className="text-sm lg:text-base font-bold text-zinc-900 dark:text-white">สรุปการรับสินค้า</h3>
             <div className="grid grid-cols-2 gap-2.5">
               <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-100 dark:border-zinc-700/55 p-3 text-center">
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">จำนวนคาดหวัง</p>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-bold uppercase tracking-wider">จำนวนคาดหวัง</p>
                 <p className="text-2xl lg:text-3xl font-black text-zinc-900 dark:text-[#e5e1e6] mt-1.5 leading-none">{totalExpected}</p>
               </div>
               <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-100 dark:border-zinc-700/55 p-3 text-center">
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">ได้รับจริง</p>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-bold uppercase tracking-wider">ได้รับจริง</p>
                 <p className={`text-2xl lg:text-3xl font-black mt-1.5 leading-none ${totalReceived === totalExpected ? "text-emerald-500" : "text-[#ffb68d]"}`}>{totalReceived}</p>
               </div>
             </div>
@@ -390,13 +396,13 @@ export default function ReceiveStockPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
-                  <th className="text-left py-3 px-4 text-xs font-bold text-zinc-500 w-8 pl-6">#</th>
-                  <th className="text-left py-3 px-4 text-xs font-bold text-zinc-500">SKU / ชื่อสินค้า</th>
-                  <th className="text-center py-3 px-4 text-xs font-bold text-zinc-500 w-24">คาดหวัง</th>
-                  <th className="text-center py-3 px-4 text-xs font-bold text-zinc-500 w-28">รับจริง</th>
-                  <th className="text-left py-3 px-4 text-xs font-bold text-zinc-500 w-64">สภาพสินค้า</th>
-                  <th className="text-center py-3 px-4 text-xs font-bold text-zinc-500 w-32">สถานะ</th>
-                  <th className="text-right py-3 px-4 text-xs font-bold text-zinc-500 w-16 pr-6">จัดการ</th>
+                  <th className="text-left py-3 px-4 text-xs font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider w-8 pl-6">#</th>
+                  <th className="text-left py-3 px-4 text-xs font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">SKU / ชื่อสินค้า</th>
+                  <th className="text-center py-3 px-4 text-xs font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider w-24">คาดหวัง</th>
+                  <th className="text-center py-3 px-4 text-xs font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider w-28">รับจริง</th>
+                  <th className="text-left py-3 px-4 text-xs font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider w-64">สภาพสินค้า</th>
+                  <th className="text-center py-3 px-4 text-xs font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider w-32">สถานะ</th>
+                  <th className="text-right py-3 px-4 text-xs font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider w-16 pr-6">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -410,10 +416,10 @@ export default function ReceiveStockPage() {
                     const mb = matchBadge[ms];
                     return (
                       <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                        <td className="py-4 px-4 text-zinc-400 font-mono pl-6">{idx + 1}</td>
+                        <td className="py-4 px-4 text-zinc-500 dark:text-zinc-400 font-mono pl-6">{idx + 1}</td>
                         <td className="py-4 px-4">
-                          <div className="font-semibold text-zinc-900 dark:text-zinc-200 text-sm leading-tight">{item.name}</div>
-                          <div className="text-xs text-zinc-400 font-mono mt-0.5">{item.sku}</div>
+                          <div className="font-bold text-zinc-900 dark:text-zinc-100 text-sm leading-tight">{item.name}</div>
+                          <div className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">{item.sku}</div>
                         </td>
                         <td className="py-4 px-4 text-center font-bold text-zinc-700 dark:text-zinc-300">{item.expected}</td>
                         <td className="py-4 px-4 text-center">
@@ -508,7 +514,7 @@ export default function ReceiveStockPage() {
           {/* Add Item form */}
           <div className="border-t border-zinc-200 dark:border-zinc-800 px-6 py-4 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col sm:flex-row items-end gap-3 rounded-b-2xl">
             <div className="flex-1 w-full relative" ref={dropdownRef}>
-              <label className="text-[12px] font-bold text-zinc-400 block mb-1">เลือกสินค้าที่ต้องการรับเข้า</label>
+              <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 block mb-1">เลือกสินค้าที่ต้องการรับเข้า</label>
               
               {/* Trigger Button */}
               <button
@@ -627,7 +633,7 @@ export default function ReceiveStockPage() {
               )}
             </div>
             <div className="w-full sm:w-28">
-              <label className="text-[10px] font-bold text-zinc-400 block mb-1">จำนวนที่คาดหวัง</label>
+              <label className="text-xs font-bold text-zinc-600 dark:text-zinc-400 block mb-1">จำนวนที่คาดหวัง</label>
               <input
                 type="number"
                 min={1}
@@ -641,7 +647,7 @@ export default function ReceiveStockPage() {
                     setExpectedQty(isNaN(parsed) ? 1 : Math.max(1, parsed));
                   }
                 }}
-                className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-850 text-zinc-900 dark:text-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500/30 font-bold text-center"
+                className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-850 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 font-bold text-center"
               />
             </div>
             <button
