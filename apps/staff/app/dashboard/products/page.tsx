@@ -75,7 +75,7 @@ function ProductRowSkeleton() {
         </div>
       </TableCell>
       <TableCell><div className="h-6 bg-zinc-200 dark:bg-zinc-800 rounded w-16" /></TableCell>
-      <TableCell className="pr-6 text-right"><div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-16 inline-block" /></TableCell>
+      <TableCell className=""><div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-16 inline-block" /></TableCell>
     </TableRow>
   );
 }
@@ -1137,7 +1137,7 @@ export default function ProductsPage() {
               <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ราคา</TableHead>
               <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">คงเหลือ</TableHead>
               <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะ</TableHead>
-              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-right pr-6 text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1192,7 +1192,7 @@ export default function ProductsPage() {
                         {lowStock ? "สต็อกใกล้หมด" : sc.label}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right pr-6">
+                    <TableCell className="flex justify-start">
                       <button
                         onClick={() => setSelectedProduct(p)}
                         className="px-3 py-1.5 text-sm font-bold rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors"

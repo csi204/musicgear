@@ -4,19 +4,22 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getBrands, getCategories, createProduct, updateProduct, type ProductRecord } from "@/lib/api";
 import { getAccessToken, clearSession } from "@/lib/auth";
-import { ChevronLeft, Save, Loader2, Image as ImageIcon, X, Upload } from "lucide-react";
+import { ChevronLeft, Save, Loader2, Image as ImageIcon, X, Upload, Edit2 } from "lucide-react";
 import Link from "next/link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 
 interface ProductFormProps {
   initialData?: ProductRecord;
   isEdit?: boolean;
+  isModal?: boolean;
+  onClose?: () => void;
+  onSuccess?: () => void;
 }
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
 
-export function ProductForm({ initialData, isEdit = false }: ProductFormProps) {
+export function ProductForm({ initialData, isEdit = false, isModal = false, onClose, onSuccess }: ProductFormProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -121,7 +124,11 @@ export function ProductForm({ initialData, isEdit = false }: ProductFormProps) {
         await createProduct(fd, token);
       }
       
-      router.push("/dashboard/products");
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push("/dashboard/products");
+      }
     } catch (err: any) {
       setError(err.message ?? "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
     } finally {
@@ -129,30 +136,46 @@ export function ProductForm({ initialData, isEdit = false }: ProductFormProps) {
     }
   };
 
-  return (
-    <div className="flex-1 space-y-8 animate-in fade-in duration-500 pb-12 max-w-5xl mx-auto">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/products" className="p-2 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-          <ChevronLeft className="w-5 h-5 text-zinc-500" />
-        </Link>
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">{isEdit ? "แก้ไขสินค้า" : "เพิ่มสินค้าใหม่"}</h2>
-          <p className="text-zinc-500 mt-1">{isEdit ? "แก้ไขข้อมูลของสินค้าเดิมในคลัง" : "เพิ่มรายการสินค้าใหม่ลงในคลัง"}</p>
+  const FormContent = (
+    <>
+      <div className={isModal ? "flex items-center justify-between pb-6 mb-6 border-b border-zinc-200 dark:border-zinc-800" : "flex items-center gap-4 mb-8"}>
+        <div className="flex items-center gap-4">
+          {!isModal && (
+            <Link href="/dashboard/products" className="p-2 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <ChevronLeft className="w-5 h-5 text-zinc-500" />
+            </Link>
+          )}
+          {isModal && (
+            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <Edit2 className="w-5 h-5" />
+            </div>
+          )}
+          <div>
+            <h2 className={isModal ? "text-xl font-bold tracking-tight text-zinc-900 dark:text-white" : "text-3xl font-bold tracking-tight text-zinc-900 dark:text-white"}>
+              {isEdit ? "แก้ไขสินค้า" : "เพิ่มสินค้าใหม่"}
+            </h2>
+            {!isModal && <p className="text-zinc-500 mt-1">{isEdit ? "แก้ไขข้อมูลของสินค้าเดิมในคลัง" : "เพิ่มรายการสินค้าใหม่ลงในคลัง"}</p>}
+          </div>
         </div>
+        {isModal && (
+          <button type="button" onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {error && (
-        <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 rounded-xl px-4 py-3 text-sm flex items-center justify-between">
+        <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 rounded-xl px-4 py-3 text-sm flex items-center justify-between mb-6">
           <span>{error}</span>
-          <button onClick={() => setError(null)}><X className="w-4 h-4" /></button>
+          <button type="button" onClick={() => setError(null)}><X className="w-4 h-4" /></button>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-6">
-              <h3 className="text-lg font-bold text-zinc-900 dark:text-white">ข้อมูลพื้นฐาน</h3>
+        <div className={isModal ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "grid grid-cols-1 lg:grid-cols-3 gap-8"}>
+          <div className={isModal ? "space-y-6" : "lg:col-span-2 space-y-6"}>
+            <div className={isModal ? "space-y-6" : "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-6"}>
+              <h3 className={isModal ? "text-lg font-bold text-zinc-900 dark:text-white pb-3 border-b border-zinc-200 dark:border-zinc-800" : "text-lg font-bold text-zinc-900 dark:text-white"}>ข้อมูลพื้นฐาน</h3>
               
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">ชื่อสินค้า <span className="text-rose-500">*</span></label>
@@ -190,8 +213,8 @@ export function ProductForm({ initialData, isEdit = false }: ProductFormProps) {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-6">
-              <h3 className="text-lg font-bold text-zinc-900 dark:text-white">รูปภาพสินค้า (JPG, PNG ไม่เกิน 10MB)</h3>
+            <div className={isModal ? "space-y-6 pt-2" : "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-6"}>
+              <h3 className={isModal ? "text-lg font-bold text-zinc-900 dark:text-white pb-3 border-b border-zinc-200 dark:border-zinc-800" : "text-lg font-bold text-zinc-900 dark:text-white"}>รูปภาพสินค้า (JPG, PNG ไม่เกิน 10MB)</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {existingImages.map((img) => (
                   <div key={img.imageId} className="relative aspect-square rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden group">
@@ -222,8 +245,8 @@ export function ProductForm({ initialData, isEdit = false }: ProductFormProps) {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-6">
-              <h3 className="text-lg font-bold text-zinc-900 dark:text-white">ราคาและสถานะ</h3>
+            <div className={isModal ? "space-y-6" : "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-6"}>
+              <h3 className={isModal ? "text-lg font-bold text-zinc-900 dark:text-white pb-3 border-b border-zinc-200 dark:border-zinc-800" : "text-lg font-bold text-zinc-900 dark:text-white"}>ราคาและสถานะ</h3>
               
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">รหัส SKU <span className="text-rose-500">*</span></label>
@@ -273,10 +296,16 @@ export function ProductForm({ initialData, isEdit = false }: ProductFormProps) {
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
-          <Link href="/dashboard/products" className="px-6 py-3 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
-            ยกเลิก
-          </Link>
+        <div className={isModal ? "flex justify-end gap-3 px-6 py-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 -mx-6 -mb-6 mt-6 rounded-b-3xl" : "flex justify-end gap-3 pt-6 border-t border-zinc-200 dark:border-zinc-800 mt-8"}>
+          {isModal ? (
+            <button type="button" onClick={onClose} className="px-6 py-3 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
+              ยกเลิก
+            </button>
+          ) : (
+            <Link href="/dashboard/products" className="px-6 py-3 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
+              ยกเลิก
+            </Link>
+          )}
           <button
             type="submit"
             disabled={loading}
@@ -287,6 +316,24 @@ export function ProductForm({ initialData, isEdit = false }: ProductFormProps) {
           </button>
         </div>
       </form>
+    </>
+  );
+
+  if (isModal) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-[#111113] w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-zinc-200 dark:border-zinc-800 flex flex-col max-h-[90vh]">
+          <div className="p-6 overflow-y-auto">
+            {FormContent}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 animate-in fade-in duration-500 pb-12 max-w-5xl mx-auto">
+      {FormContent}
     </div>
   );
 }

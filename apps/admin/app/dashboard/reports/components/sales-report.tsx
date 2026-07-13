@@ -4,17 +4,42 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 interface SalesReportChartsProps {
   data: any;
+  range?: { start: string; end: string };
 }
 
-export function SalesReportCharts({ data }: SalesReportChartsProps) {
-  if (!data || !data.salesTrend && !data.salesTrends) return <div className="text-zinc-500 font-medium p-8 flex items-center justify-center h-full">ไม่มีข้อมูลการขายในช่วงเวลานี้</div>;
+export function SalesReportCharts({ data, range }: SalesReportChartsProps) {
+  if (!data || (!data.salesTrend && !data.salesTrends)) return <div className="text-zinc-500 font-medium p-8 flex items-center justify-center h-full">ไม่มีข้อมูลการขายในช่วงเวลานี้</div>;
 
   const trendData = data.salesTrend || data.salesTrends;
 
-  const chartData = Array.isArray(trendData) ? trendData.map((d: any) => ({
-    name: d.reportDate ? new Date(d.reportDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : d.name,
-    totalRevenue: Number(d.totalRevenue),
-  })) : [];
+  let chartData: any[] = [];
+  if (Array.isArray(trendData)) {
+    if (range && range.start && range.end) {
+      const startDate = new Date(range.start);
+      const endDate = new Date(range.end);
+      const dataMap = new Map();
+      
+      trendData.forEach((d: any) => {
+        if (d.reportDate) {
+          const dStr = new Date(d.reportDate).toISOString().slice(0, 10);
+          dataMap.set(dStr, Number(d.totalRevenue));
+        }
+      });
+
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const dStr = d.toISOString().slice(0, 10);
+        chartData.push({
+          name: new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
+          totalRevenue: dataMap.get(dStr) || 0,
+        });
+      }
+    } else {
+      chartData = trendData.map((d: any) => ({
+        name: d.reportDate ? new Date(d.reportDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : d.name,
+        totalRevenue: Number(d.totalRevenue),
+      }));
+    }
+  }
 
   return (
     <div className="w-full h-full flex items-center justify-center pt-6">

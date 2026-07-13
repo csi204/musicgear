@@ -67,7 +67,7 @@ function OrderRowSkeleton() {
       <TableCell><div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-32" /></TableCell>
       <TableCell><div className="h-6 bg-zinc-200 dark:bg-zinc-800 rounded w-16" /></TableCell>
       <TableCell><div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-24" /></TableCell>
-      <TableCell className="pr-6 text-right"><div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-16 inline-block" /></TableCell>
+      <TableCell className=""><div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-16 inline-block" /></TableCell>
     </TableRow>
   );
 }
@@ -333,7 +333,7 @@ export default function OrdersPage() {
                     <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">รายการสินค้า</TableHead>
                     <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะ</TableHead>
                     <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">วันที่สั่งซื้อ</TableHead>
-                    <TableHead className="font-extrabold text-right pr-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -389,8 +389,8 @@ export default function OrdersPage() {
                           <TableCell className="text-sm font-bold text-zinc-700 dark:text-zinc-400">
                             {new Date(order.orderDate).toLocaleString("th-TH")}
                           </TableCell>
-                          <TableCell className="text-right pr-6">
-                            <div className="flex items-center justify-end gap-2.5">
+                          <TableCell className="">
+                            <div className="flex items-center justify-start gap-2.5">
                               {(order.status === "packed" || order.status === "shipped") && (
                                 <Link
                                   href={`/dashboard/orders/print?orderId=${order.orderId}`}

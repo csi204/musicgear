@@ -257,3 +257,18 @@ export async function updateBundle(bundleId: string, data: any, token?: string):
 export async function deleteBundle(bundleId: string, token?: string): Promise<{ status: string }> {
   return apiFetch(`/products/bundles/${bundleId}`, { method: "DELETE", token });
 }
+
+// --- Inventory Service ---
+export interface InventoryRecord {
+  productId: string;
+  quantity: number;
+  reservedQuantity: number;
+  available: number;
+  reorderPoint: number;
+  status: string;
+}
+
+/** GET /inventory/stock — Fetch stock for all products */
+export async function getInventory(token?: string): Promise<{ inventories: InventoryRecord[] }> {
+  return apiFetch("/inventory/stock", { method: "GET", token });
+}

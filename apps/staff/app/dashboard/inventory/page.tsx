@@ -40,7 +40,7 @@ function InventoryRowSkeleton() {
       <TableCell><div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-8 mx-auto" /></TableCell>
       <TableCell><div className="h-6 bg-zinc-200 dark:bg-zinc-800 rounded w-10 mx-auto" /></TableCell>
       <TableCell><div className="h-6 bg-zinc-200 dark:bg-zinc-800 rounded w-16" /></TableCell>
-      <TableCell className="pr-6 text-right"><div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-16 inline-block" /></TableCell>
+      <TableCell className=""><div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-16 inline-block" /></TableCell>
     </TableRow>
   );
 }
@@ -232,7 +232,7 @@ export default function InventoryPage() {
               <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จอง</TableHead>
               <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">คงเหลือ</TableHead>
               <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะ</TableHead>
-              <TableHead className="font-extrabold text-right pr-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -271,7 +271,7 @@ export default function InventoryPage() {
                         {sc.label}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right pr-6">
+                    <TableCell className="flex justify-start">
                       <button
                         onClick={() => setSelectedHistoryItem(item)}
                         className="px-3 py-1.5 text-sm font-bold rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors"
