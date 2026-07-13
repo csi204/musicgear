@@ -13,6 +13,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       authorization: {
         params: {
           connection_id: "conn_019ee5d95bfd2150cca15e493509718b",
+          prompt: "login"
         }
       }
     }),
