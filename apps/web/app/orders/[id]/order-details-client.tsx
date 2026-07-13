@@ -44,8 +44,10 @@ interface Order {
   discountAmount: number;
   grandTotal: number;
   status: "pending" | "confirmed" | "packed" | "shipped" | "delivered" | "cancelled" | "refunded";
+  paymentMethod?: "online" | "cod";
   remark?: string;
   items: OrderItem[];
+  payments?: { paymentId: string; status: string; paymentMethod: string; amount: number; }[];
 }
 
 interface OrderDetailsClientProps {
@@ -57,6 +59,7 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 
   // Cache or map product info locally to render snapshots correctly
   const [productsMetadata, setProductsMetadata] = useState<{ [productId: string]: any }>({});
@@ -83,6 +86,19 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
         if (res.ok) {
           const data = await res.json();
           setOrder(data);
+
+          // Fetch payment status in parallel (separate service/DB)
+          try {
+            const payRes = await fetch(`${getApiBaseUrl()}/payments/by-order/${orderId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (payRes.ok) {
+              const payData = await payRes.json();
+              setPaymentStatus(payData.payment?.status ?? null);
+            }
+          } catch {
+            // Non-fatal — payment status is optional display info
+          }
 
           // Fetch product metadata to display names/images for each item
           if (data.items && data.items.length > 0) {
@@ -131,9 +147,72 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
     return (
       <div className="min-h-screen bg-[#F5F3EE]/30 text-neutral-900 flex flex-col">
         <Navbar />
-        <main className="flex-grow flex flex-col items-center justify-center p-8 text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-electric-blue mb-4" />
-          <p className="font-medium text-slate-gray">กำลังโหลดรายละเอียดคำสั่งซื้อ...</p>
+        <main className="flex-grow max-w-4xl w-full mx-auto px-6 py-12">
+          {/* Back button skeleton */}
+          <div className="h-4 w-32 bg-neutral-200 animate-pulse rounded mb-8" />
+          
+          {/* Header skeleton */}
+          <div className="h-8 w-64 bg-neutral-200 animate-pulse rounded mb-2" />
+          <div className="h-4 w-48 bg-neutral-200 animate-pulse rounded mb-8" />
+
+          {/* Stepper skeleton */}
+          <div className="bg-white rounded-3xl border border-[#E5E2DA] p-6 md:p-8 mb-8">
+            <div className="flex justify-between items-center gap-4">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="flex flex-col items-center gap-2 flex-grow">
+                  <div className="h-12 w-12 rounded-full bg-neutral-200 animate-pulse" />
+                  <div className="h-3 w-16 bg-neutral-200 animate-pulse rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Column */}
+            <div className="lg:col-span-7 flex flex-col gap-8">
+              {/* Address card skeleton */}
+              <div className="bg-white rounded-3xl border border-[#E5E2DA] p-6 md:p-8">
+                <div className="h-6 w-48 bg-neutral-200 animate-pulse rounded mb-6" />
+                <div className="flex flex-col gap-3">
+                  <div className="h-4 w-32 bg-neutral-200 animate-pulse rounded" />
+                  <div className="h-4 w-full bg-neutral-200 animate-pulse rounded" />
+                  <div className="h-4 w-24 bg-neutral-200 animate-pulse rounded" />
+                </div>
+              </div>
+
+              {/* Items card skeleton */}
+              <div className="bg-white rounded-3xl border border-[#E5E2DA] p-6 md:p-8">
+                <div className="h-6 w-40 bg-neutral-200 animate-pulse rounded mb-6" />
+                <div className="flex flex-col gap-6">
+                  {[1, 2].map((n) => (
+                    <div key={n} className="flex items-center gap-4 pb-6 border-b border-neutral-100 last:border-0 last:pb-0">
+                      <div className="h-16 w-16 bg-neutral-200 animate-pulse rounded-2xl" />
+                      <div className="flex-grow">
+                        <div className="h-4 w-48 bg-neutral-200 animate-pulse rounded mb-2" />
+                        <div className="h-3 w-24 bg-neutral-200 animate-pulse rounded" />
+                      </div>
+                      <div className="h-4 w-16 bg-neutral-200 animate-pulse rounded" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="lg:col-span-5 flex flex-col gap-6">
+              {/* Pricing summary card skeleton */}
+              <div className="bg-white rounded-3xl border border-[#E5E2DA] p-6 md:p-8">
+                <div className="h-6 w-32 bg-neutral-200 animate-pulse rounded mb-6" />
+                <div className="flex flex-col gap-4 mb-6 pb-6 border-b border-neutral-100">
+                  <div className="flex justify-between"><div className="h-4 w-20 bg-neutral-200 animate-pulse rounded" /><div className="h-4 w-16 bg-neutral-200 animate-pulse rounded" /></div>
+                  <div className="flex justify-between"><div className="h-4 w-20 bg-neutral-200 animate-pulse rounded" /><div className="h-4 w-16 bg-neutral-200 animate-pulse rounded" /></div>
+                  <div className="flex justify-between"><div className="h-4 w-20 bg-neutral-200 animate-pulse rounded" /><div className="h-4 w-16 bg-neutral-200 animate-pulse rounded" /></div>
+                </div>
+                <div className="flex justify-between mb-8"><div className="h-6 w-24 bg-neutral-200 animate-pulse rounded" /><div className="h-6 w-20 bg-neutral-200 animate-pulse rounded" /></div>
+                <div className="h-12 w-full bg-neutral-200 animate-pulse rounded-full" />
+              </div>
+            </div>
+          </div>
         </main>
         <Footer />
       </div>
@@ -197,6 +276,8 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
   };
 
   const currentStepIndex = getStepIndex(order.status);
+  // isPaid: check payment record from payment-svc (separate DB)
+  const isPaid = paymentStatus === "paid";
   const steps = [
     { title: "ยืนยันออเดอร์", icon: Clock },
     { title: "จัดเตรียมสินค้า", icon: Package },
@@ -405,6 +486,12 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
                   <span>ส่วนลด</span>
                   <span className="font-semibold text-neutral-800">{Number(order.discountAmount).toLocaleString()} ฿</span>
                 </div>
+                <div className="flex items-center justify-between text-slate-gray border-t border-dashed border-neutral-100 pt-3 mt-1">
+                  <span>วิธีการชำระเงิน</span>
+                  <span className="font-semibold text-neutral-850">
+                    {order.paymentMethod === "cod" ? "เก็บเงินปลายทาง (COD)" : "ชำระเงินออนไลน์"}
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-center justify-between mb-8">
@@ -414,8 +501,8 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
                 </span>
               </div>
 
-              {/* Pay Now Button for Pending Status */}
-              {order.status === "pending" && (
+              {/* Pay Now Button — only show if truly unpaid and not COD */}
+              {order.status === "pending" && !isPaid && order.paymentMethod !== "cod" && (
                 <Link
                   href={`/payment?orderId=${order.orderId}`}
                   className="w-full flex items-center justify-center gap-2 rounded-full bg-electric-blue hover:bg-electric-blue/90 text-white font-semibold py-4 transition-all shadow-md shadow-electric-blue/10 cursor-pointer text-sm"
@@ -423,6 +510,20 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
                   <CreditCard className="h-4.5 w-4.5" />
                   ชำระเงินทันที (Pay Now)
                 </Link>
+              )}
+              {/* COD Order — show waiting status */}
+              {order.status === "pending" && order.paymentMethod === "cod" && (
+                <div className="w-full flex items-center justify-center gap-2 rounded-full bg-blue-50 border border-blue-200 text-blue-700 font-semibold py-4 text-sm">
+                  <svg className="h-4 w-4 text-blue-500 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  เก็บเงินปลายทาง (COD) — รอยืนยันออเดอร์
+                </div>
+              )}
+              {/* Already paid but order not yet confirmed — show waiting status */}
+              {order.status === "pending" && isPaid && (
+                <div className="w-full flex items-center justify-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold py-4 text-sm">
+                  <svg className="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  ชำระเงินเรียบร้อย
+                </div>
               )}
             </div>
             

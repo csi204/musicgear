@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Lock,
   ArrowRight,
+  ArrowLeft,
   ShoppingBag
 } from "lucide-react";
 import Link from "next/link";
@@ -104,9 +105,42 @@ export function PaymentClient({ orderId }: PaymentClientProps) {
     return (
       <div className="min-h-screen bg-[#F5F3EE]/30 text-neutral-900 flex flex-col">
         <Navbar />
-        <main className="flex-grow flex flex-col items-center justify-center p-8 text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-electric-blue mb-4" />
-          <p className="font-semibold text-neutral-800">กำลังโหลดรายละเอียดคำสั่งซื้อ...</p>
+        <main className="flex-grow max-w-5xl w-full mx-auto px-6 py-12">
+          {/* Back link skeleton */}
+          <div className="h-4 w-32 bg-neutral-200 animate-pulse rounded mb-8" />
+          
+          {/* Title skeleton */}
+          <div className="h-8 w-64 bg-neutral-200 animate-pulse rounded mb-8" />
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Column: Payment Methods Skeleton */}
+            <div className="lg:col-span-7 bg-white rounded-3xl border border-[#E5E2DA] p-6 md:p-8 flex flex-col gap-6">
+              <div className="h-6 w-48 bg-neutral-200 animate-pulse rounded mb-2" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[1, 2].map((n) => (
+                  <div key={n} className="border border-neutral-200 rounded-2xl p-5 flex items-center gap-4">
+                    <div className="h-12 w-12 bg-neutral-200 animate-pulse rounded-xl" />
+                    <div className="flex-grow">
+                      <div className="h-4 w-24 bg-neutral-200 animate-pulse rounded mb-2" />
+                      <div className="h-3 w-16 bg-neutral-200 animate-pulse rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="h-40 w-full bg-neutral-200 animate-pulse rounded-2xl mt-4" />
+            </div>
+
+            {/* Right Column: Order Summary Skeleton */}
+            <div className="lg:col-span-5 bg-white rounded-3xl border border-[#E5E2DA] p-6 md:p-8 flex flex-col gap-6">
+              <div className="h-6 w-32 bg-neutral-200 animate-pulse rounded mb-2" />
+              <div className="flex flex-col gap-4 border-b border-neutral-100 pb-6">
+                <div className="flex justify-between"><div className="h-4 w-20 bg-neutral-200 animate-pulse rounded" /><div className="h-4 w-16 bg-neutral-200 animate-pulse rounded" /></div>
+                <div className="flex justify-between"><div className="h-4 w-20 bg-neutral-200 animate-pulse rounded" /><div className="h-4 w-16 bg-neutral-200 animate-pulse rounded" /></div>
+              </div>
+              <div className="flex justify-between mb-4"><div className="h-6 w-24 bg-neutral-200 animate-pulse rounded" /><div className="h-6 w-20 bg-neutral-200 animate-pulse rounded" /></div>
+              <div className="h-12 w-full bg-neutral-200 animate-pulse rounded-full" />
+            </div>
+          </div>
         </main>
         <Footer />
       </div>
@@ -159,6 +193,12 @@ export function PaymentClient({ orderId }: PaymentClientProps) {
       <Navbar />
 
       <main className="flex-grow max-w-5xl w-full mx-auto px-6 py-12">
+        {/* Back Link */}
+        <Link href={`/orders/${orderId}`} className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-gray hover:text-neutral-900 transition-colors mb-8">
+          <ArrowLeft className="h-4 w-4" />
+          ย้อนกลับไปยังรายละเอียดออเดอร์
+        </Link>
+
         <h1 className="font-heading text-3xl font-extrabold tracking-tight text-neutral-950 uppercase mb-8 text-left">
           ชำระเงิน (Payment)
         </h1>

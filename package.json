@@ -8,9 +8,7 @@
     "dev:backend": "turbo dev --filter=./services/*",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types",
-    "cleanup": "lsof -ti:8788,8789,8790,8791,8792,8793,8794,8795,8796,8797,8798,8799,8800 | xargs kill -9 2>/dev/null; echo '✅ All dev ports cleared'",
-    "killport": "f() { lsof -ti:$1 | xargs kill -9 2>/dev/null && echo \"✅ Port $1 cleared\" || echo \"ℹ️  Port $1 was not in use\"; }; f"
+    "check-types": "turbo run check-types"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.19.11",

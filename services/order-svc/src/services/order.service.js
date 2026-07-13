@@ -88,9 +88,26 @@ export class OrderService {
    * @param {object} checkoutData
    * @param {string} authHeader JWT Auth header from requester
    */
-  static async createOrder(prisma, env, customerId, { cartId, addressId, remark, shippingAddressSnapshot }, authHeader = "") {
+  static async safeFetch(binding, fallbackUrl, path, options) {
+    if (binding && typeof binding.fetch === "function") {
+      try {
+        const res = await binding.fetch(`http://service${path}`, options);
+        if (res.status !== 503) {
+          return res;
+        }
+        console.warn(`[Service Binding] 503 Service Unavailable for ${path}, falling back to direct HTTP`);
+      } catch (err) {
+        console.warn(`[Service Binding] Error calling ${path}:`, err.message, "falling back to direct HTTP");
+      }
+    }
+    const targetUrl = `${fallbackUrl}${path}`;
+    console.info(`[Service Fallback] Calling direct HTTP: ${targetUrl}`);
+    return fetch(targetUrl, options);
+  }
+
+  static async createOrder(prisma, env, customerId, { cartId, addressId, remark, paymentMethod, shippingAddressSnapshot }, authHeader = "") {
     // 1. ดึงข้อมูลตะกร้าสินค้าจาก cart-svc
-    const cartRes = await env.CART_SVC.fetch(`http://cart-svc/carts/${cartId}`, {
+    const cartRes = await this.safeFetch(env.CART_SVC, "http://localhost:8790", `/carts/${cartId}`, {
       headers: { Authorization: authHeader },
     });
     if (!cartRes.ok) {
@@ -106,7 +123,7 @@ export class OrderService {
       productId: item.productId,
       quantity: item.quantity,
     }));
-    const stockRes = await env.INVENTORY_SVC.fetch("http://inventory-svc/stock/check", {
+    const stockRes = await this.safeFetch(env.INVENTORY_SVC, "http://localhost:8797", "/stock/check", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: authHeader },
       body: JSON.stringify({ items: checkItems }),
@@ -137,6 +154,7 @@ export class OrderService {
           discountAmount,
           grandTotal,
           status: "pending",
+          paymentMethod: paymentMethod || "online",
           remark: remark || null,
           items: {
             create: cart.items.map((item) => {
@@ -156,11 +174,11 @@ export class OrderService {
       });
     } catch (err) {
       console.error("[OrderService] Failed to write order to DB:", err);
-      throw new Error("ORDER_WRITE_FAILED");
+      throw new Error(`ORDER_WRITE_FAILED: ${err.message}`);
     }
 
     // 5. สั่งจองสต็อกกับ inventory-svc
-    const reserveRes = await env.INVENTORY_SVC.fetch("http://inventory-svc/stock/reserve", {
+    const reserveRes = await this.safeFetch(env.INVENTORY_SVC, "http://localhost:8797", "/stock/reserve", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: authHeader },
       body: JSON.stringify({
@@ -178,7 +196,7 @@ export class OrderService {
     }
 
     // 6. ล้างสินค้าในตะกร้าจาก cart-svc
-    await env.CART_SVC.fetch(`http://cart-svc/carts/${cartId}`, {
+    await this.safeFetch(env.CART_SVC, "http://localhost:8790", `/carts/${cartId}`, {
       method: "DELETE",
       headers: { Authorization: authHeader },
     });
