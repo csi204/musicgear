@@ -28,6 +28,11 @@ export type Brand = Prisma.BrandModel
  */
 export type Category = Prisma.CategoryModel
 /**
+ * Model CategorySpecification
+ * 
+ */
+export type CategorySpecification = Prisma.CategorySpecificationModel
+/**
  * Model Product
  * 
  */
@@ -57,3 +62,18 @@ export type Review = Prisma.ReviewModel
  * 
  */
 export type ProductRecommendation = Prisma.ProductRecommendationModel
+/**
+ * Model SpecificationGroup
+ * 
+ */
+export type SpecificationGroup = Prisma.SpecificationGroupModel
+/**
+ * Model SpecificationDefinition
+ * 
+ */
+export type SpecificationDefinition = Prisma.SpecificationDefinitionModel
+/**
+ * Model ProductSpecification
+ * 
+ */
+export type ProductSpecification = Prisma.ProductSpecificationModel

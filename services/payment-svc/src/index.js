@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
-import { createAuthMiddleware } from "@musicgear/auth-middleware";
+import paymentsRouter from "./routes/payments.js";
 
 const app = new Hono()
-const authMiddleware = createAuthMiddleware();
 
 app.get('/', (c) => c.json({ status: 'ok', service: 'payment' }))
+app.route('/payments', paymentsRouter);
 
 export default app

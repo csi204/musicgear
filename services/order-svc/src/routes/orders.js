@@ -4,6 +4,7 @@ import { createPrisma } from "../db/prisma.js";
 import {
   orderListQuerySchema,
   orderStatusUpdateSchema,
+  orderCreateSchema,
 } from "../../../../packages/types/src/order.js";
 
 const router = new Hono();
@@ -178,6 +179,44 @@ router.patch("/:orderId/status", async (c) => {
     if (error.message.startsWith("INVALID_STATUS_TRANSITION")) {
       return c.json({ error: { code: "BAD_REQUEST", message: "ไม่สามารถเปลี่ยนสถานะข้ามขั้นตอนได้" } }, 400);
     }
+    return c.json({ error: { code: "INTERNAL_ERROR", message: error.message } }, 500);
+  }
+});
+
+// 4. Create Order (Checkout Flow)
+router.post("/", async (c) => {
+  try {
+    const prisma = getPrisma(c);
+    const authUser = getAuthUser(c);
+    
+    const validation = await parseValidatedJson(c, orderCreateSchema);
+    if (!validation.ok) return validation.response;
+
+    const authHeader = c.req.header("Authorization") || "";
+    const newOrder = await OrderService.createOrder(prisma, c.env, authUser.userId, validation.data, authHeader);
+    return c.json(newOrder, 201);
+  } catch (error) {
+    console.error("[order-svc] Create order checkout error:", error);
+    
+    if (error.message === "CART_NOT_FOUND") {
+      return c.json({ error: { code: "NOT_FOUND", message: "ไม่พบตะกร้าสินค้า" } }, 404);
+    }
+    if (error.message === "CART_EMPTY") {
+      return c.json({ error: { code: "BAD_REQUEST", message: "ตะกร้าสินค้าว่างเปล่า" } }, 400);
+    }
+    if (error.message === "OUT_OF_STOCK") {
+      return c.json({ error: { code: "CONFLICT", message: "สินค้าในสต็อกไม่เพียงพอ" } }, 409);
+    }
+    if (error.message === "ADDRESS_NOT_FOUND") {
+      return c.json({ error: { code: "NOT_FOUND", message: "ไม่พบข้อมูลที่จัดส่ง" } }, 404);
+    }
+    if (error.message === "FORBIDDEN_ADDRESS") {
+      return c.json({ error: { code: "FORBIDDEN", message: "ไม่มีสิทธิ์เข้าใช้งานที่อยู่นี้" } }, 403);
+    }
+    if (error.message === "STOCK_RESERVATION_FAILED") {
+      return c.json({ error: { code: "CONFLICT", message: "การจองสต็อกล้มเหลว กรุณาลองใหม่อีกครั้ง" } }, 409);
+    }
+    
     return c.json({ error: { code: "INTERNAL_ERROR", message: error.message } }, 500);
   }
 });

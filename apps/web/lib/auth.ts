@@ -71,6 +71,7 @@ export function getAccessToken() {
 
 export function clearSession() {
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  sessionStorage.removeItem("mg_cached_user");
   document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
 }
 
@@ -87,12 +88,35 @@ export async function fetchCurrentUser() {
   const headers = { Authorization: `Bearer ${token}` };
   const apiBase = getApiBaseUrl();
 
+  // Helper to normalize user object to always have id
+  const normalizeUser = (user: any) => {
+    if (!user) return null;
+    return {
+      ...user,
+      id: user.userId || user.sub || null,
+    };
+  };
+
+  // Check cache first
+  if (typeof window !== "undefined") {
+    const cachedUser = sessionStorage.getItem("mg_cached_user");
+    if (cachedUser) {
+      try {
+        return JSON.parse(cachedUser);
+      } catch {}
+    }
+  }
+
   // Try /users/me first — creates DB record if first login
   try {
     const res = await fetch(`${apiBase}/users/me`, { headers });
     if (res.ok) {
       const payload = await res.json();
-      return payload.user ?? null;
+      const user = normalizeUser(payload.user);
+      if (typeof window !== "undefined" && user) {
+        sessionStorage.setItem("mg_cached_user", JSON.stringify(user));
+      }
+      return user;
     }
   } catch {
     // network error, fall through to /auth/me
@@ -103,7 +127,11 @@ export async function fetchCurrentUser() {
     const res = await fetch(`${apiBase}/auth/me`, { headers });
     if (res.ok) {
       const payload = await res.json();
-      return payload.user ?? null;
+      const user = normalizeUser(payload.user);
+      if (typeof window !== "undefined" && user) {
+        sessionStorage.setItem("mg_cached_user", JSON.stringify(user));
+      }
+      return user;
     }
   } catch {
     // ignore

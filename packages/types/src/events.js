@@ -36,21 +36,18 @@ export const paymentSuccessEvent = z.object({
   orderId: uuidSchema,
   customerId: uuidSchema,
   amount: z.number(),
+  items: z.array(
+    z.object({
+      productId: uuidSchema,
+      productName: z.string(),
+      category: z.string(),
+      quantitySold: z.number().int().positive(),
+      revenue: z.number(),
+    })
+  ),
 });
 
-export const addressCreatedEvent = z.object({
-  event: z.literal("address.created"),
-  addressId: uuidSchema,
-  customerId: uuidSchema,
-  addressData: z.any(), // Add specific fields if needed
-});
-
-export const addressUpdatedEvent = z.object({
-  event: z.literal("address.updated"),
-  addressId: uuidSchema,
-  customerId: uuidSchema,
-  addressData: z.any(),
-});
+// addressCreatedEvent and addressUpdatedEvent are defined below with full fields (from Khet)
 
 // subscriber ทั้งสองตัวที่ต้องฟัง event ชุดนี้ (QStash Topic fan-out)
 export const QSTASH_SUBSCRIBERS = {
@@ -106,6 +103,32 @@ export const productCreatedEvent = z.object({
   productId: uuidSchema,
 });
 
+export const addressCreatedEvent = z.object({
+  event: z.literal("address.created"),
+  addressId: uuidSchema,
+  customerId: z.string(),
+  receiverName: z.string(),
+  phone: z.string(),
+  addressLine1: z.string(),
+  addressLine2: z.string().nullable().optional(),
+  province: z.string(),
+  city: z.string(),
+  postalCode: z.string(),
+});
+
+export const addressUpdatedEvent = z.object({
+  event: z.literal("address.updated"),
+  addressId: uuidSchema,
+  customerId: z.string(),
+  receiverName: z.string(),
+  phone: z.string(),
+  addressLine1: z.string(),
+  addressLine2: z.string().nullable().optional(),
+  province: z.string(),
+  city: z.string(),
+  postalCode: z.string(),
+});
+
 export const productDeletedEvent = z.object({
   event: z.literal("product.deleted"),
   productId: uuidSchema,
@@ -113,7 +136,7 @@ export const productDeletedEvent = z.object({
 
 // ---------------------------------------------------------------------------
 // QStash Webhook Payload (ใช้ใน notification-svc และ inventory-svc)
-// รวม 4 event types: 2 จากบุญ + 2 จากเดียร์ (discriminated union)
+// รวม 6 event types: 2 จากบุญ + 2 จากเดียร์ + 2 จากเขต (discriminated union)
 // ---------------------------------------------------------------------------
 export const qstashWebhookSchema = z.discriminatedUnion("event", [
   orderStatusChangedEvent,

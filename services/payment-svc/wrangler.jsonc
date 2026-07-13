@@ -3,12 +3,22 @@
   "name": "payment-svc",
   "main": "src/index.js",
   "compatibility_date": "2026-06-21",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "services": [
+    {
+      "binding": "ORDER_SVC",
+      "service": "order-svc"
+    },
+    {
+      "binding": "PRODUCT_SVC",
+      "service": "product-svc"
+    }
+  ],
   "dev": {
     "port": 8793
   },
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
   // "vars": {
   //   "MY_VAR": "my-variable"
   // },

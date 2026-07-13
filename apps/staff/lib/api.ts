@@ -51,6 +51,16 @@ export interface ProductRecord {
       images: { imageUrl: string }[];
     };
   }[];
+  specifications?: {
+    value: string;
+    definition: {
+      definitionId: string;
+      name: string;
+      group: {
+        name: string;
+      };
+    };
+  }[];
 }
 
 export interface InventoryRecord {

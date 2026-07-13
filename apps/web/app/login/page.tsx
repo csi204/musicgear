@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Eye, EyeOff } from "lucide-react";
@@ -13,6 +13,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +31,7 @@ export default function LoginPage() {
       if (res?.error) {
         setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
       } else {
-        router.push("/");
+        router.push(callbackUrl);
         router.refresh();
       }
     } catch {
@@ -37,7 +40,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    signIn("kinde", { callbackUrl: "/" });
+    signIn("kinde", { callbackUrl });
   };
 
   return (

@@ -2,6 +2,7 @@ import { Inter, Noto_Sans_Thai, Outfit, Anuphan } from "next/font/google"
 import { Geist_Mono } from "next/font/google"
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { CartProvider } from "@/components/cart-provider"
 import { cn } from "@workspace/ui/lib/utils";
 
 const fontSans = Inter({ subsets: ["latin"], variable: "--font-sans" })
@@ -29,12 +30,22 @@ const fontAnuphan = Anuphan({
 })
 
 import { SessionProvider } from "next-auth/react";
+import { cookies } from "next/headers";
+import { SyncToken } from "@/components/sync-token";
+import { auth } from "../auth";
+import { ToastContainer } from "@/components/toast";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const cookieStore = await cookies();
+  const session = await auth();
+  const token =
+    cookieStore.get("mg_web_session")?.value ||
+    cookieStore.get("__Secure-mg_web_session")?.value;
+
   return (
     <html
       lang="th"
@@ -50,9 +61,13 @@ export default function RootLayout({
       )}
     >
       <body>
-        <SessionProvider>
+        <SyncToken token={token} />
+        <ToastContainer />
+        <SessionProvider session={session}>
           <ThemeProvider defaultTheme="light" enableSystem={false}>
-            {children}
+            <CartProvider>
+              {children}
+            </CartProvider>
           </ThemeProvider>
         </SessionProvider>
       </body>

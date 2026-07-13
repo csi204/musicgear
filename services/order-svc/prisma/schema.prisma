@@ -32,7 +32,7 @@ enum ShippingStatus {
 
 model Order {
   orderId                 String      @id @default(uuid()) @db.Uuid
-  customerId              String      @db.Uuid // Soft ref
+  customerId              String      // Soft ref (Kinde ID string)
   addressId               String      @db.Uuid // Soft ref
   orderDate               DateTime    @default(now())
   shippingAddressSnapshot Json
@@ -46,6 +46,7 @@ model Order {
   items    OrderItem[]
   shipment Shipment?
 }
+
 
 model OrderItem {
   orderItemId String  @id @default(uuid()) @db.Uuid
