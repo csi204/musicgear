@@ -48,10 +48,27 @@ export class PaymentService {
     }
   }
 
+  static async safeFetch(binding, fallbackUrl, path, options) {
+    if (binding && typeof binding.fetch === "function") {
+      try {
+        const res = await binding.fetch(`http://service${path}`, options);
+        if (res.status !== 503) {
+          return res;
+        }
+        console.warn(`[Service Binding] 503 Service Unavailable for ${path}, falling back to direct HTTP`);
+      } catch (err) {
+        console.warn(`[Service Binding] Error calling ${path}:`, err.message, "falling back to direct HTTP");
+      }
+    }
+    const targetUrl = `${fallbackUrl}${path}`;
+    console.info(`[Service Fallback] Calling direct HTTP: ${targetUrl}`);
+    return fetch(targetUrl, options);
+  }
+
   static async processPayment(prisma, env, { orderId, paymentMethod, token }, authHeader, executionCtx) {
     // 1. Fetch Order Details from ORDER_SVC
     let order;
-    const orderRes = await env.ORDER_SVC.fetch(`http://order-svc/orders/${orderId}`, {
+    const orderRes = await this.safeFetch(env.ORDER_SVC, "http://localhost:8792", `/orders/${orderId}`, {
       headers: {
         Authorization: authHeader,
       },
@@ -139,13 +156,34 @@ export class PaymentService {
       throw new Error("PAYMENT_FAILED");
     }
 
-    // 5. Build items details for payment.success event (fetching name/category from PRODUCT_SVC)
+    // 5. Update Order Status to "confirmed" immediately via ORDER_SVC binding
+    //    This is a synchronous M2M call — we don't rely on QStash for status update
+    try {
+      const updateRes = await this.safeFetch(env.ORDER_SVC, "http://localhost:8792", `/orders/${orderId}/confirm-payment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Service": "payment-svc",
+        },
+      });
+      if (!updateRes.ok) {
+        const errText = await updateRes.text();
+        console.error("[payment-svc] Failed to confirm order status:", errText);
+      } else {
+        console.info(`[payment-svc] Order ${orderId} status updated to confirmed`);
+      }
+    } catch (err) {
+      // Non-fatal — QStash will handle this asynchronously as fallback
+      console.error("[payment-svc] ORDER_SVC confirm-payment call failed:", err.message);
+    }
+
+    // 6. Build items details for payment.success event (fetching name/category from PRODUCT_SVC)
     const successItems = [];
     for (const item of order.items) {
       let productName = "Unknown Product";
       let category = "Unknown Category";
       try {
-        const prodRes = await env.PRODUCT_SVC.fetch(`http://product-svc/products/${item.productId}`);
+        const prodRes = await this.safeFetch(env.PRODUCT_SVC, "http://localhost:8794", `/products/${item.productId}`, {});
         if (prodRes.ok) {
           const product = await prodRes.json();
           productName = product.name || productName;

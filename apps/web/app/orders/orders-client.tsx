@@ -23,6 +23,7 @@ interface Order {
   discountAmount: number;
   grandTotal: number;
   status: "pending" | "confirmed" | "packed" | "shipped" | "delivered" | "cancelled" | "refunded";
+  paymentMethod?: "online" | "cod";
   remark?: string;
   items: {
     orderItemId: string;
@@ -85,7 +86,15 @@ export function OrdersClient() {
     loadOrders();
   }, []);
 
-  const getStatusBadge = (status: Order["status"]) => {
+  const getStatusBadge = (order: Order) => {
+    if (order.status === "pending" && order.paymentMethod === "cod") {
+      return (
+        <span className="text-xs font-bold border px-3 py-1 rounded-full uppercase tracking-wide bg-blue-50 text-blue-700 border-blue-200">
+          รอยืนยันออเดอร์ (COD)
+        </span>
+      );
+    }
+
     const configs = {
       pending: { text: "รอชำระเงิน", bg: "bg-amber-50 text-amber-700 border-amber-200" },
       confirmed: { text: "ยืนยันออเดอร์แล้ว", bg: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -96,7 +105,7 @@ export function OrdersClient() {
       refunded: { text: "คืนเงินแล้ว", bg: "bg-neutral-100 text-neutral-600 border-neutral-300" },
     };
 
-    const config = configs[status] || { text: status, bg: "bg-neutral-50 text-neutral-700" };
+    const config = configs[order.status] || { text: order.status, bg: "bg-neutral-50 text-neutral-700" };
     return (
       <span className={cn("text-xs font-bold border px-3 py-1 rounded-full uppercase tracking-wide", config.bg)}>
         {config.text}
@@ -114,9 +123,24 @@ export function OrdersClient() {
         </h1>
 
         {loading ? (
-          <div className="py-24 flex flex-col items-center justify-center text-slate-gray">
-            <Loader2 className="h-8 w-8 animate-spin text-electric-blue mb-4" />
-            <p className="font-medium">กำลังโหลดประวัติการสั่งซื้อของคุณ...</p>
+          <div className="flex flex-col gap-6 w-full">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="bg-white rounded-3xl border border-[#E5E2DA] p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex-grow">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-5 w-32 bg-neutral-200 animate-pulse rounded" />
+                    <div className="h-5 w-20 bg-neutral-200 animate-pulse rounded-full" />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <div className="h-4 w-48 bg-neutral-200 animate-pulse rounded" />
+                    <div className="h-4 w-36 bg-neutral-200 animate-pulse rounded" />
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 min-w-[200px]">
+                  <div className="h-10 w-full bg-neutral-200 animate-pulse rounded-full" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : errorMsg ? (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl flex items-start gap-3">
@@ -165,7 +189,7 @@ export function OrdersClient() {
                       <span className="font-heading text-sm font-bold text-neutral-950">
                         ออเดอร์ #{order.orderId.slice(0, 8).toUpperCase()}
                       </span>
-                      {getStatusBadge(order.status)}
+                      {getStatusBadge(order)}
                     </div>
                     
                     <div className="flex flex-col gap-1.5 text-xs text-slate-gray">

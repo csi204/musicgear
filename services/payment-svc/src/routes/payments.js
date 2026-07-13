@@ -90,7 +90,37 @@ router.post("/", authMiddleware, async (c) => {
   }
 });
 
-// 2. Refund Payment (Admin Only)
+// 2. Get Payment by Order ID (for order detail page to check payment status)
+router.get("/by-order/:orderId", authMiddleware, async (c) => {
+  const prisma = getPrisma(c);
+  const orderId = c.req.param("orderId");
+
+  try {
+    const payment = await prisma.payment.findFirst({
+      where: { orderId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        paymentId: true,
+        orderId: true,
+        status: true,
+        paymentMethod: true,
+        amount: true,
+        paidAt: true,
+      },
+    });
+
+    if (!payment) {
+      return c.json({ payment: null }, 200);
+    }
+
+    return c.json({ payment }, 200);
+  } catch (err) {
+    console.error("[payment-svc] Get payment by order error:", err.message);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: err.message } }, 500);
+  }
+});
+
+// 3. Refund Payment (Admin Only)
 router.post("/:paymentId/refund", authMiddleware, requireAdmin, async (c) => {
   const prisma = getPrisma(c);
   const paymentId = c.req.param("paymentId");

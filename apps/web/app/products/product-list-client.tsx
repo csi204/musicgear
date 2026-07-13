@@ -274,7 +274,17 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
       <div className="bg-white pb-28">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-12">
-            {details.products.map((product) => {
+            {loading ? (
+              Array.from({ length: 8 }).map((_, idx) => (
+                <div key={idx} className="flex flex-col gap-3 text-left">
+                  <div className="relative aspect-[4/3] w-full rounded-2xl bg-neutral-100 animate-pulse border border-neutral-200" />
+                  <div className="h-3 w-16 bg-neutral-200 animate-pulse rounded mt-2" />
+                  <div className="h-4 w-40 bg-neutral-200 animate-pulse rounded" />
+                  <div className="h-4 w-24 bg-neutral-200 animate-pulse rounded" />
+                  <div className="h-5 w-16 bg-neutral-200 animate-pulse rounded mt-2" />
+                </div>
+              ))
+            ) : details.products.map((product) => {
               const activeColor = selectedColors[product.id] || product.colors[0]?.name;
               const hasDiscount = !!product.originalPrice;
               const discountPercentage = hasDiscount

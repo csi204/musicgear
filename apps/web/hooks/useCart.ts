@@ -50,14 +50,19 @@ const cartApi = {
     return res.json();
   },
   async getCustomerCart(customerId: string) {
-    const res = await fetch(`${getApiBaseUrl()}/carts/customer/${customerId}`, {
-      headers: getHeaders(),
-    });
-    if (!res.ok) {
-      if (res.status === 404) return null;
-      throw new Error("Failed to get customer cart");
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/carts/customer/${customerId}`, {
+        headers: getHeaders(),
+      });
+      if (!res.ok) {
+        // 404 = no cart yet, any other error = treat as no cart (don't crash)
+        return null;
+      }
+      return res.json();
+    } catch {
+      // Network error — treat as no cart
+      return null;
     }
-    return res.json();
   },
   async createCart(customerId?: string | null) {
     const res = await fetch(`${getApiBaseUrl()}/carts`, {

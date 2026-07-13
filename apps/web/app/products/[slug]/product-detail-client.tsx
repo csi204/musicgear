@@ -152,6 +152,7 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
   const [bundleAdded, setBundleAdded] = useState(false);
   const [itemAdded, setItemAdded] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -173,8 +174,37 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-7xl px-6 py-24 text-center text-slate-gray font-medium">
-        กำลังโหลดรายละเอียดสินค้า...
+      <div className="min-h-screen bg-[#F5F3EE]/30 text-neutral-900 flex flex-col">
+        <div className="mx-auto max-w-7xl w-full px-6 py-12">
+          {/* Breadcrumb skeleton */}
+          <div className="h-4 w-40 bg-neutral-200 animate-pulse rounded mb-8" />
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
+            {/* Left Column: Image Gallery Skeleton */}
+            <div className="lg:col-span-7 flex flex-col gap-4">
+              <div className="aspect-[4/3] w-full bg-neutral-200 animate-pulse rounded-3xl" />
+              <div className="flex gap-4">
+                {[1, 2, 3, 4].map((n) => (
+                  <div key={n} className="h-20 w-20 bg-neutral-200 animate-pulse rounded-xl" />
+                ))}
+              </div>
+            </div>
+
+            {/* Right Column: Product Info Skeleton */}
+            <div className="lg:col-span-5 flex flex-col gap-6 text-left">
+              <div className="h-4 w-24 bg-neutral-200 animate-pulse rounded" />
+              <div className="h-10 w-full bg-neutral-200 animate-pulse rounded-lg" />
+              <div className="h-4 w-32 bg-neutral-200 animate-pulse rounded" />
+              <div className="h-8 w-40 bg-neutral-200 animate-pulse rounded-lg mt-4" />
+              <div className="h-[2px] bg-neutral-100 my-4" />
+              <div className="h-4 w-48 bg-neutral-200 animate-pulse rounded" />
+              <div className="flex gap-4 mt-6">
+                <div className="h-14 w-24 bg-neutral-200 animate-pulse rounded-full" />
+                <div className="h-14 w-full bg-neutral-200 animate-pulse rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -236,6 +266,30 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
       showToast("ไม่สามารถเพิ่มสินค้าลงตะกร้าได้");
     } finally {
       setIsAddingToCart(false);
+    }
+  };
+
+  // Buy Now: add to cart then redirect to checkout
+  const handleBuyNow = async () => {
+    if (!product || isBuyingNow) return;
+
+    setIsBuyingNow(true);
+    try {
+      await addItem({
+        productId: product.productId,
+        title: product.title,
+        price: product.price,
+        quantity: quantity,
+        color: selectedColor,
+        imageUrl: product.imageUrl,
+        brand: product.brand,
+      });
+      // Redirect to checkout — checkout handles auth guard (guest → login → back)
+      router.push("/checkout");
+    } catch (err) {
+      console.error("Buy now failed:", err);
+      showToast("ไม่สามารถดำเนินการได้ กรุณาลองใหม่อีกครั้ง");
+      setIsBuyingNow(false);
     }
   };
 
@@ -543,8 +597,22 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
                   )}
                 </button>
                 
-                <button className="flex h-12 items-center justify-center rounded-full border border-neutral-800 bg-white font-bold text-sm text-neutral-800 tracking-wide hover:bg-neutral-50 transition-all cursor-pointer active:scale-95">
-                  ซื้อทันที (Buy Now)
+                <button
+                  onClick={handleBuyNow}
+                  disabled={isBuyingNow}
+                  className="flex h-12 items-center justify-center gap-2 rounded-full border border-neutral-800 bg-white font-bold text-sm text-neutral-800 tracking-wide hover:bg-neutral-800 hover:text-white transition-all cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isBuyingNow ? (
+                    <>
+                      <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      กำลังดำเนินการ...
+                    </>
+                  ) : (
+                    "ซื้อทันที"
+                  )}
                 </button>
               </div>
 

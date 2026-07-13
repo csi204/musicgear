@@ -65,18 +65,28 @@ router.get("/customer/:customerId", async (c) => {
     const redis = getRedis(c);
     const prisma = getPrisma(c);
     const customerId = c.req.param("customerId");
-    
-    // Check if we have user_cart mapping first in Redis
-    let cartId = await redis.get(`user_cart:${customerId}`);
-    
-    // Fallback: If not in Redis mapping, find cart directly in Postgres
+
+    let cartId = null;
+
+    // Check Redis mapping first (with graceful fallback on error)
+    try {
+      cartId = await redis.get(`user_cart:${customerId}`);
+    } catch (redisErr) {
+      console.warn("[cart-svc] Redis lookup failed, falling back to Postgres:", redisErr.message);
+    }
+
+    // Fallback: find cart directly in Postgres
     if (!cartId) {
       const cart = await prisma.cart.findFirst({
         where: { customerId },
+        orderBy: { createdAt: "desc" },
       });
       if (cart) {
         cartId = cart.cartId;
-        await redis.set(`user_cart:${customerId}`, cartId);
+        // Re-populate Redis cache (best-effort)
+        try {
+          await redis.set(`user_cart:${customerId}`, cartId);
+        } catch {}
       }
     }
 
@@ -86,6 +96,8 @@ router.get("/customer/:customerId", async (c) => {
 
     const cart = await CartService.getCart(redis, prisma, cartId);
     if (!cart) {
+      // Stale mapping — clear it and return 404
+      try { await redis.del(`user_cart:${customerId}`); } catch {}
       return c.json({ error: { code: "NOT_FOUND", message: "ไม่พบตะกร้าสินค้า" } }, 404);
     }
     return c.json(cart, 200);

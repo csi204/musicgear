@@ -104,6 +104,46 @@ app.post("/webhooks/qstash", async (c) => {
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /orders/:orderId/confirm-payment — Internal M2M (payment-svc only, no JWT)
+// Must be registered BEFORE authMiddleware is applied to /orders/*
+// ──────────────────────────────────────────────────────────────────────────────
+app.post("/orders/:orderId/confirm-payment", async (c) => {
+  // Security: only allow calls from payment-svc via X-Internal-Service header
+  const internalService = c.req.header("X-Internal-Service");
+  if (internalService !== "payment-svc") {
+    return c.json({ error: { code: "FORBIDDEN", message: "Internal endpoint only" } }, 403);
+  }
+
+  try {
+    const prisma = createPrisma(c.env.DATABASE_URL);
+    const orderId = c.req.param("orderId");
+
+    const order = await OrderService.getOrder(prisma, orderId);
+    if (!order) {
+      return c.json({ error: { code: "NOT_FOUND", message: "ไม่พบคำสั่งซื้อ" } }, 404);
+    }
+
+    if (order.status !== "pending") {
+      // Already confirmed or beyond — idempotent, return current state
+      return c.json(order, 200);
+    }
+
+    const updatedOrder = await OrderService.updateOrderStatus(prisma, orderId, "confirmed");
+    console.info(`[order-svc] Order ${orderId} confirmed after payment (M2M)`);
+
+    // Notify via QStash (async, non-blocking)
+    c.executionCtx.waitUntil(
+      publishOrderStatusChanged(c.env, orderId, updatedOrder.customerId, "confirmed")
+    );
+
+    return c.json(updatedOrder, 200);
+  } catch (error) {
+    console.error("[order-svc] Confirm payment M2M error:", error);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: error.message } }, 500);
+  }
+});
+
 // Apply Kinde Auth to all order routes
 app.use('/orders/*', authMiddleware);
 app.route('/orders', ordersRouter);

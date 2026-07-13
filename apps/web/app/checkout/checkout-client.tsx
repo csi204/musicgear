@@ -15,7 +15,10 @@ import {
   Loader2, 
   ArrowLeft, 
   ShoppingBag,
-  AlertCircle
+  AlertCircle,
+  CreditCard,
+  Truck,
+  Banknote
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@workspace/ui/lib/utils";
@@ -43,6 +46,7 @@ export function CheckoutClient() {
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [submittingOrder, setSubmittingOrder] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "cod">("online");
 
   // Address Form States
   const [showAddForm, setShowAddForm] = useState(false);
@@ -192,6 +196,7 @@ export function CheckoutClient() {
           cartId,
           addressId: selectedAddressId,
           remark: remark || null,
+          paymentMethod,
           shippingAddressSnapshot: {
             receiverName: selectedAddr.receiverName,
             phone: selectedAddr.phone,
@@ -207,11 +212,16 @@ export function CheckoutClient() {
       const data = await res.json();
 
       if (res.ok) {
-        // Order successfully created! 
-        // Clear local cart state
+        // Order successfully created — clear cart
         await clearCart();
-        // Redirect to payment page
-        router.push(`/payment?orderId=${data.orderId}`);
+
+        if (paymentMethod === "online") {
+          // ชำระออนไลน์: ไปหน้า payment
+          router.push(`/payment?orderId=${data.orderId}`);
+        } else {
+          // COD: ไปหน้า order detail ทันที
+          router.push(`/orders/${data.orderId}`);
+        }
       } else {
         const error = data.error;
         if (error?.code === "CONFLICT" || error?.code === "OUT_OF_STOCK") {
@@ -467,7 +477,82 @@ export function CheckoutClient() {
               )}
             </div>
 
-            {/* Section 2: Remark / Notes */}
+            {/* Section 2: Payment Method */}
+            <div className="bg-white rounded-3xl border border-[#E5E2DA] p-6 md:p-8">
+              <h2 className="font-heading text-lg font-bold text-neutral-950 flex items-center gap-2.5 mb-5">
+                <CreditCard className="h-5 w-5 text-electric-blue" />
+                วิธีชำระเงิน
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Online Payment */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("online")}
+                  className={cn(
+                    "relative flex flex-col gap-3 rounded-2xl border p-5 text-left transition-all cursor-pointer",
+                    paymentMethod === "online"
+                      ? "border-electric-blue bg-electric-blue/[0.02] ring-1 ring-electric-blue"
+                      : "border-neutral-200 hover:border-neutral-300 bg-white"
+                  )}
+                >
+                  {paymentMethod === "online" && (
+                    <span className="absolute top-4 right-4 bg-electric-blue text-white rounded-full p-1">
+                      <Check className="h-3 w-3" />
+                    </span>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
+                      paymentMethod === "online" ? "bg-electric-blue/10 text-electric-blue" : "bg-neutral-100 text-neutral-500"
+                    )}>
+                      <CreditCard className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-neutral-900">ชำระออนไลน์</p>
+                      <p className="text-xs text-slate-gray mt-0.5">บัตรเครดิต / PromptPay</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-neutral-500 leading-relaxed">
+                    ชำระเงินทันทีผ่าน Omise Payment Gateway ปลอดภัยและรวดเร็ว
+                  </p>
+                </button>
+
+                {/* COD */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("cod")}
+                  className={cn(
+                    "relative flex flex-col gap-3 rounded-2xl border p-5 text-left transition-all cursor-pointer",
+                    paymentMethod === "cod"
+                      ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-400"
+                      : "border-neutral-200 hover:border-neutral-300 bg-white"
+                  )}
+                >
+                  {paymentMethod === "cod" && (
+                    <span className="absolute top-4 right-4 bg-amber-400 text-white rounded-full p-1">
+                      <Check className="h-3 w-3" />
+                    </span>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
+                      paymentMethod === "cod" ? "bg-amber-100 text-amber-600" : "bg-neutral-100 text-neutral-500"
+                    )}>
+                      <Banknote className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-neutral-900">เก็บเงินปลายทาง</p>
+                      <p className="text-xs text-slate-gray mt-0.5">Cash on Delivery (COD)</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-neutral-500 leading-relaxed">
+                    ชำระเงินสดเมื่อได้รับสินค้า เหมาะสำหรับผู้ที่ยังไม่พร้อมชำระออนไลน์
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* Section 3: Remark / Notes */}
             <div className="bg-white rounded-3xl border border-[#E5E2DA] p-6 md:p-8">
               <h2 className="font-heading text-lg font-bold text-neutral-950 mb-4">
                 หมายเหตุถึงผู้ขาย (Remark)
@@ -544,19 +629,46 @@ export function CheckoutClient() {
                 </span>
               </div>
 
+              {/* Payment Method Summary Badge */}
+              <div className={cn(
+                "flex items-center gap-2.5 rounded-2xl px-4 py-3 mb-5 text-xs font-semibold",
+                paymentMethod === "online"
+                  ? "bg-electric-blue/8 text-electric-blue border border-electric-blue/20"
+                  : "bg-amber-50 text-amber-700 border border-amber-200"
+              )}>
+                {paymentMethod === "online" ? (
+                  <><CreditCard className="h-4 w-4 flex-shrink-0" /> ชำระออนไลน์ผ่าน Omise<span className="ml-auto text-[10px] opacity-70">จะไปหน้าชำระเงิน</span></>
+                ) : (
+                  <><Banknote className="h-4 w-4 flex-shrink-0" /> เก็บเงินปลายทาง (COD)<span className="ml-auto text-[10px] opacity-70">จ่ายตอนรับสินค้า</span></>
+                )}
+              </div>
+
               {/* Checkout CTA */}
               <button
                 onClick={handleCheckout}
                 disabled={submittingOrder || !selectedAddressId}
-                className="w-full flex items-center justify-center gap-2 rounded-full bg-electric-blue hover:bg-electric-blue/90 disabled:opacity-50 text-white font-semibold py-4 transition-all shadow-md shadow-electric-blue/10 cursor-pointer"
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 rounded-full disabled:opacity-50 text-white font-semibold py-4 transition-all shadow-md cursor-pointer",
+                  paymentMethod === "online"
+                    ? "bg-electric-blue hover:bg-electric-blue/90 shadow-electric-blue/10"
+                    : "bg-amber-500 hover:bg-amber-600 shadow-amber-200"
+                )}
               >
                 {submittingOrder ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
                     กำลังดำเนินการ...
                   </>
+                ) : paymentMethod === "online" ? (
+                  <>
+                    <CreditCard className="h-5 w-5" />
+                    ไปหน้าชำระเงิน
+                  </>
                 ) : (
-                  "สั่งซื้อสินค้า"
+                  <>
+                    <Truck className="h-5 w-5" />
+                    สั่งซื้อ (เก็บเงินปลายทาง)
+                  </>
                 )}
               </button>
             </div>
