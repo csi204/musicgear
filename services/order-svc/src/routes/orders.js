@@ -130,6 +130,65 @@ router.get("/", async (c) => {
   }
 });
 
+// GET /summary — ดึงข้อมูลสรุปออเดอร์สำหรับ Dashboard
+router.get("/summary", async (c) => {
+  try {
+    const prisma = getPrisma(c);
+    const authUser = getAuthUser(c);
+
+    // Only staff and admin can access this summary
+    if (authUser.role !== "admin" && authUser.role !== "staff") {
+      return c.json({ error: { code: "FORBIDDEN", message: "ไม่มีสิทธิ์เข้าถึงข้อมูลส่วนนี้" } }, 403);
+    }
+
+    // 1. Calculate Delivery Efficiency
+    const [totalOrdersCount, deliveredOrdersCount] = await Promise.all([
+      prisma.order.count(),
+      prisma.order.count({ where: { status: "delivered" } }),
+    ]);
+
+    // 2. Calculate Hourly Fulfillment (Today's orders)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const todayOrders = await prisma.order.findMany({
+      where: {
+        orderDate: {
+          gte: startOfToday,
+          lte: endOfToday,
+        },
+      },
+      select: {
+        orderDate: true,
+      },
+    });
+
+    const hourlyFulfillment = Array(12).fill(0);
+    const hours = ["09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"];
+    
+    todayOrders.forEach((o) => {
+      const date = new Date(o.orderDate);
+      const hourStr = String(date.getHours()).padStart(2, "0");
+      const idx = hours.indexOf(hourStr);
+      if (idx !== -1) {
+        hourlyFulfillment[idx]++;
+      }
+    });
+
+    return c.json({
+      status: "ok",
+      totalOrdersCount,
+      deliveredOrdersCount,
+      hourlyFulfillment,
+    }, 200);
+  } catch (error) {
+    console.error("[order-svc] Get order summary error:", error);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: error.message } }, 500);
+  }
+});
+
 // 2. Get Single Order Detail
 router.get("/:orderId", async (c) => {
   try {

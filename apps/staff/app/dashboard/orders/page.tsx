@@ -11,14 +11,14 @@ import { Pagination } from "@/components/pagination";
 
 type OrderStatus = "pending" | "confirmed" | "packed" | "shipped" | "delivered" | "cancelled" | "refunded";
 
-const statusConfig: Record<OrderStatus, { label: string; dot: string}> = {
-  pending: { label: "รอดำเนินการ", dot: "bg-amber-500"},
-  confirmed: { label: "ยืนยันแล้ว", dot: "bg-blue-500"},
-  packed: { label: "แพ็คสินค้าแล้ว", dot: "bg-purple-500"},
-  shipped: { label: "กำลังจัดส่ง", dot: "bg-sky-500"},
-  delivered: { label: "ส่งสำเร็จแล้ว", dot: "bg-emerald-500"},
-  cancelled: { label: "ยกเลิกแล้ว", dot: "bg-zinc-500"},
-  refunded: { label: "คืนเงินแล้ว", dot: "bg-zinc-500"},
+const statusConfig: Record<OrderStatus, { label: string; badge: string; dot: string }> = {
+  pending: { label: "รอดำเนินการ", badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400", dot: "bg-amber-500" },
+  confirmed: { label: "ยืนยันแล้ว", badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", dot: "bg-blue-500" },
+  packed: { label: "แพ็คสินค้าแล้ว", badge: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400", dot: "bg-purple-500" },
+  shipped: { label: "กำลังจัดส่ง", badge: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400", dot: "bg-sky-500" },
+  delivered: { label: "ส่งสำเร็จแล้ว", badge: "bg-emerald-100 text-emerald-400 dark:bg-emerald-900/30 dark:text-emerald-450", dot: "bg-emerald-500" },
+  cancelled: { label: "ยกเลิกแล้ว", badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400", dot: "bg-zinc-500" },
+  refunded: { label: "คืนเงินแล้ว", badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400", dot: "bg-zinc-500" },
 };
 
 const nextStatusMap: Partial<Record<OrderStatus, OrderStatus>> = {
@@ -172,6 +172,7 @@ export default function OrdersPage() {
   const getRecipientName = (order: OrderRecord) => {
     const snap = order.shippingAddressSnapshot;
     if (!snap) return "ไม่ทราบชื่อ";
+    if (snap.receiverName) return snap.receiverName;
     if (snap.name) return snap.name;
     return `${snap.firstName ?? ""} ${snap.lastName ?? ""}`.trim() || "ไม่ทราบชื่อ";
   };
@@ -327,12 +328,12 @@ export default function OrdersPage() {
                         className="rounded border-zinc-300 dark:border-zinc-700 accent-amber-500 cursor-pointer w-4 h-4"
                       />
                     </TableHead>
-                    <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500 h-12">รหัสออเดอร์</TableHead>
-                    <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500">ลูกค้า</TableHead>
-                    <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500">รายการสินค้า</TableHead>
-                    <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500">สถานะ</TableHead>
-                    <TableHead className="font-bold text-xs uppercase tracking-wider text-zinc-500">วันที่สั่งซื้อ</TableHead>
-                    <TableHead className="font-bold text-right pr-6 text-xs uppercase tracking-wider text-zinc-500">จัดการ</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300 h-12">รหัสออเดอร์</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ลูกค้า</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">รายการสินค้า</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะ</TableHead>
+                    <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">วันที่สั่งซื้อ</TableHead>
+                    <TableHead className="font-extrabold text-right pr-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -362,30 +363,30 @@ export default function OrdersPage() {
                               className="rounded border-zinc-300 dark:border-zinc-700 accent-amber-500 cursor-pointer w-4 h-4"
                             />
                           </TableCell>
-                          <TableCell className="font-bold text-zinc-900 dark:text-white font-mono text-sm py-4">
+                          <TableCell className="font-extrabold text-zinc-900 dark:text-white font-mono text-sm py-4">
                             {order.orderId.slice(0, 8).toUpperCase()}
                           </TableCell>
                           <TableCell>
-                            <div className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{recipient}</div>
-                            <div className="text-xs text-zinc-400 mt-1 max-w-[220px] truncate">{address}</div>
+                            <div className="font-bold text-zinc-950 dark:text-zinc-200 text-sm">{recipient}</div>
+                            <div className="text-xs font-semibold text-zinc-650 dark:text-zinc-400 mt-1 max-w-[220px] truncate">{address}</div>
                           </TableCell>
                           <TableCell className="max-w-[240px]">
                             <div className="space-y-1">
                               {order.items?.map((item) => (
-                                <div key={item.orderItemId} className="text-sm text-zinc-650 dark:text-zinc-400 truncate flex items-center gap-2">
-                                  <span className="font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-[11px]">×{item.quantity}</span>
+                                <div key={item.orderItemId} className="text-sm text-zinc-850 dark:text-zinc-300 font-semibold truncate flex items-center gap-2">
+                                  <span className="font-bold text-zinc-900 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-xs">×{item.quantity}</span>
                                   {productMap.get(item.productId) ?? "Guitar Product"}
                                 </div>
                               ))}
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className={`text-sm px-3 py-1.5 font-bold border-none flex items-center gap-2 w-fit`}>
-                              <span className={`w-2 h-2 rounded-full ${sc.dot}`} />
+                            <Badge variant="outline" className={`text-sm px-2.5 py-1 font-bold border-none flex items-center gap-1.5 w-fit ${sc.badge}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
                               {sc.label}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-sm text-zinc-500 dark:text-zinc-400">
+                          <TableCell className="text-sm font-bold text-zinc-700 dark:text-zinc-400">
                             {new Date(order.orderDate).toLocaleString("th-TH")}
                           </TableCell>
                           <TableCell className="text-right pr-6">
@@ -474,9 +475,9 @@ export default function OrdersPage() {
         </>
       )}
 
-      {/* Fulfillment Modal Overlay - (No UI changes needed here as it looks fine, but included for completeness) */}
+      {/* Fulfillment Modal Overlay */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col gap-4 animate-in zoom-in duration-200 text-zinc-100 p-6 relative">
             <button
               onClick={() => setSelectedOrder(null)}

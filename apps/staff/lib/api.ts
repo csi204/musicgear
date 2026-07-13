@@ -69,6 +69,7 @@ export interface InventoryRecord {
   reservedQuantity: number;
   available: number;
   reorderPoint: number;
+  maxCapacity: number;
   status: "In Stock" | "Low" | "Critical";
 }
 
@@ -302,3 +303,56 @@ export async function deleteProductById(productId: string, token?: string): Prom
 export async function deleteBundleById(bundleId: string, token?: string): Promise<{ status: string; message: string }> {
   return apiFetch<{ status: string; message: string }>(`/products/bundles/${bundleId}`, { method: "DELETE", token });
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Summary Interfaces & APIs
+// ──────────────────────────────────────────────────────────────────────────────
+
+export interface InventorySummaryAlert {
+  productId: string;
+  productName: string;
+  categoryName: string;
+  quantity: number;
+  reservedQuantity: number;
+  available: number;
+  reorderPoint: number;
+  maxCapacity: number;
+  computedStatus: "In Stock" | "Low" | "Critical";
+}
+
+export interface InventorySummaryRecord {
+  totalStock: number;
+  occupiedStock: number;
+  capacityPct: number;
+  okPct: number;
+  lowPct: number;
+  critPct: number;
+  totalAlertsCount: number;
+  alerts: InventorySummaryAlert[];
+}
+
+export interface OrderSummaryRecord {
+  totalOrdersCount: number;
+  deliveredOrdersCount: number;
+  hourlyFulfillment: number[];
+}
+
+/** GET /inventory/stock/summary — Fetch aggregated inventory stats and alerts */
+export async function getInventorySummary(token?: string): Promise<InventorySummaryRecord> {
+  return apiFetch<InventorySummaryRecord>("/inventory/stock/summary", { method: "GET", token });
+}
+
+/** GET /orders/summary — Fetch aggregated order stats for dashboard */
+export async function getOrderSummary(token?: string): Promise<OrderSummaryRecord> {
+  return apiFetch<OrderSummaryRecord>("/orders/summary", { method: "GET", token });
+}
+
+/** PATCH /inventory/stock/:productId/max-capacity — Update max capacity for product inventory */
+export async function updateMaxCapacity(productId: string, maxCapacity: number, token?: string): Promise<{ productId: string; maxCapacity: number }> {
+  return apiFetch<{ productId: string; maxCapacity: number }>(`/inventory/stock/${productId}/max-capacity`, {
+    method: "PATCH",
+    body: JSON.stringify({ maxCapacity }),
+    token,
+  });
+}
+

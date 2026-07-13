@@ -5,9 +5,10 @@ import Link from "next/link";
 import { Search, SlidersHorizontal, PackagePlus, ChevronDown, X, Loader2 } from "lucide-react";
 import { Badge } from "@workspace/ui/components/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
-import { getProducts, getInventory, getInventoryLogs, InventoryLogRecord } from "@/lib/api";
+import { getProducts, getInventory, getInventoryLogs, updateMaxCapacity, InventoryLogRecord } from "@/lib/api";
 import { CustomSelect } from "@/components/custom-select";
 import { Pagination } from "@/components/pagination";
+import { useToast } from "@/components/toast-provider";
 
 type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
 
@@ -24,6 +25,7 @@ interface DisplayInventory {
   category: string;
   currentQty: number;
   reserved: number;
+  maxCapacity: number;
   status: StockStatus;
 }
 
@@ -63,8 +65,10 @@ export default function InventoryPage() {
     setCurrentPage(1);
   }, [activeCategory, search, selectedStatus]);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const prodRes = await getProducts({ limit: 100 });
@@ -78,12 +82,12 @@ export default function InventoryPage() {
           const currentQty = inv?.quantity ?? 0;
           const reserved = inv?.reservedQuantity ?? 0;
           const available = currentQty - reserved;
-          const reorderPoint = inv?.reorderPoint ?? 0;
+          const maxCapacity = inv?.maxCapacity ?? 100;
           
           let status: StockStatus = "in_stock";
           if (available === 0) {
             status = "out_of_stock";
-          } else if (available <= reorderPoint || available <= 5) {
+          } else if (available <= 0.3 * maxCapacity) {
             status = "low_stock";
           }
 
@@ -94,6 +98,7 @@ export default function InventoryPage() {
             category: p.category?.name ?? "ทั่วไป",
             currentQty,
             reserved,
+            maxCapacity,
             status,
           };
         });
@@ -137,7 +142,7 @@ export default function InventoryPage() {
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">คลังสินค้า</h2>
-          <p className="text-zinc-500 text-sm mt-1">ตรวจสอบและจัดการสต็อกคลังสินค้า</p>
+          <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-400 mt-1">ตรวจสอบและจัดการสต็อกคลังสินค้า</p>
         </div>
         <Link
           href="/dashboard/inventory/receive"
@@ -174,14 +179,14 @@ export default function InventoryPage() {
               <SlidersHorizontal className="w-4 h-4" />
               กรองข้อมูล
             </button>
-            <span className="text-xs text-zinc-400 ml-auto">{filtered.length} รายการ</span>
+            <span className="text-sm font-semibold text-zinc-750 dark:text-zinc-300 ml-auto">{filtered.length} รายการ</span>
           </div>
 
           {/* Collapsible Status Filter Dropdown */}
           {showFilters && (
             <div className="mb-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 animate-in fade-in duration-200">
               <div className="max-w-xs">
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 block mb-1.5">สถานะสินค้า</label>
+                <label className="text-sm font-extrabold text-zinc-700 dark:text-zinc-300 block mb-1.5">สถานะสินค้า</label>
                 <CustomSelect
                   value={selectedStatus}
                   onChange={setSelectedStatus}
@@ -191,7 +196,7 @@ export default function InventoryPage() {
                     { value: "low_stock", label: "สต็อกใกล้หมด" },
                     { value: "out_of_stock", label: "สินค้าหมด" }
                   ]}
-                  triggerClassName="bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-250 dark:border-zinc-700 text-xs py-2 px-3 h-9"
+                  triggerClassName="bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-250 dark:border-zinc-700 text-sm py-2 px-3 h-10"
                   dropdownClassName="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 divide-y divide-zinc-100 dark:divide-zinc-800"
                 />
               </div>
@@ -204,10 +209,10 @@ export default function InventoryPage() {
               <button
                 key={tab}
                 onClick={() => setActiveCategory(tab)}
-                className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-all whitespace-nowrap border-b-2 ${
+                className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-all whitespace-nowrap border-b-2 ${
                   activeCategory === tab
-                    ? "text-amber-600 dark:text-amber-400 border-amber-500"
-                    : "text-zinc-500 dark:text-zinc-400 border-transparent hover:text-zinc-700 dark:hover:text-zinc-200"
+                    ? "text-amber-700 dark:text-amber-400 border-amber-500 font-extrabold"
+                    : "text-zinc-700 dark:text-zinc-400 border-transparent hover:text-zinc-900 dark:hover:text-zinc-200"
                 }`}
               >
                 {tab}
@@ -221,13 +226,13 @@ export default function InventoryPage() {
           <Table className="min-w-[850px] md:min-w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider">SKU</TableHead>
-              <TableHead className="font-bold text-xs uppercase tracking-wider">ชื่อสินค้า</TableHead>
-              <TableHead className="font-bold text-center text-xs uppercase tracking-wider">คงคลังรวม</TableHead>
-              <TableHead className="font-bold text-center text-xs uppercase tracking-wider">จอง</TableHead>
-              <TableHead className="font-bold text-center text-xs uppercase tracking-wider">คงเหลือ</TableHead>
-              <TableHead className="font-bold text-xs uppercase tracking-wider">สถานะ</TableHead>
-              <TableHead className="font-bold text-right pr-6 text-xs uppercase tracking-wider">จัดการ</TableHead>
+              <TableHead className="font-extrabold pl-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">SKU</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ชื่อสินค้า</TableHead>
+              <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">คงคลังรวม</TableHead>
+              <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จอง</TableHead>
+              <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">คงเหลือ</TableHead>
+              <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะ</TableHead>
+              <TableHead className="font-extrabold text-right pr-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -249,12 +254,14 @@ export default function InventoryPage() {
                 const sc = statusConfig[item.status];
                 return (
                   <TableRow key={item.sku} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                    <TableCell className="pl-6 text-sm font-bold text-zinc-700 dark:text-zinc-300">{item.sku}</TableCell>
-                    <TableCell className="font-medium text-zinc-800 dark:text-zinc-200">{item.name}</TableCell>
-                    <TableCell className="text-center font-bold text-zinc-900 dark:text-white">{item.currentQty}</TableCell>
-                    <TableCell className="text-center text-zinc-500 dark:text-zinc-400 font-semibold">{item.reserved}</TableCell>
+                    <TableCell className="pl-6 text-sm font-extrabold text-zinc-950 dark:text-zinc-300">{item.sku}</TableCell>
+                    <TableCell className="font-bold text-zinc-900 dark:text-zinc-200">{item.name}</TableCell>
+                    <TableCell className="text-center font-bold text-zinc-950 dark:text-white">
+                      {item.currentQty} <span className="text-xs font-bold text-zinc-600 dark:text-zinc-450">/ {item.maxCapacity}</span>
+                    </TableCell>
+                    <TableCell className="text-center text-zinc-750 dark:text-zinc-400 font-extrabold">{item.reserved}</TableCell>
                     <TableCell className="text-center">
-                      <span className={`font-bold text-sm ${available === 0 ? "text-red-500" : available <= 5 ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"}`}>
+                      <span className={`font-bold text-sm ${available === 0 ? "text-red-500" : available <= 0.3 * item.maxCapacity ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"}`}>
                         {available}
                       </span>
                     </TableCell>
@@ -289,7 +296,13 @@ export default function InventoryPage() {
       </div>
 
       {selectedHistoryItem && (
-        <StockHistoryModal item={selectedHistoryItem} onClose={() => setSelectedHistoryItem(null)} />
+        <StockHistoryModal 
+          item={selectedHistoryItem} 
+          onClose={() => { 
+            setSelectedHistoryItem(null); 
+            loadData(true); 
+          }} 
+        />
       )}
     </div>
   );
@@ -307,6 +320,26 @@ function StockHistoryModal({ item, onClose }: StockHistoryModalProps) {
   const [logs, setLogs] = useState<InventoryLogRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const [customMaxCapacity, setCustomMaxCapacity] = useState<number | null>(null);
+  const [isUpdatingCap, setIsUpdatingCap] = useState(false);
+
+  const handleUpdateMaxCapacity = async () => {
+    const val = customMaxCapacity !== null ? customMaxCapacity : item.maxCapacity;
+    if (val < 1) return;
+    try {
+      setIsUpdatingCap(true);
+      await updateMaxCapacity(item.id, val);
+      item.maxCapacity = val;
+      setCustomMaxCapacity(val);
+      toast({ type: "success", title: "อัปเดตความจุสูงสุดเรียบร้อยแล้ว", description: `ตั้งค่าความจุสูงสุดเป็น ${val} ชิ้น` });
+    } catch (err: any) {
+      toast({ type: "error", title: "ไม่สามารถอัปเดตความจุสูงสุดได้", description: err.message });
+    } finally {
+      setIsUpdatingCap(false);
+    }
+  };
 
   useEffect(() => {
     async function loadLogs() {
@@ -365,7 +398,7 @@ function StockHistoryModal({ item, onClose }: StockHistoryModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-xl w-full shadow-2xl animate-in zoom-in duration-200 overflow-hidden text-zinc-900 dark:text-zinc-100 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
@@ -385,22 +418,45 @@ function StockHistoryModal({ item, onClose }: StockHistoryModalProps) {
           {/* Current Stock Snapshot */}
           <div className="grid grid-cols-3 gap-3 bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-2xl border border-zinc-150 dark:border-zinc-800">
             <div className="text-center">
-              <span className="text-[12px] text-zinc-400 font-bold uppercase tracking-wider block">สต็อกในคลัง</span>
-              <span className="text-xl font-extrabold text-zinc-850 dark:text-zinc-200">{item.currentQty}</span>
+              <span className="text-[13px] text-zinc-750 dark:text-zinc-400 font-extrabold uppercase tracking-wider block">สต็อกในคลัง</span>
+              <span className="text-xl font-black text-zinc-950 dark:text-zinc-200">{item.currentQty}</span>
             </div>
             <div className="text-center border-l border-r border-zinc-200 dark:border-zinc-800">
-              <span className="text-[12px] text-zinc-400 font-bold uppercase tracking-wider block">จองจัดส่ง</span>
-              <span className="text-xl font-extrabold text-amber-500">{item.reserved}</span>
+              <span className="text-[13px] text-zinc-750 dark:text-zinc-400 font-extrabold uppercase tracking-wider block">จองจัดส่ง</span>
+              <span className="text-xl font-black text-amber-500">{item.reserved}</span>
             </div>
             <div className="text-center">
-              <span className="text-[12px] text-zinc-400 font-bold uppercase tracking-wider block">พร้อมใช้งาน</span>
-              <span className="text-xl font-extrabold text-emerald-500">{Math.max(0, item.currentQty - item.reserved)}</span>
+              <span className="text-[13px] text-zinc-750 dark:text-zinc-400 font-extrabold uppercase tracking-wider block">พร้อมใช้งาน</span>
+              <span className="text-xl font-black text-emerald-500">{Math.max(0, item.currentQty - item.reserved)}</span>
+            </div>
+          </div>
+
+          {/* Max Capacity Configuration */}
+          <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-2xl border border-zinc-150 dark:border-zinc-800">
+            <div>
+              <span className="text-[13px] text-zinc-800 dark:text-zinc-300 font-extrabold uppercase tracking-wider block">ความจุสต็อกสูงสุด (Max Capacity)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="1"
+                value={customMaxCapacity !== null ? customMaxCapacity : item.maxCapacity}
+                onChange={(e) => setCustomMaxCapacity(parseInt(e.target.value) || 1)}
+                className="w-20 px-2 py-1.5 text-center text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              />
+              <button
+                disabled={isUpdatingCap}
+                onClick={handleUpdateMaxCapacity}
+                className="px-3 py-1.5 text-sm font-extrabold text-white bg-amber-500 hover:bg-amber-650 rounded-lg transition-colors"
+              >
+                {isUpdatingCap ? "บันทึก..." : "บันทึก"}
+              </button>
             </div>
           </div>
 
           {/* Timeline */}
           <div className="space-y-4">
-            <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">บันทึกกิจกรรมล่าสุด (Timeline Logs)</h4>
+            <h4 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-300 uppercase tracking-wider">บันทึกกิจกรรมล่าสุด (Timeline Logs)</h4>
             
             {loading ? (
               <div className="flex items-center justify-center py-12 gap-2 text-zinc-450">
