@@ -67,9 +67,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           if (account.id_token) {
             try {
-              const idPayload = JSON.parse(
-                Buffer.from(account.id_token.split(".")[1], "base64url").toString()
-              );
+              const base64Url = account.id_token.split(".")[1];
+              const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+              const idPayload = JSON.parse(atob(base64));
               firstName = idPayload.given_name || firstName;
               lastName = idPayload.family_name || lastName;
               email = idPayload.email || email;
