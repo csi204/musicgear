@@ -111,7 +111,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, profile }) {
       if (user) {
         // If logged in via credentials, user has our DB structure.
         // If logged in via Kinde, user is from NextAuth.
@@ -122,12 +122,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
            const parts = (user.name || "").split(" ");
            token.firstName = parts[0] || "";
            token.lastName = parts.slice(1).join(" ") || "";
+           token.image = user.image || (profile as any)?.picture || (profile as any)?.image || null;
         } else {
            token.userId = user.userId;
            token.role = user.role;
            token.email = user.email;
            token.firstName = user.firstName;
            token.lastName = user.lastName;
+           token.image = user.image || null;
         }
       }
       return token;
@@ -139,6 +141,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.email = token.email as string;
         session.user.firstName = token.firstName as string;
         session.user.lastName = token.lastName as string;
+        session.user.image = token.image as string;
       }
       return session;
     }

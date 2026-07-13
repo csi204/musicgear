@@ -1,193 +1,216 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ShoppingCart, User, Menu, ClipboardList } from "lucide-react";
-import { Button } from "@workspace/ui/components/button";
+import { Search, ShoppingCart, Menu, X } from "lucide-react";
 import { LoginButton } from "./login-button";
-import { useState, useEffect } from "react";
-import { cn } from "@workspace/ui/lib/utils";
-
+import { useState, useEffect, useRef } from "react";
 import { useCartContext } from "./cart-provider";
 import { CartDrawer } from "./cart-drawer";
+import { usePathname } from "next/navigation";
+import { cn } from "@workspace/ui/lib/utils";
+
+const NAV_LINKS = [
+  { label: "กีต้าร์", href: "/products?category=guitars" },
+  { label: "คีย์บอร์ด", href: "/products?category=keyboards" },
+  { label: "กลอง", href: "/products?category=drums" },
+  { label: "เครื่องเสียง", href: "/products?category=pro-audio" },
+  { label: "แบรนด์", href: "/brands" },
+];
 
 export function Navbar() {
   const { totalItems } = useCartContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
-    const handleOpenCart = () => {
-      setIsCartOpen(true);
-    };
+    const handleOpenCart = () => setIsCartOpen(true);
     window.addEventListener("mg_open_cart", handleOpenCart);
     return () => window.removeEventListener("mg_open_cart", handleOpenCart);
   }, []);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (searchOpen) {
+      searchRef.current?.focus();
+    }
+  }, [searchOpen]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
   return (
     <>
-    <header className="sticky top-0 z-50 w-full border-b border-white bg-white backdrop-blur-sm">
-      <div className="mx-auto flex max-w-7xl h-20 items-center justify-between px-6">
-        
-        {/* Left Side: Logo & Navigation Links */}
-        <div className="flex items-center gap-10">
-          <Link href="/" className="flex items-center">
-            <img
-              src="/logo.png"
-              alt="MusicGear Logo"
-              className="h-12 w-auto object-contain"
-            />
-          </Link>
-
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-8">
-            <Link
-              href="/"
-              className="text-sm font-semibold text-neutral-900 transition-colors duration-200 hover:text-neutral-950"
-            >
-              หน้าแรก
-            </Link>
-            <Link
-              href="/products?category=guitars"
-              className="text-sm font-medium text-slate-gray transition-colors duration-200 hover:text-neutral-900"
-            >
-              กีต้าร์
-            </Link>
-            <Link
-              href="/products?category=keyboards"
-              className="text-sm font-medium text-slate-gray transition-colors duration-200 hover:text-neutral-900"
-            >
-              คีย์บอร์ด
-            </Link>
-            <Link
-              href="/products?category=drums"
-              className="text-sm font-medium text-slate-gray transition-colors duration-200 hover:text-neutral-900"
-            >
-              กลอง
-            </Link>
-            <Link
-              href="/products?category=pro-audio"
-              className="text-sm font-medium text-slate-gray transition-colors duration-200 hover:text-neutral-900"
-            >
-              เครื่องเสียงโปร
-            </Link>
-            <Link
-              href="/brands"
-              className="text-sm font-medium text-slate-gray transition-colors duration-200 hover:text-neutral-900"
-            >
-              แบรนด์
-            </Link>
-          </nav>
-        </div>
-
-        {/* Right Side: Search, Auth, and Cart */}
-        <div className="flex items-center gap-6">
-          {/* Search Input */}
-          <div className="relative hidden lg:block w-72">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-gray" />
-            <input
-              type="text"
-              placeholder="ค้นหาเครื่องดนตรี..."
-              className="h-10 w-full rounded-full border border-[#DEDCD4] bg-white pl-10 pr-4 text-sm text-neutral-900 placeholder-slate-gray outline-none transition-all duration-200 focus:border-orange-500 focus:bg-white focus:ring-1 focus:ring-orange-500"
-            />
-          </div>
-
-          {/* User Auth Buttons / Menu */}
-          <div className="hidden sm:block">
-            <LoginButton />
-          </div>
-
-          {/* My Orders Link */}
+      <header
+        className={cn(
+          "sticky top-0 z-50 w-full transition-all duration-500 ease-in-out",
+          scrolled
+            ? "bg-white/75 backdrop-blur-md border-b border-stone-200/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)] h-14"
+            : "bg-white border-b border-stone-200/50 h-16"
+        )}
+      >
+        <div className="mx-auto flex h-full max-w-screen-xl items-center px-6 relative gap-4">
+          
+          {/* ── LEFT: Premium Logo ── */}
           <Link
-            href="/orders"
-            className="relative hidden sm:flex h-10 w-10 items-center justify-center rounded-full border border-[#DEDCD4] bg-white text-neutral-800 transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300"
-            title="ประวัติการสั่งซื้อ"
+            href="/"
+            className="flex-shrink-0 z-10 flex items-center gap-1 group"
           >
-            <ClipboardList className="h-5 w-5" />
+            <span className="text-[14px] font-bold uppercase tracking-[0.2em] text-stone-900 transition-all duration-300 group-hover:tracking-[0.25em]">
+              MusicGear
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 transition-all duration-300 group-hover:scale-150 group-hover:shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
           </Link>
 
-          {/* Cart Icon Button (Triggers Drawer) */}
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#DEDCD4] bg-white text-neutral-800 transition-all duration-200 hover:bg-neutral-50 hover:border-neutral-300 cursor-pointer"
-          >
-            <ShoppingCart className="h-5 w-5" />
-            {totalItems > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white ring-2 ring-warm-offwhite animate-scale-in">
-                {totalItems}
-              </span>
-            )}
-          </button>
+          {/* ── CENTER: Modern Navigation Links ── */}
+          <nav className="hidden md:flex items-center gap-6 absolute left-1/2 -translate-x-1/2 z-10">
+            {NAV_LINKS.map((link) => {
+              const isActive = pathname?.includes(link.href.split("?")[1] ?? "__never__");
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "relative py-2 text-[13px] font-semibold uppercase tracking-wider transition-colors duration-300 ease-out group select-none active:scale-95 whitespace-nowrap",
+                    isActive ? "text-stone-950" : "text-stone-500 hover:text-stone-950"
+                  )}
+                >
+                  <span>{link.label}</span>
+                  <span
+                    className={cn(
+                      "absolute bottom-0 left-0 w-full h-[1.5px] bg-stone-950 transition-transform duration-300 ease-out origin-center",
+                      isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                    )}
+                  />
+                </Link>
+              );
+            })}
+          </nav>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#DEDCD4] bg-white text-neutral-800 md:hidden hover:bg-neutral-50"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          {/* ── RIGHT: Actions (Search, Login, Cart) ── */}
+          <div className="flex items-center gap-2.5 ml-auto z-10">
+            
+            {/* Search Bar - Spring Animation */}
+            <div className="relative hidden lg:flex items-center">
+              <div
+                className={cn(
+                  "flex items-center transition-all duration-300 ease-out",
+                  searchOpen ? "w-64 opacity-100" : "w-0 opacity-0 pointer-events-none"
+                )}
+              >
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400 pointer-events-none" />
+                  <input
+                    ref={searchRef}
+                    type="text"
+                    placeholder="ค้นหาเครื่องดนตรี..."
+                    onBlur={() => setSearchOpen(false)}
+                    className="h-8.5 w-full rounded-full border border-stone-200 bg-stone-50 pl-9 pr-4 text-xs text-stone-900 placeholder-stone-400 outline-none focus:border-stone-400 focus:bg-white focus:ring-2 focus:ring-stone-100 transition-all duration-300 shadow-sm"
+                  />
+                </div>
+              </div>
+
+              {!searchOpen && (
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  className="flex h-8.5 w-8.5 items-center justify-center rounded-full text-stone-500 hover:text-stone-950 hover:bg-stone-50 transition-all duration-300 active:scale-95"
+                  aria-label="ค้นหา"
+                >
+                  <Search className="h-[16px] w-[16px]" />
+                </button>
+              )}
+            </div>
+
+            {/* Subtle vertical separator */}
+            <div className="hidden lg:block w-px h-4 bg-stone-200" />
+
+            {/* User Account Button */}
+            <div className="transition-all duration-300 hover:scale-105 active:scale-95">
+              <LoginButton compact />
+            </div>
+
+            {/* Shopping Cart Button */}
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="relative flex h-8.5 w-8.5 items-center justify-center rounded-full text-stone-500 hover:text-stone-950 hover:bg-stone-50 transition-all duration-300 active:scale-95 cursor-pointer group"
+              aria-label="ตะกร้าสินค้า"
+            >
+              <ShoppingCart className="h-[16px] w-[16px] transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:rotate-6" />
+              {totalItems > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-stone-950 text-[9px] font-bold text-white ring-2 ring-white transition-all duration-300">
+                  {totalItems > 9 ? "9+" : totalItems}
+                </span>
+              )}
+            </button>
+
+            {/* Mobile Menu Icon */}
+            <div className="md:hidden">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="flex h-8.5 w-8.5 items-center justify-center rounded-full text-stone-500 hover:text-stone-950 hover:bg-stone-50 transition-all duration-300"
+                aria-label="เมนู"
+              >
+                {mobileMenuOpen ? (
+                  <X className="h-4.5 w-4.5 rotate-90 transition-transform duration-300" />
+                ) : (
+                  <Menu className="h-4.5 w-4.5 transition-transform duration-300" />
+                )}
+              </button>
+            </div>
+
+          </div>
         </div>
-      </div>
 
-      {/* Mobile Drawer (Basic Toggle) */}
-      {mobileMenuOpen && (
-        <div className="border-t border-[#E5E2DA] bg-warm-offwhite px-6 py-4 md:hidden animate-fade-in">
-          <nav className="flex flex-col gap-4">
-            <Link
-              href="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-semibold text-neutral-900"
-            >
-              หน้าแรก
-            </Link>
-            <Link
-              href="/products?category=guitars"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-medium text-slate-gray hover:text-neutral-900"
-            >
-              กีต้าร์
-            </Link>
-            <Link
-              href="/products?category=keyboards"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-medium text-slate-gray hover:text-neutral-900"
-            >
-              คีย์บอร์ด
-            </Link>
-            <Link
-              href="/products?category=drums"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-medium text-slate-gray hover:text-neutral-900"
-            >
-              กลอง
-            </Link>
-            <Link
-              href="/products?category=pro-audio"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-medium text-slate-gray hover:text-neutral-900"
-            >
-              เครื่องเสียงโปร
-            </Link>
-            <Link
-              href="/brands"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-medium text-slate-gray hover:text-neutral-900"
-            >
-              แบรนด์
-            </Link>
+        {/* ── Mobile Menu Dropdown (Accordion Animation) ── */}
+        <div
+          className={cn(
+            "md:hidden bg-white border-b border-stone-200 overflow-hidden transition-all duration-300 ease-in-out",
+            mobileMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0 pointer-events-none"
+          )}
+        >
+          <div className="px-6 py-4 flex flex-col gap-1.5">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider text-stone-600 hover:bg-stone-50 hover:text-stone-950 transition-all"
+              >
+                {link.label}
+              </Link>
+            ))}
             <Link
               href="/orders"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-medium text-slate-gray hover:text-neutral-900"
+              className="rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider text-stone-600 hover:bg-stone-50 hover:text-stone-950 transition-all"
             >
               ประวัติการสั่งซื้อ
             </Link>
-            <div className="pt-2 border-t border-[#E5E2DA] sm:hidden">
-              <LoginButton />
+            
+            {/* Mobile Search */}
+            <div className="relative mt-2.5 pt-3 border-t border-stone-100">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
+              <input
+                type="text"
+                placeholder="ค้นหาเครื่องดนตรี..."
+                className="h-9 w-full rounded-full border border-stone-200 bg-stone-50 pl-10 pr-4 text-xs placeholder-stone-400 outline-none focus:border-stone-400 focus:bg-white transition-all"
+              />
             </div>
-          </nav>
+          </div>
         </div>
-      )}
       </header>
+
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );

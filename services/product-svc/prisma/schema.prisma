@@ -41,6 +41,17 @@ model Category {
   name        String    @unique
   description String?
   products    Product[]
+  specifications CategorySpecification[]
+}
+
+model CategorySpecification {
+  categoryId   String @db.Uuid
+  definitionId String @db.Uuid
+
+  category   Category                @relation(fields: [categoryId], references: [categoryId], onDelete: Cascade)
+  definition SpecificationDefinition @relation(fields: [definitionId], references: [definitionId], onDelete: Cascade)
+
+  @@id([categoryId, definitionId])
 }
 
 model Product {
@@ -63,6 +74,7 @@ model Product {
   images        ProductImage[]
   bundleItems   BundleItem[]
   reviews       Review[]
+  specifications ProductSpecification[]
 
   recommendations ProductRecommendation[] @relation("ProductRecommendations")
   recommendedBy   ProductRecommendation[] @relation("RecommendedProducts")
@@ -122,4 +134,41 @@ model ProductRecommendation {
   recommended      Product  @relation("RecommendedProducts", fields: [recommendedId], references: [productId], onDelete: Cascade)
 
   @@unique([productId, recommendedId])
+}
+
+model SpecificationGroup {
+  groupId   String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  definitions SpecificationDefinition[]
+}
+
+model SpecificationDefinition {
+  definitionId String   @id @default(uuid()) @db.Uuid
+  groupId      String   @db.Uuid
+  name         String
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  group          SpecificationGroup     @relation(fields: [groupId], references: [groupId], onDelete: Cascade)
+  specifications ProductSpecification[]
+  categories     CategorySpecification[]
+
+  @@unique([groupId, name])
+}
+
+model ProductSpecification {
+  productId    String @db.Uuid
+  definitionId String @db.Uuid
+  value        String // e.g. "Mahogany", "Yes", "22"
+
+  product    Product                 @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  definition SpecificationDefinition @relation(fields: [definitionId], references: [definitionId], onDelete: Cascade)
+
+  @@id([productId, definitionId])
+  @@index([definitionId, value]) // Index for fast filtering & comparison
 }

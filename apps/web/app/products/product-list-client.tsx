@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { SlidersHorizontal, ChevronDown, Home } from "lucide-react";
+import { SlidersHorizontal, ChevronDown, Home, Scale, X, ShoppingCart, Loader2 } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 import { getApiBaseUrl } from "../../lib/auth";
+import { useCartContext } from "../../components/cart-provider";
+import { showToast } from "../../components/toast";
+
 export interface Product {
   id: string;
   productId: string;
@@ -15,6 +18,11 @@ export interface Product {
   imageUrl: string;
   colors: { name: string; hex: string }[];
   imagesByColor?: { [color: string]: string };
+  rating?: number;
+  reviewsCount?: number;
+  stockStatus?: string;
+  descriptionLong?: string;
+  specifications?: { label: string; value: string }[];
 }
 
 interface ProductListClientProps {
@@ -26,6 +34,29 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
   const [selectedColors, setSelectedColors] = useState<{ [productId: string]: string }>({});
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Comparison States
+  const [compareList, setCompareList] = useState<any[]>([]);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const { addItem } = useCartContext();
+  const [addingToCartId, setAddingToCartId] = useState<string | null>(null);
+
+  const toggleCompare = (product: any) => {
+    const exists = compareList.some((p) => p.productId === product.productId);
+    if (exists) {
+      setCompareList((prev) => prev.filter((p) => p.productId !== product.productId));
+      return;
+    }
+    if (compareList.length >= 4) {
+      showToast("คุณสามารถเปรียบเทียบสินค้าได้สูงสุด 4 รายการเท่านั้น");
+      return;
+    }
+    setCompareList((prev) => [...prev, product]);
+  };
+
+  const isProductSelectedForCompare = (productId: string) => {
+    return compareList.some((p) => p.productId === productId);
+  };
 
   useEffect(() => {
     async function loadProducts() {
@@ -104,7 +135,13 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
         descriptionLong: p.description || "สินค้าแบรนด์ดังคุณภาพระดับพรีเมียมจาก MusicGear",
         specifications: [
           { label: "SKU", value: p.sku },
-          { label: "Level", value: p.skillLevel || "All Levels" }
+          { label: "Level", value: p.skillLevel || "All Levels" },
+          ...(p.specifications && Array.isArray(p.specifications)
+            ? p.specifications.map((s: any) => ({
+                label: s.definition?.name || "Spec",
+                value: s.value
+              }))
+            : [])
         ],
         imagesGallery: p.images && p.images.length > 0
           ? p.images.map((img: any) => `${getApiBaseUrl()}/products/images/${img.imageUrl}`)
@@ -247,7 +284,7 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
               return (
                 <div key={product.id} className="flex flex-col gap-3">
                   {/* TODO: [product-svc] product.id is used as slug (mock only). Replace with product.slug when connecting product-svc */}
-                <Link href={`/products/${product.id}`} className="group flex flex-col gap-3">
+                <Link href={`/products/${product.id}`} className="group flex flex-col gap-3 relative">
                     {/* Product Image Container */}
                     <div className="relative aspect-[4/3] w-full rounded-2xl border border-[#E5E2DA] bg-[#F5F3EE]/20 overflow-hidden flex items-center justify-center p-4 transition-all duration-300 group-hover:border-electric-blue/20">
                       {/* Discount Badge */}
@@ -256,6 +293,25 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
                           Save {discountPercentage}%
                         </span>
                       )}
+
+                      {/* Compare Overlay Button */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleCompare(product);
+                        }}
+                        className={cn(
+                          "absolute top-4 right-4 z-20 flex h-7.5 w-7.5 items-center justify-center rounded-full border shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer",
+                          isProductSelectedForCompare(product.productId)
+                            ? "bg-stone-900 border-stone-900 text-white"
+                            : "bg-white/90 backdrop-blur-sm border-stone-200 text-stone-500 hover:text-stone-950 hover:bg-white"
+                        )}
+                        aria-label="เปรียบเทียบสินค้า"
+                        title="เปรียบเทียบสินค้า"
+                      >
+                        <Scale className={cn("h-3.5 w-3.5 transition-all duration-300", isProductSelectedForCompare(product.productId) ? "scale-110 rotate-12" : "")} />
+                      </button>
                       
                       {/* Image */}
                       <img
@@ -324,6 +380,249 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
           </div>
         </div>
       </div>
+
+      {/* Floating Compare Bar */}
+      {compareList.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white border border-stone-200/80 shadow-2xl rounded-2xl px-5 py-4 flex items-center justify-between gap-6 max-w-2xl w-[calc(100%-2rem)] animate-in slide-in-from-bottom-10 duration-300">
+          <div className="flex items-center gap-4 overflow-x-auto scrollbar-none py-1">
+            <span className="text-xs font-bold font-heading uppercase tracking-wider text-stone-900 hidden sm:inline whitespace-nowrap">
+              เปรียบเทียบ ({compareList.length}/4):
+            </span>
+            <div className="flex items-center gap-2">
+              {compareList.map((p) => (
+                <div key={p.productId} className="relative h-11 w-11 rounded-lg border border-stone-200 bg-stone-50 p-1 flex-shrink-0">
+                  <img
+                    src={p.imageUrl}
+                    alt={p.title}
+                    className="h-full w-full object-contain"
+                  />
+                  <button
+                    onClick={() => toggleCompare(p)}
+                    className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-red-500 text-white rounded-full flex items-center justify-center border border-white hover:bg-red-600 transition-all cursor-pointer shadow-sm"
+                    aria-label="Remove product"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCompareList([])}
+              className="text-xs font-semibold text-stone-500 hover:text-stone-950 transition-colors py-2 px-3 whitespace-nowrap cursor-pointer"
+            >
+              ล้างทั้งหมด
+            </button>
+            <button
+              disabled={compareList.length < 2}
+              onClick={() => setIsCompareModalOpen(true)}
+              className={cn(
+                "rounded-full px-5 py-2.5 text-xs font-bold font-heading tracking-wide uppercase shadow-md transition-all duration-300 active:scale-95 whitespace-nowrap cursor-pointer",
+                compareList.length >= 2
+                  ? "bg-stone-950 text-white hover:bg-stone-850 hover:shadow-lg"
+                  : "bg-stone-100 text-stone-400 border border-stone-200/50 cursor-not-allowed shadow-none"
+              )}
+            >
+              เปรียบเทียบเลย
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Compare Modal */}
+      {isCompareModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-950/40 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300 animate-in fade-in">
+          <div className="bg-white rounded-3xl border border-stone-200 max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl relative animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-stone-100 p-6">
+              <div>
+                <h3 className="font-heading text-lg font-bold text-stone-900">
+                  เปรียบเทียบสเปกสินค้า ({compareList.length} รายการ)
+                </h3>
+                <p className="text-xs text-slate-gray mt-0.5">
+                  เปรียบเทียบข้อมูลจำเพาะและราคาของเครื่องดนตรีแต่ละรุ่นเคียงข้างกัน
+                </p>
+              </div>
+              <button
+                onClick={() => setIsCompareModalOpen(false)}
+                className="h-8 w-8 rounded-full hover:bg-stone-100 flex items-center justify-center text-stone-500 hover:text-stone-950 transition-all cursor-pointer"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            {/* Content Table */}
+            <div className="flex-grow overflow-auto p-6">
+              <table className="w-full border-collapse text-xs md:text-sm">
+                <thead>
+                  <tr className="border-b border-stone-100">
+                    <th className="py-4 text-left font-bold text-stone-400 uppercase tracking-wider w-[150px] min-w-[120px]">
+                      ฟีเจอร์ / รายละเอียด
+                    </th>
+                    {compareList.map((p) => (
+                      <th key={p.productId} className="py-4 px-6 text-left font-bold w-[250px] min-w-[200px]">
+                        <div className="flex flex-col gap-2">
+                          <div className="aspect-[4/3] w-full rounded-xl border border-stone-100 bg-stone-50 p-2 flex items-center justify-center max-h-[120px]">
+                            <img
+                              src={p.imageUrl}
+                              alt={p.title}
+                              className="h-full w-full object-contain"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[9px] font-bold tracking-widest text-slate-gray uppercase font-heading">
+                              {p.brand}
+                            </span>
+                            <h4 className="font-heading text-xs font-bold text-stone-900 line-clamp-2 leading-snug mt-0.5">
+                              {p.title}
+                            </h4>
+                            <span className="block text-sm font-bold font-heading text-stone-950 mt-1">
+                              {p.price.toLocaleString()} ฿
+                            </span>
+                          </div>
+                          
+                          {/* Add to Cart Button */}
+                          <button
+                            onClick={async () => {
+                              try {
+                                setAddingToCartId(p.productId);
+                                await addItem({
+                                  productId: p.productId,
+                                  title: p.title,
+                                  price: p.price,
+                                  quantity: 1,
+                                  color: "Standard",
+                                  imageUrl: p.imageUrl,
+                                  brand: p.brand,
+                                });
+                                showToast(`เพิ่ม ${p.title} ลงตะกร้าแล้ว!`);
+                              } catch (err: any) {
+                                showToast(err.message || "เกิดข้อผิดพลาดในการเพิ่มสินค้า");
+                              } finally {
+                                setAddingToCartId(null);
+                              }
+                            }}
+                            disabled={addingToCartId === p.productId || p.stockStatus === "Out of Stock"}
+                            className={cn(
+                              "w-full rounded-full py-2 px-3 text-[11px] font-bold font-heading tracking-wide uppercase transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm",
+                              p.stockStatus === "Out of Stock"
+                                ? "bg-stone-100 text-stone-400 cursor-not-allowed shadow-none"
+                                : "bg-stone-950 text-white hover:bg-stone-850 hover:shadow"
+                            )}
+                          >
+                            {addingToCartId === p.productId ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <ShoppingCart className="h-3.5 w-3.5" />
+                            )}
+                            {p.stockStatus === "Out of Stock" ? "สินค้าหมด" : "ใส่ตะกร้า"}
+                          </button>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {/* Price */}
+                  <tr>
+                    <td className="py-4 font-bold text-stone-800">ราคา (Price)</td>
+                    {compareList.map((p) => (
+                      <td key={p.productId} className="py-4 px-6 font-bold text-stone-950">
+                        {p.price.toLocaleString()} ฿
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Brand */}
+                  <tr>
+                    <td className="py-4 font-bold text-stone-800">ยี่ห้อ (Brand)</td>
+                    {compareList.map((p) => (
+                      <td key={p.productId} className="py-4 px-6 text-stone-600 font-medium">
+                        {p.brand}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Level */}
+                  <tr>
+                    <td className="py-4 font-bold text-stone-800">ระดับทักษะ (Level)</td>
+                    {compareList.map((p) => {
+                      const level = p.specifications?.find((s: any) => s.label === "Level")?.value || "All Levels";
+                      return (
+                        <td key={p.productId} className="py-4 px-6 text-stone-600 font-medium">
+                          {level}
+                        </td>
+                      );
+                    })}
+                  </tr>
+
+                  {/* SKU */}
+                  <tr>
+                    <td className="py-4 font-bold text-stone-800">รหัสสินค้า (SKU)</td>
+                    {compareList.map((p) => {
+                      const sku = p.specifications?.find((s: any) => s.label === "SKU")?.value || "-";
+                      return (
+                        <td key={p.productId} className="py-4 px-6 text-stone-500 font-mono text-[11px]">
+                          {sku}
+                        </td>
+                      );
+                    })}
+                  </tr>
+
+                  {/* Stock Status */}
+                  <tr>
+                    <td className="py-4 font-bold text-stone-800">สถานะสต็อก (Stock)</td>
+                    {compareList.map((p) => {
+                      const isOutOfStock = p.stockStatus === "Out of Stock";
+                      return (
+                        <td key={p.productId} className="py-4 px-6 font-semibold">
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-full text-[10px] uppercase font-bold",
+                            isOutOfStock ? "bg-red-50 text-red-600 border border-red-200" : "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                          )}>
+                            {isOutOfStock ? "Out of Stock" : "In Stock"}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+
+                  {/* Dynamic Specifications */}
+                  {Array.from(new Set(
+                    compareList.flatMap(p => p.specifications || [])
+                      .map((s: any) => s.label)
+                      .filter((label: string) => label !== "SKU" && label !== "Level")
+                  )).map((label: any) => (
+                    <tr key={label} className="border-b border-stone-100">
+                      <td className="py-4 font-bold text-stone-800">{label}</td>
+                      {compareList.map((p) => {
+                        const val = p.specifications?.find((s: any) => s.label === label)?.value || "-";
+                        return (
+                          <td key={p.productId} className="py-4 px-6 text-stone-650 font-semibold text-xs sm:text-sm">
+                            {val}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+
+                  {/* Description */}
+                  <tr>
+                    <td className="py-4 font-bold text-stone-800">รายละเอียดสินค้า</td>
+                    {compareList.map((p) => (
+                      <td key={p.productId} className="py-4 px-6 text-stone-500 leading-relaxed text-xs max-w-[250px]">
+                        {p.descriptionLong || "-"}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

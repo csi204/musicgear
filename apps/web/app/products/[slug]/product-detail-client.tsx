@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   Star, 
   ShoppingCart, 
@@ -10,11 +11,13 @@ import {
   Plus, 
   Minus, 
   Check, 
-  Home
+  Home,
+  ArrowLeft
 } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 import { getApiBaseUrl } from "../../../lib/auth";
 import { useCartContext } from "../../../components/cart-provider";
+import { showToast } from "../../../components/toast";
 
 export interface Product {
   id: string;
@@ -31,6 +34,7 @@ export interface Product {
   stockStatus: string;
   descriptionLong: string;
   specifications: { label: string; value: string }[];
+  groupedSpecs?: Record<string, { label: string; value: string }[]>;
   imagesGallery: string[];
   accessories: any[];
   comparisons: any[];
@@ -41,6 +45,7 @@ interface ProductDetailClientProps {
 }
 
 export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
+  const router = useRouter();
   const { addItem, addMultipleItems, loading: cartLoading } = useCartContext();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,33 +54,57 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
     async function loadProduct() {
       try {
         // Map backend product to frontend Product interface
-        const mapProduct = (p: any) => ({
-          id: p.slug, // URL slug
-          productId: p.productId, // DB UUID
-          brand: p.brand?.name || "GENERIC",
-          title: p.name,
-          price: Number(p.price),
-          originalPrice: undefined, // mock original price removed
-          imageUrl: p.images && p.images.length > 0 
-            ? `${getApiBaseUrl()}/products/images/${p.images.find((img: any) => img.isPrimary)?.imageUrl || p.images[0].imageUrl}`
-            : "https://images.unsplash.com/photo-1550985616-10810253b84d?auto=format&fit=crop&w=600&q=80",
-          colors: [
-            { name: "Standard", hex: "#4B5563" }
-          ],
-          rating: 4.8,
-          reviewsCount: 15,
-          stockStatus: p.status === "active" ? "In Stock" : "Out of Stock",
-          descriptionLong: p.description || "สินค้าแบรนด์ดังคุณภาพระดับพรีเมียมจาก MusicGear",
-          specifications: [
-            { label: "SKU", value: p.sku },
-            { label: "Level", value: p.skillLevel || "All Levels" }
-          ],
-          imagesGallery: p.images && p.images.length > 0
-            ? p.images.map((img: any) => `${getApiBaseUrl()}/products/images/${img.imageUrl}`)
-            : [],
-          accessories: [],
-          comparisons: []
-        });
+        const mapProduct = (p: any) => {
+          // Map dynamic database specifications to groups
+          const groupedSpecs: Record<string, { label: string; value: string }[]> = {
+            "General": [
+              { label: "SKU", value: p.sku },
+              { label: "Level", value: p.skillLevel || "All Levels" }
+            ]
+          };
+
+          if (p.specifications && Array.isArray(p.specifications)) {
+            p.specifications.forEach((spec: any) => {
+              const groupName = spec.definition?.group?.name || "Other";
+              const label = spec.definition?.name || "Spec";
+              const value = spec.value;
+
+              if (!groupedSpecs[groupName]) {
+                groupedSpecs[groupName] = [];
+              }
+              groupedSpecs[groupName].push({ label, value });
+            });
+          }
+
+          return {
+            id: p.slug, // URL slug
+            productId: p.productId, // DB UUID
+            brand: p.brand?.name || "GENERIC",
+            title: p.name,
+            price: Number(p.price),
+            originalPrice: undefined, // mock original price removed
+            imageUrl: p.images && p.images.length > 0 
+              ? `${getApiBaseUrl()}/products/images/${p.images.find((img: any) => img.isPrimary)?.imageUrl || p.images[0].imageUrl}`
+              : "https://images.unsplash.com/photo-1550985616-10810253b84d?auto=format&fit=crop&w=600&q=80",
+            colors: [
+              { name: "Standard", hex: "#4B5563" }
+            ],
+            rating: 4.8,
+            reviewsCount: 15,
+            stockStatus: p.status === "active" ? "In Stock" : "Out of Stock",
+            descriptionLong: p.description || "สินค้าแบรนด์ดังคุณภาพระดับพรีเมียมจาก MusicGear",
+            specifications: [
+              { label: "SKU", value: p.sku },
+              { label: "Level", value: p.skillLevel || "All Levels" }
+            ],
+            groupedSpecs,
+            imagesGallery: p.images && p.images.length > 0
+              ? p.images.map((img: any) => `${getApiBaseUrl()}/products/images/${img.imageUrl}`)
+              : [],
+            accessories: [],
+            comparisons: []
+          };
+        };
 
         // 1. Check list cache first for instant load
         if (typeof window !== "undefined") {
@@ -184,6 +213,12 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
     if (!product || isAddingToCart) return;
     
     setIsAddingToCart(true);
+    
+    // Show instant UI feedback (Optimistic UI)
+    setItemAdded(true);
+    showToast("เพิ่มสินค้าลงตะกร้าแล้ว!");
+    const timer = setTimeout(() => setItemAdded(false), 2000);
+    
     try {
       await addItem({
         productId: product.productId,
@@ -194,13 +229,11 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
         imageUrl: product.imageUrl,
         brand: product.brand,
       });
-      
-      setItemAdded(true);
-      window.dispatchEvent(new Event("mg_open_cart"));
-      
-      setTimeout(() => setItemAdded(false), 2000);
     } catch (err) {
       console.error("Failed to add to cart:", err);
+      clearTimeout(timer);
+      setItemAdded(false);
+      showToast("ไม่สามารถเพิ่มสินค้าลงตะกร้าได้");
     } finally {
       setIsAddingToCart(false);
     }
@@ -211,6 +244,12 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
     if (!product || isAddingToCart) return;
     
     setIsAddingToCart(true);
+    
+    // Show instant UI feedback (Optimistic UI)
+    setBundleAdded(true);
+    showToast("เพิ่มเซ็ตสินค้าลงตะกร้าแล้ว!");
+    const timer = setTimeout(() => setBundleAdded(false), 2500);
+
     try {
       const itemsToAdd = [];
       
@@ -243,13 +282,11 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
       if (itemsToAdd.length > 0) {
         await addMultipleItems(itemsToAdd);
       }
-      
-      setBundleAdded(true);
-      window.dispatchEvent(new Event("mg_open_cart"));
-      
-      setTimeout(() => setBundleAdded(false), 2500);
     } catch (err) {
       console.error("Failed to add bundle to cart:", err);
+      clearTimeout(timer);
+      setBundleAdded(false);
+      showToast("ไม่สามารถเพิ่มเซ็ตสินค้าลงตะกร้าได้");
     } finally {
       setIsAddingToCart(false);
     }
@@ -303,16 +340,27 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
       <div className="mx-auto max-w-7xl px-6">
         
         {/* Breadcrumbs */}
-        <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-slate-gray uppercase mb-8">
+        <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-slate-gray uppercase mb-4">
           <Link href="/" className="hover:text-neutral-900 transition-colors flex items-center gap-1">
             <Home className="h-3.5 w-3.5" />
           </Link>
-          <span className="text-neutral-400 font-normal">/</span>
+          <span className="text-stone-400 font-normal">/</span>
           <Link href={categoryLink} className="hover:text-neutral-900 transition-colors">
             {categoryName}
           </Link>
-          <span className="text-neutral-400 font-normal">/</span>
-          <span className="text-neutral-800 font-bold truncate max-w-[200px] sm:max-w-xs">{product.title}</span>
+          <span className="text-stone-400 font-normal">/</span>
+          <span className="text-stone-850 font-bold truncate max-w-[200px] sm:max-w-xs">{product.title}</span>
+        </div>
+
+        {/* Back Button */}
+        <div className="mb-6">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-stone-500 hover:text-stone-950 transition-colors text-xs font-bold uppercase tracking-wider cursor-pointer group w-fit mt-5"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1 " />
+            ย้อนกลับ
+          </button>
         </div>
 
         {/* Top Split Section: Gallery & Details */}
@@ -579,15 +627,51 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
             )}
 
             {activeTab === "specifications" && (
-              <div>
-                <h3 className="font-heading text-lg font-bold text-neutral-950 mb-4">ข้อมูลจำเพาะทางเทคนิค (Technical Specifications)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-                  {product.specifications.map((spec, idx) => (
-                    <div key={idx} className="flex py-2 border-b border-[#F5F3EE] justify-between text-sm">
-                      <span className="font-semibold text-neutral-800">{spec.label}</span>
-                      <span className="text-slate-gray font-medium">{spec.value}</span>
-                    </div>
-                  ))}
+              <div className="space-y-8 animate-in fade-in duration-300 max-w-4xl">
+                <div>
+                  <h3 className="font-heading text-lg font-bold text-neutral-950 mb-2">ข้อมูลจำเพาะทางเทคนิค (Technical Specifications)</h3>
+                  <p className="text-xs text-stone-500 mb-6 -mt-2">ข้อมูลจำเพาะทางโครงสร้างและเทคนิคอย่างละเอียดของเครื่องดนตรีชิ้นนี้</p>
+                </div>
+
+                <div className="overflow-hidden border border-stone-200/80 rounded-xl shadow-sm bg-white dark:bg-[#1a1a1c] dark:border-zinc-800">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-neutral-50/50 dark:bg-zinc-900/40 border-b border-stone-200 dark:border-zinc-800 text-stone-600 dark:text-zinc-400 text-[11px] uppercase tracking-wider font-semibold">
+                        <th className="px-6 py-3 w-1/3 font-bold">คุณลักษณะ (Feature)</th>
+                        <th className="px-6 py-3 w-2/3 font-bold">ข้อมูลจำเพาะ (Specification)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-150 dark:divide-zinc-850">
+                      {product.groupedSpecs && Object.keys(product.groupedSpecs).filter(k => k !== "General" || product.groupedSpecs?.[k]?.length! > 2).length > 0 ? (
+                        Object.entries(product.groupedSpecs).map(([groupName, specs]) => {
+                          if (specs.length === 0) return null;
+                          return (
+                            <React.Fragment key={groupName}>
+                              {/* Group Header Row */}
+                              <tr className="bg-neutral-50/40 dark:bg-zinc-900/20">
+                                <td colSpan={2} className="px-6 py-2.5 text-xs font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest bg-stone-100/30 dark:bg-zinc-800/10">
+                                  <span className="inline-block border-l-2 border-amber-500 pl-2">{groupName}</span>
+                                </td>
+                              </tr>
+                              {specs.map((spec, idx) => (
+                                <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-zinc-800/10 transition-colors text-xs sm:text-sm">
+                                  <td className="px-6 py-3.5 font-semibold text-stone-500 dark:text-zinc-400 align-top">{spec.label}</td>
+                                  <td className="px-6 py-3.5 text-stone-900 dark:text-white font-semibold whitespace-pre-wrap">{spec.value}</td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })
+                      ) : (
+                        product.specifications.map((spec, idx) => (
+                          <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-zinc-800/10 transition-colors text-xs sm:text-sm">
+                            <td className="px-6 py-3.5 font-semibold text-stone-500 dark:text-zinc-400 align-top">{spec.label}</td>
+                            <td className="px-6 py-3.5 text-stone-900 dark:text-white font-semibold whitespace-pre-wrap">{spec.value}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}

@@ -16,7 +16,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getApiBaseUrl, getAccessToken, fetchCurrentUser } from "../lib/auth";
 
 export interface CartItem {
@@ -95,7 +95,9 @@ const cartApi = {
       method: "DELETE",
       headers: getHeaders(),
     });
-    if (!res.ok) throw new Error("Failed to remove item");
+    if (!res.ok && res.status !== 404) {
+      throw new Error("Failed to remove item");
+    }
   },
   async clearCart(cartId: string) {
     const res = await fetch(`${getApiBaseUrl()}/carts/${cartId}`, {
@@ -119,8 +121,13 @@ export function useCart() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [cartId, setCartId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const removingRef = useRef<Set<string>>(new Set());
+  const syncVersionRef = useRef<number>(0);
 
   const syncCart = useCallback(async () => {
+    syncVersionRef.current += 1;
+    const currentVersion = syncVersionRef.current;
+
     try {
       const token = getAccessToken();
       let activeCart = null;
@@ -128,9 +135,12 @@ export function useCart() {
       if (token) {
         // User logged in
         const user = await fetchCurrentUser();
+        if (currentVersion !== syncVersionRef.current) return;
+
         if (user) {
           // 1. Try fetching existing customer cart
           activeCart = await cartApi.getCustomerCart(user.id);
+          if (currentVersion !== syncVersionRef.current) return;
           
           // 2. If not found, check if we have a local guest cart to merge
           if (!activeCart) {
@@ -138,6 +148,7 @@ export function useCart() {
             if (guestCartId) {
               try {
                 activeCart = await cartApi.mergeCarts(guestCartId, user.id);
+                if (currentVersion !== syncVersionRef.current) return;
                 localStorage.removeItem("mg_cart_id"); // clear guest cart reference
               } catch {
                 // If merge fails, fall through
@@ -148,6 +159,7 @@ export function useCart() {
           // 3. If still no cart, create one for the user
           if (!activeCart) {
             activeCart = await cartApi.createCart(user.id);
+            if (currentVersion !== syncVersionRef.current) return;
           }
         }
       } else {
@@ -156,6 +168,7 @@ export function useCart() {
         if (guestCartId) {
           try {
             activeCart = await cartApi.getCart(guestCartId);
+            if (currentVersion !== syncVersionRef.current) return;
           } catch {
             // guest cart expired in Redis, fall through to create
           }
@@ -163,10 +176,12 @@ export function useCart() {
 
         if (!activeCart) {
           activeCart = await cartApi.createCart(null);
+          if (currentVersion !== syncVersionRef.current) return;
         }
       }
 
       if (activeCart) {
+        if (currentVersion !== syncVersionRef.current) return;
         setCartId(activeCart.cartId);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mappedItems: CartItem[] = activeCart.items.map((i: any) => ({
@@ -186,7 +201,9 @@ export function useCart() {
     } catch (e) {
       console.error("Failed to sync cart", e);
     } finally {
-      setLoading(false);
+      if (currentVersion === syncVersionRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -206,6 +223,7 @@ export function useCart() {
   };
 
   const addItem = async (item: Omit<CartItem, "id">) => {
+    syncVersionRef.current += 1;
     let currentCartId = cartId;
     if (!currentCartId) {
       // Fallback: load guest cart id from localStorage if hook state not initialized yet
@@ -241,7 +259,7 @@ export function useCart() {
     setItems(optimisticItems);
 
     try {
-      await cartApi.addItem(currentCartId, {
+      const response = await cartApi.addItem(currentCartId, {
         productId: item.productId,
         quantity: item.quantity,
         price: item.price,
@@ -250,6 +268,16 @@ export function useCart() {
         imageUrl: item.imageUrl,
         brand: item.brand,
       });
+
+      // Update the optimistic item ID with the real database ID
+      setItems((prevItems) =>
+        prevItems.map((i) =>
+          i.id.startsWith("opt-") && i.productId === item.productId && i.color === item.color
+            ? { ...i, id: response.cartItemId }
+            : i
+        )
+      );
+
       triggerUpdate();
     } catch (e) {
       console.error("Failed to add item to cart, rolling back", e);
@@ -311,11 +339,54 @@ export function useCart() {
   };
 
   const removeItem = async (id: string) => {
+    if (removingRef.current.has(id)) return;
+    removingRef.current.add(id);
+
+    syncVersionRef.current += 1;
+    const currentVersion = syncVersionRef.current;
+
+    const itemToRemove = items.find((item) => item.id === id);
+    if (!itemToRemove) {
+      removingRef.current.delete(id);
+      return;
+    }
+
     let currentCartId = cartId;
     if (!currentCartId) {
       currentCartId = localStorage.getItem("mg_cart_id");
     }
-    if (!currentCartId) return;
+    if (!currentCartId) {
+      removingRef.current.delete(id);
+      return;
+    }
+
+    // If it's a temporary optimistic ID, we need to wait until the real ID is available
+    if (id.startsWith("opt-")) {
+      removingRef.current.delete(id);
+      
+      // Wait for the real ID to be populated in state (from the background addItem response)
+      let resolvedId = null;
+      for (let attempt = 0; attempt < 15; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Check current items state for the real ID
+        const matchedItem = items.find(
+          (i) => i.productId === itemToRemove.productId && i.color === itemToRemove.color && !i.id.startsWith("opt-")
+        );
+        if (matchedItem) {
+          resolvedId = matchedItem.id;
+          break;
+        }
+      }
+      
+      if (resolvedId) {
+        // Retry with the resolved database ID
+        return removeItem(resolvedId);
+      } else {
+        console.warn("Could not resolve optimistic ID to database ID, force refreshing cart");
+        await syncCart();
+        return;
+      }
+    }
 
     // Save previous state for rollback
     const previousItems = [...items];
@@ -325,14 +396,23 @@ export function useCart() {
 
     try {
       await cartApi.removeItem(currentCartId, id);
-      triggerUpdate();
+      if (currentVersion === syncVersionRef.current) {
+        triggerUpdate();
+      }
     } catch (e) {
       console.error("Failed to remove item, rolling back", e);
-      setItems(previousItems);
+      if (currentVersion === syncVersionRef.current) {
+        setItems(previousItems);
+      }
+    } finally {
+      removingRef.current.delete(id);
     }
   };
 
   const updateQuantity = async (id: string, quantity: number) => {
+    syncVersionRef.current += 1;
+    const currentVersion = syncVersionRef.current;
+
     let currentCartId = cartId;
     if (!currentCartId) {
       currentCartId = localStorage.getItem("mg_cart_id");
@@ -344,10 +424,10 @@ export function useCart() {
       return;
     }
 
-    // Save previous state for rollback
+    // Save previous state
     const previousItems = [...items];
 
-    // Optimistically update the state
+    // Optimistically update
     setItems((prevItems) =>
       prevItems.map((item) =>
         item.id === id ? { ...item, quantity } : item
@@ -356,14 +436,20 @@ export function useCart() {
 
     try {
       await cartApi.updateItem(currentCartId, id, quantity);
-      triggerUpdate();
+      if (currentVersion === syncVersionRef.current) {
+        triggerUpdate();
+      }
     } catch (e) {
-      console.error("Failed to update item quantity, rolling back", e);
-      setItems(previousItems);
+      console.error("Failed to update quantity, rolling back", e);
+      if (currentVersion === syncVersionRef.current) {
+        setItems(previousItems);
+      }
     }
   };
 
   const clearCart = async () => {
+    syncVersionRef.current += 1;
+    const currentVersion = syncVersionRef.current;
     let currentCartId = cartId;
     if (!currentCartId) {
       currentCartId = localStorage.getItem("mg_cart_id");

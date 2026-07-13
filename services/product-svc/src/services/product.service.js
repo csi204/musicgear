@@ -25,6 +25,22 @@ export async function getProductById(db, productId) {
         select: { imageId: true, imageUrl: true, isPrimary: true, sortOrder: true },
         orderBy: { sortOrder: "asc" },
       },
+      specifications: {
+        select: {
+          value: true,
+          definition: {
+            select: {
+              definitionId: true,
+              name: true,
+              group: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      },
       recommendations: {
         select: {
           recommended: {
@@ -96,6 +112,22 @@ export async function getAllProducts(db, filters = {}) {
           select: { imageId: true, imageUrl: true, isPrimary: true, sortOrder: true },
           orderBy: { sortOrder: "asc" },
         },
+        specifications: {
+          select: {
+            value: true,
+            definition: {
+              select: {
+                definitionId: true,
+                name: true,
+                group: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            }
+          }
+        },
       },
       orderBy: { createdAt: "desc" },
       skip: (parsedPage - 1) * parsedLimit,
@@ -138,6 +170,21 @@ export async function getProductBySlug(db, slug) {
       images: {
         select: { imageId: true, imageUrl: true, isPrimary: true, sortOrder: true },
         orderBy: { sortOrder: "asc" },
+      },
+      specifications: {
+        select: {
+          value: true,
+          definition: {
+            select: {
+              name: true,
+              group: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          }
+        }
       },
       recommendations: {
         select: {
@@ -204,6 +251,28 @@ export async function createProduct(db, data, images = []) {
         recommendedId: recId,
       })),
     });
+  }
+
+  if (data.specifications) {
+    let specsToCreate = [];
+    if (Array.isArray(data.specifications)) {
+      specsToCreate = data.specifications;
+    } else if (typeof data.specifications === "object" && data.specifications !== null) {
+      specsToCreate = Object.entries(data.specifications).map(([defId, val]) => ({
+        definitionId: defId,
+        value: String(val)
+      }));
+    }
+
+    if (specsToCreate.length > 0) {
+      await db.productSpecification.createMany({
+        data: specsToCreate.map((spec) => ({
+          productId: product.productId,
+          definitionId: spec.definitionId,
+          value: spec.value
+        }))
+      });
+    }
   }
 
   // ดึงสินค้าเวอร์ชันล่าสุดที่มี relation ครบถ้วน
@@ -283,6 +352,33 @@ export async function updateProduct(db, productId, data, images = null) {
           productId,
           recommendedId: recId,
         })),
+      });
+    }
+  }
+
+  if (data.specifications !== undefined) {
+    // Clear old specifications
+    await db.productSpecification.deleteMany({
+      where: { productId }
+    });
+
+    let specsToCreate = [];
+    if (Array.isArray(data.specifications)) {
+      specsToCreate = data.specifications;
+    } else if (typeof data.specifications === "object" && data.specifications !== null) {
+      specsToCreate = Object.entries(data.specifications).map(([defId, val]) => ({
+        definitionId: defId,
+        value: String(val)
+      }));
+    }
+
+    if (specsToCreate.length > 0) {
+      await db.productSpecification.createMany({
+        data: specsToCreate.map((spec) => ({
+          productId,
+          definitionId: spec.definitionId,
+          value: spec.value
+        }))
       });
     }
   }

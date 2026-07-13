@@ -41,7 +41,9 @@ const formatNumberWithCommas = (val: string | number) => {
   const cleanNum = numStr.replace(/[^\d.]/g, "");
   if (!cleanNum) return "";
   const parts = cleanNum.split(".");
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  if (parts[0]) {
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
   return parts.slice(0, 2).join(".");
 };
 
@@ -137,6 +139,8 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [specDefinitions, setSpecDefinitions] = useState<{ definitionId: string; name: string; group: string }[]>([]);
+  const [specValues, setSpecValues] = useState<Record<string, string>>({});
 
   // Images state
   const [imageItems, setImageItems] = useState<{ id: string; url: string; file?: File; isPrimary: boolean }[]>([]);
@@ -186,6 +190,33 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
     }
     loadMeta();
   }, []);
+
+  useEffect(() => {
+    if (!form.categoryId) {
+      setSpecDefinitions([]);
+      return;
+    }
+
+    async function loadSpecs() {
+      try {
+        const apiBase = typeof window !== "undefined" ? getApiBaseUrl() : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8788");
+        const res = await fetch(`${apiBase}/products/categories/${form.categoryId}/specifications`, {
+          headers: {
+            ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {})
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSpecDefinitions(data.specifications ?? []);
+          setSpecValues({});
+        }
+      } catch (err) {
+        console.error("Failed to load specs for category", err);
+      }
+    }
+
+    loadSpecs();
+  }, [form.categoryId]);
 
   // Score & suggest related items
   const computeSuggestions = useCallback((
@@ -379,6 +410,10 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
       // Check if we need multipart upload
       const hasLocalFiles = imageItems.some(item => item.file);
 
+      const formattedSpecifications = Object.entries(specValues)
+        .filter(([_, val]) => val.trim() !== "")
+        .map(([defId, val]) => ({ definitionId: defId, value: val }));
+
       let res: Response;
       if (hasLocalFiles) {
         const fd = new FormData();
@@ -391,6 +426,7 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
         fd.append("skillLevel", form.isBeginner ? "beginner" : "");
         fd.append("status", "active");
         fd.append("recommendations", JSON.stringify(linkedProducts.map(p => p.productId)));
+        fd.append("specifications", JSON.stringify(formattedSpecifications));
 
         // Append File objects
         imageItems.forEach(item => {
@@ -440,6 +476,7 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
             status: "active",
             images: urlImages,
             recommendations: linkedProducts.map(p => p.productId),
+            specifications: formattedSpecifications
           }),
         });
       }
@@ -723,6 +760,47 @@ function AddProductModal({ onClose, onSuccess }: AddProductModalProps) {
               </div>
             </div>
           </div>
+
+          {/* Dynamic Specifications Section */}
+          {specDefinitions.length > 0 && (
+            <div className="px-8 py-6 border-t border-zinc-150 dark:border-[#2a2a2d]">
+              <div className="flex items-center gap-2 mb-4 text-zinc-900 dark:text-white">
+                <SlidersHorizontal className="w-5 h-5 text-amber-500" />
+                <h4 className="text-lg font-bold">ข้อมูลจำเพาะสินค้า (Product Specifications)</h4>
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6">
+                กรอกข้อมูลทางเทคนิคของหมวดหมู่นี้เพื่อนำไปเปรียบเทียบสเปกและใช้ตัวกรองค้นหาทางหน้าเว็บลูกค้า
+              </p>
+              
+              {/* Group specs by group name */}
+              {Object.entries(
+                specDefinitions.reduce((acc, curr) => {
+                  const g = curr.group;
+                  if (!acc[g]) acc[g] = [];
+                  acc[g]!.push(curr);
+                  return acc;
+                }, {} as Record<string, typeof specDefinitions>)
+              ).map(([groupName, defs]) => (
+                <div key={groupName} className="mb-6 space-y-3">
+                  <h5 className="text-xs font-black text-zinc-400 dark:text-zinc-550 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-1.5">{groupName}</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {defs.map((def) => (
+                      <div key={def.definitionId}>
+                        <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">{def.name}</label>
+                        <input
+                          type="text"
+                          placeholder={`ระบุ ${def.name}...`}
+                          value={specValues[def.definitionId] || ""}
+                          onChange={(e) => setSpecValues(prev => ({ ...prev, [def.definitionId]: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-[#2a2a2d] text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="h-px bg-zinc-150 dark:bg-[#2a2a2d] my-6" />
 
@@ -1321,6 +1399,8 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [specDefinitions, setSpecDefinitions] = useState<{ definitionId: string; name: string; group: string }[]>([]);
+  const [specValues, setSpecValues] = useState<Record<string, string>>({});
 
   // Images state
   const [imageItems, setImageItems] = useState<{ id: string; url: string; file?: File; isPrimary: boolean }[]>([]);
@@ -1458,6 +1538,27 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
 
         // Compute smart suggestions initially
         computeSuggestions(p.name, p.category?.categoryId, p.brand?.brandId, prodRes.products ?? [], orderRes.orders ?? []);
+
+        // Load specifications
+        const apiBase = typeof window !== "undefined" ? getApiBaseUrl() : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8788");
+        const specRes = await fetch(`${apiBase}/products/categories/${p.category?.categoryId}/specifications`, {
+          headers: {
+            ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {})
+          }
+        });
+        if (specRes.ok) {
+          const specData = await specRes.json();
+          setSpecDefinitions(specData.specifications ?? []);
+
+          // Map existing product specification values
+          const initialValues: Record<string, string> = {};
+          if (Array.isArray(p.specifications)) {
+            p.specifications.forEach((s: any) => {
+              initialValues[s.definition?.definitionId || s.definitionId] = s.value;
+            });
+          }
+          setSpecValues(initialValues);
+        }
       } catch (e: any) {
         setError(e.message ?? "ไม่สามารถดึงข้อมูลรายละเอียดสินค้าได้");
       } finally {
@@ -1472,6 +1573,31 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
       computeSuggestions(form.name, form.categoryId, form.brandId, allProducts, recentOrders);
     }
   }, [form.name, form.categoryId, form.brandId, allProducts, recentOrders, isLoadingDetails]);
+
+  useEffect(() => {
+    // Only load specs on manual category change, not initial loading
+    if (isLoadingDetails || !form.categoryId) return;
+
+    async function loadSpecsOnChange() {
+      try {
+        const apiBase = typeof window !== "undefined" ? getApiBaseUrl() : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8788");
+        const res = await fetch(`${apiBase}/products/categories/${form.categoryId}/specifications`, {
+          headers: {
+            ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {})
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSpecDefinitions(data.specifications ?? []);
+          setSpecValues({});
+        }
+      } catch (err) {
+        console.error("Failed to load specs for category change", err);
+      }
+    }
+
+    loadSpecsOnChange();
+  }, [form.categoryId, isLoadingDetails]);
 
   // Search autocomplete for manual links
   useEffect(() => {
@@ -1571,6 +1697,10 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
     try {
       const hasLocalFiles = imageItems.some(item => item.file);
 
+      const formattedSpecifications = Object.entries(specValues)
+        .filter(([_, val]) => val.trim() !== "")
+        .map(([defId, val]) => ({ definitionId: defId, value: val }));
+
       if (hasLocalFiles) {
         const fd = new FormData();
         fd.append("name", form.name);
@@ -1582,6 +1712,7 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
         fd.append("skillLevel", form.isBeginner ? "beginner" : "");
         fd.append("status", form.status);
         fd.append("recommendations", JSON.stringify(linkedProducts.map(p => p.productId)));
+        fd.append("specifications", JSON.stringify(formattedSpecifications));
 
         // Append File objects
         imageItems.forEach(item => {
@@ -1619,6 +1750,7 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
           status: form.status,
           images: urlImages,
           recommendations: linkedProducts.map(p => p.productId),
+          specifications: formattedSpecifications
         });
       }
 
@@ -1893,6 +2025,47 @@ function EditProductModal({ productId, onClose, onSuccess }: EditProductModalPro
               </div>
             </div>
           </div>
+
+          {/* Dynamic Specifications Section */}
+          {specDefinitions.length > 0 && (
+            <div className="px-8 py-6 border-t border-zinc-150 dark:border-[#2a2a2d]">
+              <div className="flex items-center gap-2 mb-4 text-zinc-900 dark:text-white">
+                <SlidersHorizontal className="w-5 h-5 text-amber-500" />
+                <h4 className="text-lg font-bold">ข้อมูลจำเพาะสินค้า (Product Specifications)</h4>
+              </div>
+              <p className="text-xs text-zinc-550 dark:text-zinc-450 mb-6">
+                กรอกข้อมูลทางเทคนิคของหมวดหมู่นี้เพื่อนำไปเปรียบเทียบสเปกและใช้ตัวกรองค้นหาทางหน้าเว็บลูกค้า
+              </p>
+              
+              {/* Group specs by group name */}
+              {Object.entries(
+                specDefinitions.reduce((acc, curr) => {
+                  const g = curr.group;
+                  if (!acc[g]) acc[g] = [];
+                  acc[g]!.push(curr);
+                  return acc;
+                }, {} as Record<string, typeof specDefinitions>)
+              ).map(([groupName, defs]) => (
+                <div key={groupName} className="mb-6 space-y-3">
+                  <h5 className="text-xs font-black text-zinc-400 dark:text-zinc-550 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-1.5">{groupName}</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {defs.map((def) => (
+                      <div key={def.definitionId}>
+                        <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">{def.name}</label>
+                        <input
+                          type="text"
+                          placeholder={`ระบุ ${def.name}...`}
+                          value={specValues[def.definitionId] || ""}
+                          onChange={(e) => setSpecValues(prev => ({ ...prev, [def.definitionId]: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-[#2a2a2d] text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="h-px bg-zinc-150 dark:bg-[#2a2a2d] my-6" />
 

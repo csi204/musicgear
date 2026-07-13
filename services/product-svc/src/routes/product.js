@@ -1,3 +1,4 @@
+
 // Force hot-reload to apply new Prisma Client schema with originalPrice
 import { Hono } from "hono";
 import { createClient } from "../db/client.js";
@@ -290,6 +291,137 @@ productRoutes.get("/categories", async (c) => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// GET /products/categories/:categoryId/specifications — ดึงสเปกฟิลด์จำเพาะของหมวดหมู่ (พร้อม Auto-Seeding)
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.get("/categories/:categoryId/specifications", async (c) => {
+  const categoryId = c.req.param("categoryId");
+  const db = createClient(c.env.DATABASE_URL);
+  try {
+    let specs = await db.categorySpecification.findMany({
+      where: { categoryId },
+      select: {
+        definition: {
+          select: {
+            definitionId: true,
+            name: true,
+            group: {
+              select: {
+                groupId: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (specs.length === 0) {
+      // ค้นหา Category name
+      const category = await db.category.findUnique({
+        where: { categoryId }
+      });
+
+      if (category) {
+        const catName = category.name.toLowerCase();
+        let targetDefs = [
+          { group: "ข้อมูลทั่วไป (General)", name: "ประเทศผู้ผลิต (Country of Origin)" },
+          { group: "ข้อมูลทั่วไป (General)", name: "การรับประกัน (Warranty)" },
+          { group: "ขนาดและน้ำหนัก (Dimensions)", name: "น้ำหนัก (Weight)" },
+          { group: "ขนาดและน้ำหนัก (Dimensions)", name: "ความกว้าง (Width)" },
+          { group: "ขนาดและน้ำหนัก (Dimensions)", name: "ความสูง (Height)" }
+        ];
+
+        if (catName.includes("guitar") || catName.includes("bass") || catName.includes("ukulele")) {
+          targetDefs.push(
+            { group: "บอดี้ (Body)", name: "ไม้หน้า (Top Wood)" },
+            { group: "บอดี้ (Body)", name: "วัสดุบอดี้ (Body Material)" },
+            { group: "คอ (Neck)", name: "วัสดุคอ (Neck Material)" },
+            { group: "คอ (Neck)", name: "ความยาวช่วงสาย (Scale Length)" },
+            { group: "ฟิงเกอร์บอร์ด (Fingerboard)", name: "วัสดุฟิงเกอร์บอร์ด (Fingerboard Material)" },
+            { group: "ฟิงเกอร์บอร์ด (Fingerboard)", name: "จำนวนเฟรต (Number of Frets)" },
+            { group: "ระบบไฟและเสียง (Electronics)", name: "รูปแบบปิกอัป (Pickup Configuration)" }
+          );
+        } else if (catName.includes("keyboard") || catName.includes("piano")) {
+          targetDefs.push(
+            { group: "คีย์บอร์ด (Keyboard)", name: "จำนวนคีย์ (Number of Keys)" },
+            { group: "คีย์บอร์ด (Keyboard)", name: "ระบบคีย์ (Key Action)" },
+            { group: "คีย์บอร์ด (Keyboard)", name: "โพลีโฟนีสูงสุด (Polyphony)" },
+            { group: "การเชื่อมต่อ (Connectivity)", name: "ช่องต่อ USB (USB)" },
+            { group: "การเชื่อมต่อ (Connectivity)", name: "บลูทูธ (Bluetooth)" }
+          );
+        } else if (catName.includes("drum")) {
+          targetDefs.push(
+            { group: "กลองชุด (Drum Kit)", name: "จำนวนแป้นกลอง (Number of Pads)" },
+            { group: "กลองชุด (Drum Kit)", name: "ประเภทสแนร์ (Snare Type)" },
+            { group: "การเชื่อมต่อ (Connectivity)", name: "ช่องต่อ USB (USB)" },
+            { group: "การเชื่อมต่อ (Connectivity)", name: "บลูทูธ (Bluetooth)" }
+          );
+        } else if (catName.includes("mic") || catName.includes("headphone") || catName.includes("speaker") || catName.includes("audio")) {
+          targetDefs.push(
+            { group: "รายละเอียดเสียง (Audio Specs)", name: "ช่วงความถี่เสียง (Frequency Response)" },
+            { group: "รายละเอียดเสียง (Audio Specs)", name: "ค่าความต้านทาน (Impedance)" },
+            { group: "รายละเอียดเสียง (Audio Specs)", name: "ค่าความไว (Sensitivity)" },
+            { group: "การเชื่อมต่อ (Connectivity)", name: "ประเภทขั้วต่อ (Connector Type)" }
+          );
+        }
+
+        // Upsert Groups, Definitions, and Link Category
+        for (const item of targetDefs) {
+          const group = await db.specificationGroup.upsert({
+            where: { name: item.group },
+            update: {},
+            create: { name: item.group }
+          });
+
+          const definition = await db.specificationDefinition.upsert({
+            where: { groupId_name: { groupId: group.groupId, name: item.name } },
+            update: {},
+            create: { groupId: group.groupId, name: item.name }
+          });
+
+          await db.categorySpecification.upsert({
+            where: { categoryId_definitionId: { categoryId, definitionId: definition.definitionId } },
+            update: {},
+            create: { categoryId, definitionId: definition.definitionId }
+          });
+        }
+
+        // ดึงความสัมพันธ์รอบใหม่
+        specs = await db.categorySpecification.findMany({
+          where: { categoryId },
+          select: {
+            definition: {
+              select: {
+                definitionId: true,
+                name: true,
+                group: {
+                  select: {
+                    groupId: true,
+                    name: true
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    const definitions = specs.map(s => ({
+      definitionId: s.definition.definitionId,
+      name: s.definition.name,
+      group: s.definition.group.name,
+      groupId: s.definition.group.groupId
+    }));
+
+    return c.json({ status: "ok", specifications: definitions }, 200);
+  } catch (err) {
+    console.error("[GET /products/categories/:categoryId/specifications]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch category specifications" } }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // GET /products/brands — ดึงข้อมูลแบรนด์ทั้งหมด
 // ──────────────────────────────────────────────────────────────────────────────
 productRoutes.get("/brands", async (c) => {
@@ -380,6 +512,7 @@ productRoutes.get("/:productId", async (c) => {
           originalPrice: r.recommended.originalPrice ? parseFloat(r.recommended.originalPrice.toString()) : null,
         }
       })) || [],
+      specifications: product.specifications || [],
     });
   } catch (err) {
     console.error("[GET /products/:productId]", err);
@@ -517,6 +650,17 @@ productRoutes.post("/", async (c) => {
       }
     }
 
+    let specifications = undefined;
+    if (body.specifications) {
+      if (typeof body.specifications === "string") {
+        try {
+          specifications = JSON.parse(body.specifications);
+        } catch {}
+      } else {
+        specifications = body.specifications;
+      }
+    }
+
     const productData = {
       name,
       slug,
@@ -528,7 +672,8 @@ productRoutes.post("/", async (c) => {
       brandId: finalBrandId,
       categoryId: finalCategoryId,
       description: body.description || null,
-      recommendations
+      recommendations,
+      specifications
     };
 
     const product = await createProduct(db, productData, dbImages);
@@ -704,6 +849,17 @@ productRoutes.patch("/:productId", async (c) => {
       }
     }
 
+    let specifications = undefined;
+    if (body.specifications !== undefined) {
+      if (typeof body.specifications === "string") {
+        try {
+          specifications = JSON.parse(body.specifications);
+        } catch {}
+      } else {
+        specifications = body.specifications;
+      }
+    }
+
     const updateData = {
       name: body.name !== undefined ? body.name : existing.name,
       slug: body.slug !== undefined ? body.slug : existing.slug,
@@ -717,7 +873,8 @@ productRoutes.patch("/:productId", async (c) => {
       brandId: body.brandId !== undefined ? body.brandId : existing.brandId,
       categoryId: body.categoryId !== undefined ? body.categoryId : existing.categoryId,
       description: body.description !== undefined ? body.description : existing.description,
-      recommendations
+      recommendations,
+      specifications
     };
 
     const updated = await updateProduct(db, productId, updateData, dbImages);

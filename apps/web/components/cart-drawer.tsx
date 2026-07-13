@@ -104,9 +104,6 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           <div className="flex items-baseline gap-4">
             <span className="text-[22px] font-extrabold text-neutral-900 tracking-tight flex items-start">
               Cart
-              {totalItems > 0 && (
-                <sup className="text-[12px] font-bold ml-0.5">{totalItems}</sup>
-              )}
             </span>
             
           </div>
@@ -140,22 +137,21 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         <div className="flex-grow overflow-y-auto">
           {items.length === 0 ? (
             /* Empty State */
-            <div className="flex h-full flex-col items-center justify-center gap-6 px-8 py-20 text-center">
-              <div>
-                <h3 className="text-[26px] font-extrabold text-neutral-900 leading-tight tracking-tight">
-                  Your cart is <br /> currently empty.
+            <div className="flex h-full flex-col items-center justify-center gap-4 px-8 py-20 text-center">
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-stone-900 tracking-tight">
+                  Your cart is currently empty.
                 </h3>
-                <p className="text-[13px] font-medium text-neutral-900 mt-4 leading-relaxed max-w-[200px] mx-auto" style={{ fontFamily: "Georgia, serif" }}>
-                  Not sure where to start?<br />
-                  Try these collections:
+                <p className="text-xs text-stone-500 max-w-[240px] mx-auto leading-relaxed">
+                  Not sure where to start? Browse our collections to find the perfect gear.
                 </p>
               </div>
               <button
                 onClick={handleClose}
-                className="mt-2 flex items-center justify-between w-full max-w-[240px] rounded-full bg-[#f7f7f7] px-6 py-3.5 text-[14px] font-bold text-neutral-900 hover:bg-neutral-200 transition-colors cursor-pointer"
+                className="mt-3 flex items-center justify-center gap-2 rounded-full bg-stone-950 px-6 py-2.5 text-xs font-semibold text-white hover:bg-stone-850 transition-all duration-200 cursor-pointer active:scale-95 shadow-sm"
               >
                 <span>Continue shopping</span>
-                <span className="text-lg leading-none transition-transform group-hover:translate-x-1">→</span>
+                <span className="text-xs">→</span>
               </button>
             </div>
           ) : (

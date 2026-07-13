@@ -53,12 +53,16 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   Brand: 'Brand',
   Category: 'Category',
+  CategorySpecification: 'CategorySpecification',
   Product: 'Product',
   ProductImage: 'ProductImage',
   Bundle: 'Bundle',
   BundleItem: 'BundleItem',
   Review: 'Review',
-  ProductRecommendation: 'ProductRecommendation'
+  ProductRecommendation: 'ProductRecommendation',
+  SpecificationGroup: 'SpecificationGroup',
+  SpecificationDefinition: 'SpecificationDefinition',
+  ProductSpecification: 'ProductSpecification'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -93,6 +97,14 @@ export const CategoryScalarFieldEnum = {
 } as const
 
 export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typeof CategoryScalarFieldEnum]
+
+
+export const CategorySpecificationScalarFieldEnum = {
+  categoryId: 'categoryId',
+  definitionId: 'definitionId'
+} as const
+
+export type CategorySpecificationScalarFieldEnum = (typeof CategorySpecificationScalarFieldEnum)[keyof typeof CategorySpecificationScalarFieldEnum]
 
 
 export const ProductScalarFieldEnum = {
@@ -170,6 +182,38 @@ export const ProductRecommendationScalarFieldEnum = {
 } as const
 
 export type ProductRecommendationScalarFieldEnum = (typeof ProductRecommendationScalarFieldEnum)[keyof typeof ProductRecommendationScalarFieldEnum]
+
+
+export const SpecificationGroupScalarFieldEnum = {
+  groupId: 'groupId',
+  name: 'name',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SpecificationGroupScalarFieldEnum = (typeof SpecificationGroupScalarFieldEnum)[keyof typeof SpecificationGroupScalarFieldEnum]
+
+
+export const SpecificationDefinitionScalarFieldEnum = {
+  definitionId: 'definitionId',
+  groupId: 'groupId',
+  name: 'name',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SpecificationDefinitionScalarFieldEnum = (typeof SpecificationDefinitionScalarFieldEnum)[keyof typeof SpecificationDefinitionScalarFieldEnum]
+
+
+export const ProductSpecificationScalarFieldEnum = {
+  productId: 'productId',
+  definitionId: 'definitionId',
+  value: 'value'
+} as const
+
+export type ProductSpecificationScalarFieldEnum = (typeof ProductSpecificationScalarFieldEnum)[keyof typeof ProductSpecificationScalarFieldEnum]
 
 
 export const SortOrder = {
