@@ -249,6 +249,7 @@ export interface InventoryRecord {
   reservedQuantity: number;
   available: number;
   reorderPoint: number;
+  maxCapacity: number;
   status: string;
 }
 

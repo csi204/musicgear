@@ -13,6 +13,8 @@ import { ProductForm } from "./product-form";
 interface DisplayProduct extends ProductRecord {
   stock: number;
   reserved: number;
+  maxCapacity: number;
+  reorderPoint: number;
 }
 
 const statusConfig: Record<string, { label: string; badge: string; dot: string }> = {
@@ -22,16 +24,25 @@ const statusConfig: Record<string, { label: string; badge: string; dot: string }
   discontinued: { label: "ยกเลิกผลิต", badge: "bg-zinc-100 text-zinc-650 dark:bg-zinc-800/40 dark:text-zinc-400", dot: "bg-zinc-400" },
 };
 
-function StockBar({ stock, reserved }: { stock: number; reserved: number }) {
+function StockBar({ stock, reserved, reorderPoint }: { stock: number; reserved: number; reorderPoint: number }) {
   const max = Math.max(stock, 50);
   const availPct = Math.min((stock - reserved) / max, 1) * 100;
   const reservedPct = Math.min(reserved / max, 1) * 100;
-  const isLow = stock - reserved <= 5 && stock > 0;
+  const isLow = stock - reserved <= reorderPoint && stock > 0;
+  const isOut = stock - reserved <= 0;
+  
+  let textColor = "text-zinc-800 dark:text-zinc-200";
+  if (isOut) {
+    textColor = "text-red-600 dark:text-red-400";
+  } else if (isLow) {
+    textColor = "text-amber-650 dark:text-amber-400";
+  }
+
   return (
     <div className="flex items-center gap-2">
       <div className="w-20 h-2 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden flex">
         <div
-          className={`h-full ${isLow ? "bg-amber-500" : "bg-emerald-500"}`}
+          className={`h-full ${isOut ? "bg-red-500" : isLow ? "bg-amber-500" : "bg-emerald-500"}`}
           style={{ width: `${availPct}%` }}
         />
         <div
@@ -39,7 +50,7 @@ function StockBar({ stock, reserved }: { stock: number; reserved: number }) {
           style={{ width: `${reservedPct}%` }}
         />
       </div>
-      <span className={`text-sm font-bold tabular-nums ${isLow ? "text-amber-650 dark:text-amber-400" : "text-zinc-800 dark:text-zinc-200"}`}>
+      <span className={`text-sm font-bold tabular-nums ${textColor}`}>
         {stock - reserved}
       </span>
     </div>
@@ -122,10 +133,18 @@ export default function ManageProducts() {
 
       const mergedProducts = (prodRes.products || []).map((p) => {
         const inv = invMap.get(p.productId);
+        const stock = inv?.quantity ?? 0;
+        const reserved = inv?.reservedQuantity ?? 0;
+        let status = p.status;
+        if (p.status === "active" && (stock - reserved) <= 0) status = "out_of_stock";
+        
         return {
           ...p,
-          stock: inv?.quantity ?? 0,
-          reserved: inv?.reservedQuantity ?? 0
+          status,
+          stock,
+          reserved,
+          maxCapacity: inv?.maxCapacity ?? 100,
+          reorderPoint: inv?.reorderPoint ?? 0
         };
       });
 
@@ -281,7 +300,10 @@ export default function ManageProducts() {
               ) : products.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-16 text-zinc-500">ไม่พบสินค้าที่ตรงกับเงื่อนไข</td></tr>
               ) : products.map((product) => {
-                const lowStock = product.status === "active" && (product.stock - product.reserved) <= 5 && product.stock > 0;
+                const available = product.stock - product.reserved;
+                const threshold = product.reorderPoint > 0 ? product.reorderPoint : Math.round(0.3 * product.maxCapacity);
+                const lowStock = product.status === "active" && available <= threshold && available > 0;
+                const isOut = product.status === "out_of_stock";
                 const sc = statusConfig[product.status] || statusConfig.inactive;
                 
                 return (
@@ -309,7 +331,7 @@ export default function ManageProducts() {
                       ฿{Number(product.price).toLocaleString("th-TH")}
                     </td>
                     <td className="py-3">
-                      <StockBar stock={product.stock} reserved={product.reserved} />
+                      <StockBar stock={product.stock} reserved={product.reserved} reorderPoint={threshold} />
                       {lowStock && (
                         <span className="text-[11px] text-amber-600 dark:text-amber-400 font-bold mt-0.5 block">⚠ สต็อกใกล้หมด</span>
                       )}
