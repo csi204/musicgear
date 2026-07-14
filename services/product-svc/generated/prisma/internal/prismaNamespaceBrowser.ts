@@ -144,6 +144,7 @@ export const BundleScalarFieldEnum = {
   description: 'description',
   discountType: 'discountType',
   discountValue: 'discountValue',
+  imageUrl: 'imageUrl',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

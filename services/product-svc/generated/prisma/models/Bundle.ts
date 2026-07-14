@@ -40,6 +40,7 @@ export type BundleMinAggregateOutputType = {
   description: string | null
   discountType: $Enums.DiscountType | null
   discountValue: runtime.Decimal | null
+  imageUrl: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -50,6 +51,7 @@ export type BundleMaxAggregateOutputType = {
   description: string | null
   discountType: $Enums.DiscountType | null
   discountValue: runtime.Decimal | null
+  imageUrl: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -60,6 +62,7 @@ export type BundleCountAggregateOutputType = {
   description: number
   discountType: number
   discountValue: number
+  imageUrl: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -80,6 +83,7 @@ export type BundleMinAggregateInputType = {
   description?: true
   discountType?: true
   discountValue?: true
+  imageUrl?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -90,6 +94,7 @@ export type BundleMaxAggregateInputType = {
   description?: true
   discountType?: true
   discountValue?: true
+  imageUrl?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -100,6 +105,7 @@ export type BundleCountAggregateInputType = {
   description?: true
   discountType?: true
   discountValue?: true
+  imageUrl?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -197,6 +203,7 @@ export type BundleGroupByOutputType = {
   description: string | null
   discountType: $Enums.DiscountType
   discountValue: runtime.Decimal
+  imageUrl: string | null
   createdAt: Date
   updatedAt: Date
   _count: BundleCountAggregateOutputType | null
@@ -230,6 +237,7 @@ export type BundleWhereInput = {
   description?: Prisma.StringNullableFilter<"Bundle"> | string | null
   discountType?: Prisma.EnumDiscountTypeFilter<"Bundle"> | $Enums.DiscountType
   discountValue?: Prisma.DecimalFilter<"Bundle"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: Prisma.StringNullableFilter<"Bundle"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Bundle"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Bundle"> | Date | string
   items?: Prisma.BundleItemListRelationFilter
@@ -241,6 +249,7 @@ export type BundleOrderByWithRelationInput = {
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   discountType?: Prisma.SortOrder
   discountValue?: Prisma.SortOrder
+  imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   items?: Prisma.BundleItemOrderByRelationAggregateInput
@@ -255,6 +264,7 @@ export type BundleWhereUniqueInput = Prisma.AtLeast<{
   description?: Prisma.StringNullableFilter<"Bundle"> | string | null
   discountType?: Prisma.EnumDiscountTypeFilter<"Bundle"> | $Enums.DiscountType
   discountValue?: Prisma.DecimalFilter<"Bundle"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: Prisma.StringNullableFilter<"Bundle"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Bundle"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Bundle"> | Date | string
   items?: Prisma.BundleItemListRelationFilter
@@ -266,6 +276,7 @@ export type BundleOrderByWithAggregationInput = {
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   discountType?: Prisma.SortOrder
   discountValue?: Prisma.SortOrder
+  imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.BundleCountOrderByAggregateInput
@@ -284,6 +295,7 @@ export type BundleScalarWhereWithAggregatesInput = {
   description?: Prisma.StringNullableWithAggregatesFilter<"Bundle"> | string | null
   discountType?: Prisma.EnumDiscountTypeWithAggregatesFilter<"Bundle"> | $Enums.DiscountType
   discountValue?: Prisma.DecimalWithAggregatesFilter<"Bundle"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: Prisma.StringNullableWithAggregatesFilter<"Bundle"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Bundle"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Bundle"> | Date | string
 }
@@ -294,6 +306,7 @@ export type BundleCreateInput = {
   description?: string | null
   discountType: $Enums.DiscountType
   discountValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.BundleItemCreateNestedManyWithoutBundleInput
@@ -305,6 +318,7 @@ export type BundleUncheckedCreateInput = {
   description?: string | null
   discountType: $Enums.DiscountType
   discountValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.BundleItemUncheckedCreateNestedManyWithoutBundleInput
@@ -316,6 +330,7 @@ export type BundleUpdateInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   discountType?: Prisma.EnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType
   discountValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.BundleItemUpdateManyWithoutBundleNestedInput
@@ -327,6 +342,7 @@ export type BundleUncheckedUpdateInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   discountType?: Prisma.EnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType
   discountValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.BundleItemUncheckedUpdateManyWithoutBundleNestedInput
@@ -338,6 +354,7 @@ export type BundleCreateManyInput = {
   description?: string | null
   discountType: $Enums.DiscountType
   discountValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -348,6 +365,7 @@ export type BundleUpdateManyMutationInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   discountType?: Prisma.EnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType
   discountValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -358,6 +376,7 @@ export type BundleUncheckedUpdateManyInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   discountType?: Prisma.EnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType
   discountValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -368,6 +387,7 @@ export type BundleCountOrderByAggregateInput = {
   description?: Prisma.SortOrder
   discountType?: Prisma.SortOrder
   discountValue?: Prisma.SortOrder
+  imageUrl?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -382,6 +402,7 @@ export type BundleMaxOrderByAggregateInput = {
   description?: Prisma.SortOrder
   discountType?: Prisma.SortOrder
   discountValue?: Prisma.SortOrder
+  imageUrl?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -392,6 +413,7 @@ export type BundleMinOrderByAggregateInput = {
   description?: Prisma.SortOrder
   discountType?: Prisma.SortOrder
   discountValue?: Prisma.SortOrder
+  imageUrl?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -429,6 +451,7 @@ export type BundleCreateWithoutItemsInput = {
   description?: string | null
   discountType: $Enums.DiscountType
   discountValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -439,6 +462,7 @@ export type BundleUncheckedCreateWithoutItemsInput = {
   description?: string | null
   discountType: $Enums.DiscountType
   discountValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -465,6 +489,7 @@ export type BundleUpdateWithoutItemsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   discountType?: Prisma.EnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType
   discountValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -475,6 +500,7 @@ export type BundleUncheckedUpdateWithoutItemsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   discountType?: Prisma.EnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType
   discountValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -516,6 +542,7 @@ export type BundleSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   description?: boolean
   discountType?: boolean
   discountValue?: boolean
+  imageUrl?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   items?: boolean | Prisma.Bundle$itemsArgs<ExtArgs>
@@ -528,6 +555,7 @@ export type BundleSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   description?: boolean
   discountType?: boolean
   discountValue?: boolean
+  imageUrl?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["bundle"]>
@@ -538,6 +566,7 @@ export type BundleSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   description?: boolean
   discountType?: boolean
   discountValue?: boolean
+  imageUrl?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["bundle"]>
@@ -548,11 +577,12 @@ export type BundleSelectScalar = {
   description?: boolean
   discountType?: boolean
   discountValue?: boolean
+  imageUrl?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type BundleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"bundleId" | "name" | "description" | "discountType" | "discountValue" | "createdAt" | "updatedAt", ExtArgs["result"]["bundle"]>
+export type BundleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"bundleId" | "name" | "description" | "discountType" | "discountValue" | "imageUrl" | "createdAt" | "updatedAt", ExtArgs["result"]["bundle"]>
 export type BundleInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   items?: boolean | Prisma.Bundle$itemsArgs<ExtArgs>
   _count?: boolean | Prisma.BundleCountOutputTypeDefaultArgs<ExtArgs>
@@ -571,6 +601,7 @@ export type $BundlePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     description: string | null
     discountType: $Enums.DiscountType
     discountValue: runtime.Decimal
+    imageUrl: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["bundle"]>
@@ -1002,6 +1033,7 @@ export interface BundleFieldRefs {
   readonly description: Prisma.FieldRef<"Bundle", 'String'>
   readonly discountType: Prisma.FieldRef<"Bundle", 'DiscountType'>
   readonly discountValue: Prisma.FieldRef<"Bundle", 'Decimal'>
+  readonly imageUrl: Prisma.FieldRef<"Bundle", 'String'>
   readonly createdAt: Prisma.FieldRef<"Bundle", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Bundle", 'DateTime'>
 }

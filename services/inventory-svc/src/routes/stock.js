@@ -230,9 +230,10 @@ stockRoutes.get("/summary", async (c) => {
       const product = productMap.get(i.productId);
       const isDiscontinued = product?.status === "discontinued";
       // ถ้าสินค้าเป็น discontinued และไม่มีสต็อกพร้อมขาย ไม่ต้องมองเป็น Critical/Low ให้ถือว่าปกติ (In Stock)
+      const threshold = i.reorderPoint > 0 ? i.reorderPoint : Math.round(0.3 * i.maxCapacity);
       const status = (isDiscontinued && avail <= 0)
         ? "In Stock"
-        : (avail <= 0 ? "Critical" : avail <= 0.3 * i.maxCapacity ? "Low" : "In Stock");
+        : (avail <= 0 ? "Critical" : avail <= threshold ? "Low" : "In Stock");
       return { 
         ...i, 
         computedStatus: status,
@@ -299,8 +300,9 @@ stockRoutes.get("/:productId", async (c) => {
     }
 
     const available = inv.quantity - inv.reservedQuantity;
+    const threshold = inv.reorderPoint > 0 ? inv.reorderPoint : Math.round(0.3 * inv.maxCapacity);
     const status = available <= 0 ? "Critical"
-      : available <= 0.3 * inv.maxCapacity ? "Low"
+      : available <= threshold ? "Low"
       : "In Stock";
 
     return c.json({

@@ -24,6 +24,26 @@ async function uploadToR2(bucket, file) {
   return key;
 }
 
+// POST /products/upload-image — อัปโหลดรูปภาพทั่วไปเข้า R2 (สำหรับรูปภาพของ bundles ฯลฯ)
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.post("/upload-image", async (c) => {
+  if (!c.env.PRODUCT_IMAGES) {
+    return c.json({ error: { code: "R2_NOT_BOUND", message: "PRODUCT_IMAGES bucket not bound" } }, 500);
+  }
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get("image");
+    if (!file) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "image file is required" } }, 400);
+    }
+    const key = await uploadToR2(c.env.PRODUCT_IMAGES, file);
+    return c.json({ status: "ok", imageUrl: key }, 200);
+  } catch (err) {
+    console.error("[POST /products/upload-image]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to upload image" } }, 500);
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // GET /products — ดึงรายการสินค้าทั้งหมดพร้อม filter และ pagination
 // ──────────────────────────────────────────────────────────────────────────────
@@ -106,6 +126,9 @@ productRoutes.get("/bundles", async (c) => {
   const db = createClient(c.env.DATABASE_URL);
   try {
     const bundles = await db.bundle.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
       include: {
         items: {
           include: {
@@ -115,6 +138,14 @@ productRoutes.get("/bundles", async (c) => {
                 name: true,
                 sku: true,
                 price: true,
+                images: {
+                  select: { imageUrl: true },
+                  where: { isPrimary: true },
+                  take: 1,
+                },
+                brand: {
+                  select: { name: true },
+                },
               }
             }
           }
@@ -175,7 +206,7 @@ productRoutes.post("/bundles", async (c) => {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "Request body is required" } }, 400);
     }
 
-    const { name, description, discountType, discountValue, items } = body;
+    const { name, description, discountType, discountValue, items, imageUrl } = body;
 
     if (!name || !discountType || discountValue === undefined || discountValue === null) {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "name, discountType, and discountValue are required" } }, 400);
@@ -190,31 +221,52 @@ productRoutes.post("/bundles", async (c) => {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "discountValue must be a non-negative number" } }, 400);
     }
 
-    const bundle = await db.bundle.create({
-      data: {
-        name,
-        description: description || null,
-        discountType,
-        discountValue: parsedDiscount,
-      }
-    });
-
-    const createdItems = [];
+    // Validate that all product IDs exist in DB before proceeding
     if (Array.isArray(items) && items.length > 0) {
+      const productIds = items.map(i => i.productId).filter(Boolean);
+      const existingProducts = await db.product.findMany({
+        where: { productId: { in: productIds } },
+        select: { productId: true }
+      });
+      const existingIds = new Set(existingProducts.map(p => p.productId));
       for (const item of items) {
-        if (!item.productId || !item.quantity) continue;
-        const bundleItem = await db.bundleItem.create({
-          data: {
-            bundleId: bundle.bundleId,
-            productId: item.productId,
-            quantity: parseInt(item.quantity, 10) || 1,
-          }
-        });
-        createdItems.push(bundleItem);
+        if (!item.productId) continue;
+        if (!existingIds.has(item.productId)) {
+          return c.json({ error: { code: "PRODUCT_NOT_FOUND", message: `Product not found: ${item.productId}` } }, 400);
+        }
       }
     }
 
-    return c.json({ status: "ok", bundle: { ...bundle, items: createdItems } }, 201);
+    const result = await db.$transaction(async (tx) => {
+      const bundle = await tx.bundle.create({
+        data: {
+          name,
+          description: description || null,
+          discountType,
+          discountValue: parsedDiscount,
+          imageUrl: imageUrl || null,
+        }
+      });
+
+      const createdItems = [];
+      if (Array.isArray(items) && items.length > 0) {
+        for (const item of items) {
+          if (!item.productId || !item.quantity) continue;
+          const bundleItem = await tx.bundleItem.create({
+            data: {
+              bundleId: bundle.bundleId,
+              productId: item.productId,
+              quantity: parseInt(item.quantity, 10) || 1,
+            }
+          });
+          createdItems.push(bundleItem);
+        }
+      }
+
+      return { ...bundle, items: createdItems };
+    });
+
+    return c.json({ status: "ok", bundle: result }, 201);
   } catch (err) {
     console.error("[POST /products/bundles]", err);
     return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to create bundle" } }, 500);
@@ -233,7 +285,7 @@ productRoutes.put("/bundles/:bundleId", async (c) => {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "Request body is required" } }, 400);
     }
 
-    const { name, description, discountType, discountValue, items } = body;
+    const { name, description, discountType, discountValue, items, imageUrl } = body;
 
     if (!name || !discountType || discountValue === undefined || discountValue === null) {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "name, discountType, and discountValue are required" } }, 400);
@@ -248,39 +300,68 @@ productRoutes.put("/bundles/:bundleId", async (c) => {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "discountValue must be a non-negative number" } }, 400);
     }
 
-    // Update main bundle info
-    const updatedBundle = await db.bundle.update({
-      where: { bundleId },
-      data: {
-        name,
-        description: description || null,
-        discountType,
-        discountValue: parsedDiscount,
-      }
-    });
-
-    // Delete existing items
-    await db.bundleItem.deleteMany({
+    // Check if the bundle exists first to return proper 404
+    const existingBundle = await db.bundle.findUnique({
       where: { bundleId }
     });
+    if (!existingBundle) {
+      return c.json({ error: { code: "BUNDLE_NOT_FOUND", message: "Bundle not found" } }, 404);
+    }
 
-    // Re-create items sequentially
-    const createdItems = [];
+    // Validate that all product IDs exist in DB before proceeding
     if (Array.isArray(items) && items.length > 0) {
+      const productIds = items.map(i => i.productId).filter(Boolean);
+      const existingProducts = await db.product.findMany({
+        where: { productId: { in: productIds } },
+        select: { productId: true }
+      });
+      const existingIds = new Set(existingProducts.map(p => p.productId));
       for (const item of items) {
-        if (!item.productId || !item.quantity) continue;
-        const bundleItem = await db.bundleItem.create({
-          data: {
-            bundleId,
-            productId: item.productId,
-            quantity: parseInt(item.quantity, 10) || 1,
-          }
-        });
-        createdItems.push(bundleItem);
+        if (!item.productId) continue;
+        if (!existingIds.has(item.productId)) {
+          return c.json({ error: { code: "PRODUCT_NOT_FOUND", message: `Product not found: ${item.productId}` } }, 400);
+        }
       }
     }
 
-    return c.json({ status: "ok", bundle: { ...updatedBundle, items: createdItems } }, 200);
+    const result = await db.$transaction(async (tx) => {
+      // Update main bundle info
+      const updatedBundle = await tx.bundle.update({
+        where: { bundleId },
+        data: {
+          name,
+          description: description || null,
+          discountType,
+          discountValue: parsedDiscount,
+          imageUrl: imageUrl !== undefined ? imageUrl : undefined,
+        }
+      });
+
+      // Delete existing items
+      await tx.bundleItem.deleteMany({
+        where: { bundleId }
+      });
+
+      // Re-create items sequentially
+      const createdItems = [];
+      if (Array.isArray(items) && items.length > 0) {
+        for (const item of items) {
+          if (!item.productId || !item.quantity) continue;
+          const bundleItem = await tx.bundleItem.create({
+            data: {
+              bundleId,
+              productId: item.productId,
+              quantity: parseInt(item.quantity, 10) || 1,
+            }
+          });
+          createdItems.push(bundleItem);
+        }
+      }
+
+      return { ...updatedBundle, items: createdItems };
+    });
+
+    return c.json({ status: "ok", bundle: result }, 200);
   } catch (err) {
     console.error("[PUT /products/bundles/:bundleId]", err);
     return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to update bundle" } }, 500);
