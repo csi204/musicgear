@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Eye, EyeOff } from "lucide-react";
+import { storeSession } from "../../lib/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -33,6 +34,10 @@ export default function LoginPage() {
         const data = await res.json();
         setError(data.error || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
       } else {
+        const data = await res.json();
+        if (data.token) {
+          storeSession({ access_token: data.token });
+        }
         router.push(callbackUrl);
         router.refresh();
       }

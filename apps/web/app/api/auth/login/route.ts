@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       .setExpirationTime("30d")
       .sign(encodedSecret);
 
-    const response = NextResponse.json({ ok: true, user });
+    const response = NextResponse.json({ ok: true, user, token });
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
       secure: isSecure,
