@@ -53,13 +53,14 @@ export async function reserveStock(db, orderId, items) {
   try {
     const rolledBackOps = [];
     for (const item of items) {
-      const inv = await db.inventory.findUnique({
-        where: { productId: item.productId }
-      });
+      // Atomic increment: only proceed if there is enough available stock
+      const updatedCount = await db.$executeRawUnsafe(
+        `UPDATE "Inventory" SET "reservedQuantity" = "reservedQuantity" + $1 WHERE "productId" = $2::uuid AND ("quantity" - "reservedQuantity") >= $1`,
+        item.quantity,
+        item.productId
+      );
 
-      const available = inv ? inv.quantity - inv.reservedQuantity : 0;
-
-      if (!inv || available < item.quantity) {
+      if (updatedCount === 0) {
         // Rollback completed operations to ensure atomicity
         for (const op of rolledBackOps) {
           await db.inventory.update({
@@ -71,6 +72,12 @@ export async function reserveStock(db, orderId, items) {
           });
         }
 
+        // Fetch current stock to report in error
+        const currentInv = await db.inventory.findUnique({
+          where: { productId: item.productId }
+        });
+        const available = currentInv ? currentInv.quantity - currentInv.reservedQuantity : 0;
+
         const err = new Error("INSUFFICIENT_STOCK");
         err.productId = item.productId;
         err.requested = item.quantity;
@@ -78,17 +85,19 @@ export async function reserveStock(db, orderId, items) {
         throw err;
       }
 
-      const updatedInv = await db.inventory.update({
-        where: { productId: item.productId },
-        data: { reservedQuantity: { increment: item.quantity } },
+      // Fetch the updated inventory state for accurate logging
+      const afterInv = await db.inventory.findUnique({
+        where: { productId: item.productId }
       });
+      const afterQty = afterInv?.reservedQuantity ?? item.quantity;
+      const beforeQty = afterQty - item.quantity;
 
       await db.inventoryLog.create({
         data: {
           productId: item.productId,
           orderId,
-          beforeQty: inv.reservedQuantity,
-          afterQty: inv.reservedQuantity + item.quantity,
+          beforeQty,
+          afterQty,
           changeQty: item.quantity,
           action: "reserve",
         },
@@ -184,6 +193,15 @@ export async function releaseStock(db, orderId) {
  * @returns {{ deducted: boolean; orderId: string }}
  */
 export async function saleDeductStock(db, orderId, env) {
+  // ตรวจ idempotency: ถ้าเคยตัดสต็อกสำหรับออเดอร์นี้ไปแล้ว → สำเร็จเลย
+  const existingDeduct = await db.inventoryLog.findFirst({
+    where: { orderId, action: "sale_deduct" },
+  });
+
+  if (existingDeduct) {
+    return { deducted: true, orderId };
+  }
+
   const reserveLogs = await db.inventoryLog.findMany({
     where: { orderId, action: "reserve" },
   });
@@ -195,39 +213,41 @@ export async function saleDeductStock(db, orderId, env) {
 
   const deductedItems = [];
 
-  // Deduct sequentially without transaction block
-  for (const log of reserveLogs) {
-    // ดึงค่าปัจจุบันก่อนตัด
-    const before = await db.inventory.findUnique({
-      where: { productId: log.productId },
-      select: { quantity: true },
-    });
-    const beforeQty = before?.quantity ?? 0;
+  // Wrap the database writes in a transaction to ensure atomicity
+  await db.$transaction(async (tx) => {
+    for (const log of reserveLogs) {
+      // ดึงค่าปัจจุบันก่อนตัด
+      const before = await tx.inventory.findUnique({
+        where: { productId: log.productId },
+        select: { quantity: true },
+      });
+      const beforeQty = before?.quantity ?? 0;
 
-    // ลด quantity + reservedQuantity พร้อมกัน
-    const inv = await db.inventory.update({
-      where: { productId: log.productId },
-      data: {
-        quantity: { decrement: log.changeQty },
-        reservedQuantity: { decrement: log.changeQty },
-      },
-    });
+      // ลด quantity + reservedQuantity พร้อมกัน
+      const inv = await tx.inventory.update({
+        where: { productId: log.productId },
+        data: {
+          quantity: { decrement: log.changeQty },
+          reservedQuantity: { decrement: log.changeQty },
+        },
+      });
 
-    const afterQty = Math.max(0, inv.quantity);
+      const afterQty = Math.max(0, inv.quantity);
 
-    await db.inventoryLog.create({
-      data: {
-        productId: log.productId,
-        orderId,
-        beforeQty,
-        afterQty,
-        changeQty: log.changeQty,
-        action: "sale_deduct",
-      },
-    });
+      await tx.inventoryLog.create({
+        data: {
+          productId: log.productId,
+          orderId,
+          beforeQty,
+          afterQty,
+          changeQty: log.changeQty,
+          action: "sale_deduct",
+        },
+      });
 
-    deductedItems.push({ productId: log.productId, beforeQty, afterQty });
-  }
+      deductedItems.push({ productId: log.productId, beforeQty, afterQty });
+    }
+  });
 
   // Publish stock.updated event สำหรับสินค้าที่สต็อกมีการเปลี่ยนแปลง
   for (const item of deductedItems) {
@@ -235,14 +255,16 @@ export async function saleDeductStock(db, orderId, env) {
       // ดึงข้อมูล reorderPoint จาก DB + productName/category จาก product-svc
       const inv = await db.inventory.findUnique({
         where: { productId: item.productId },
-        select: { reorderPoint: true },
+        select: { reorderPoint: true, maxCapacity: true },
       });
       const reorderPoint = inv?.reorderPoint ?? 0;
+      const maxCapacity = inv?.maxCapacity ?? 100;
 
       // คำนวณ status ตาม stockLevel vs reorderPoint
       const stockLevel = item.afterQty;
+      const threshold = reorderPoint > 0 ? reorderPoint : Math.round(0.3 * maxCapacity);
       const status = stockLevel === 0 ? "Critical"
-        : stockLevel <= reorderPoint ? "Low"
+        : stockLevel <= threshold ? "Low"
         : "In Stock";
 
       // ดึง productName + category จาก product-svc
@@ -253,6 +275,7 @@ export async function saleDeductStock(db, orderId, env) {
         category: productInfo?.category ?? "Uncategorized",
         stockLevel,
         reorderPoint,
+        maxCapacity,
         status,
       });
     }
@@ -332,9 +355,10 @@ export async function adjustStock(db, productId, changeQty, action, staffId, env
     const reservedQuantity = latestInv?.reservedQuantity ?? 0;
     const available = afterQty - reservedQuantity;
 
-    // คำนวณ status ตามความจุสูงสุด (maxCapacity)
+    // คำนวณ status ตามจุดสั่งซื้อเพิ่ม (reorderPoint) หรือ fallback 30% ของ maxCapacity ถ้า reorderPoint เป็น 0
+    const threshold = reorderPoint > 0 ? reorderPoint : Math.round(0.3 * maxCapacity);
     const status = available <= 0 ? "Critical"
-      : available <= 0.3 * maxCapacity ? "Low"
+      : available <= threshold ? "Low"
       : "In Stock";
 
     // ดึง productName + category จาก product-svc
@@ -343,7 +367,7 @@ export async function adjustStock(db, productId, changeQty, action, staffId, env
     await publishStockUpdated(env, productId, beforeQty, afterQty, {
       productName: productInfo?.productName ?? "Unknown",
       category: productInfo?.category ?? "Uncategorized",
-      stockLevel,
+      stockLevel: afterQty,
       reorderPoint,
       status,
     });

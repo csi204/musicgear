@@ -18,6 +18,17 @@ const statusConfig: Record<StockStatus, { label: string; badge: string; dot: str
   out_of_stock: { label: "สินค้าหมด", badge: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", dot: "bg-red-500" },
 };
 
+const translateCategory = (name: string): string => {
+  if (!name) return "ทั่วไป";
+  const lower = name.toLowerCase();
+  if (lower.includes("guitar")) return "กีตาร์";
+  if (lower.includes("keyboard")) return "คีย์บอร์ด";
+  if (lower.includes("drum")) return "กลอง";
+  if (lower.includes("audio") || lower.includes("sound") || lower.includes("speaker") || lower.includes("amp")) return "เครื่องเสียง";
+  if (lower.includes("accessories") || lower.includes("pedal") || lower.includes("strap") || lower.includes("cable")) return "อุปกรณ์เสริม";
+  return name;
+};
+
 interface DisplayInventory {
   id: string;
   sku: string;
@@ -26,10 +37,9 @@ interface DisplayInventory {
   currentQty: number;
   reserved: number;
   maxCapacity: number;
+  reorderPoint: number;
   status: StockStatus;
 }
-
-const filterTabs = ["สินค้าทั้งหมด", "กีตาร์", "แอมป์", "อุปกรณ์เสริม"];
 
 function InventoryRowSkeleton() {
   return (
@@ -57,6 +67,10 @@ export default function InventoryPage() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
 
+  const categories = Array.from(new Set(inventory.map((item) => item.category))).filter(Boolean);
+  categories.sort((a, b) => a.localeCompare(b, 'th'));
+  const filterTabs = ["สินค้าทั้งหมด", ...categories];
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -83,11 +97,13 @@ export default function InventoryPage() {
           const reserved = inv?.reservedQuantity ?? 0;
           const available = currentQty - reserved;
           const maxCapacity = inv?.maxCapacity ?? 100;
+          const reorderPoint = inv?.reorderPoint ?? 0;
+          const threshold = reorderPoint > 0 ? reorderPoint : Math.round(0.3 * maxCapacity);
           
           let status: StockStatus = "in_stock";
           if (available === 0) {
             status = "out_of_stock";
-          } else if (available <= 0.3 * maxCapacity) {
+          } else if (available <= threshold) {
             status = "low_stock";
           }
 
@@ -95,10 +111,11 @@ export default function InventoryPage() {
             id: p.productId,
             sku: p.sku,
             name: p.name,
-            category: p.category?.name ?? "ทั่วไป",
+            category: translateCategory(p.category?.name ?? "ทั่วไป"),
             currentQty,
             reserved,
             maxCapacity,
+            reorderPoint,
             status,
           };
         });
@@ -115,11 +132,7 @@ export default function InventoryPage() {
   }, [loadData]);
 
   const filtered = inventory.filter((item) => {
-    const matchCat =
-      activeCategory === "สินค้าทั้งหมด" ||
-      (activeCategory === "กีตาร์" && item.category.toLowerCase().includes("guitar")) ||
-      (activeCategory === "แอมป์" && item.category.toLowerCase().includes("amp")) ||
-      (activeCategory === "อุปกรณ์เสริม" && !item.category.toLowerCase().includes("guitar") && !item.category.toLowerCase().includes("amp"));
+    const matchCat = activeCategory === "สินค้าทั้งหมด" || item.category === activeCategory;
       
     const matchSearch = search === "" ||
       item.sku.toLowerCase().includes(search.toLowerCase()) ||
@@ -261,9 +274,14 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell className="text-center text-zinc-750 dark:text-zinc-400 font-extrabold">{item.reserved}</TableCell>
                     <TableCell className="text-center">
-                      <span className={`font-bold text-sm ${available === 0 ? "text-red-500" : available <= 0.3 * item.maxCapacity ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"}`}>
-                        {available}
-                      </span>
+                      {(() => {
+                        const threshold = item.reorderPoint > 0 ? item.reorderPoint : Math.round(0.3 * item.maxCapacity);
+                        return (
+                          <span className={`font-bold text-sm ${available === 0 ? "text-red-500" : available <= threshold ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"}`}>
+                            {available}
+                          </span>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`text-sm px-2.5 py-1 font-bold border-none flex items-center gap-1.5 w-fit ${sc.badge}`}>

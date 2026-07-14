@@ -13,6 +13,17 @@ import { useUser } from "@/hooks/useUser";
 import { useToast } from "@/components/toast-provider";
 
 
+const translateCategory = (name: string): string => {
+  if (!name) return "ทั่วไป";
+  const lower = name.toLowerCase();
+  if (lower.includes("guitar")) return "กีตาร์";
+  if (lower.includes("keyboard")) return "คีย์บอร์ด";
+  if (lower.includes("drum")) return "กลอง";
+  if (lower.includes("audio") || lower.includes("sound") || lower.includes("speaker") || lower.includes("amp")) return "เครื่องเสียง";
+  if (lower.includes("accessories") || lower.includes("pedal") || lower.includes("strap") || lower.includes("cable")) return "อุปกรณ์เสริม";
+  return name;
+};
+
 type ProductStatus = "active" | "inactive" | "out_of_stock" | "discontinued";
 
 interface DisplayProduct {
@@ -25,6 +36,7 @@ interface DisplayProduct {
   stock: number;
   reserved: number;
   maxCapacity: number;
+  reorderPoint: number;
   status: ProductStatus;
   description: string;
   skillLevel: string;
@@ -83,11 +95,11 @@ function ProductRowSkeleton() {
 // ─────────────────────────────────────────────────────
 // StockBar — reserved section is now grey
 // ─────────────────────────────────────────────────────
-function StockBar({ stock, reserved }: { stock: number; reserved: number }) {
+function StockBar({ stock, reserved, reorderPoint }: { stock: number; reserved: number; reorderPoint: number }) {
   const max = Math.max(stock, 50);
   const availPct = Math.min((stock - reserved) / max, 1) * 100;
   const reservedPct = Math.min(reserved / max, 1) * 100;
-  const isLow = stock - reserved <= 5 && stock > 0;
+  const isLow = stock - reserved <= reorderPoint && stock > 0;
   return (
     <div className="flex items-center gap-2">
       <div className="w-20 h-2 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden flex">
@@ -989,18 +1001,20 @@ export default function ProductsPage() {
         const stock = inv?.quantity ?? 0;
         const reserved = inv?.reservedQuantity ?? 0;
         const maxCapacity = inv?.maxCapacity ?? 100;
+        const reorderPoint = inv?.reorderPoint ?? 0;
         let status: ProductStatus = p.status as ProductStatus;
         if (p.status === "active" && (stock - reserved) <= 0) status = "out_of_stock";
         return {
           id: p.productId,
           name: p.name,
           sku: p.sku,
-          category: p.category?.name ?? "ทั่วไป",
+          category: translateCategory(p.category?.name ?? "ทั่วไป"),
           brand: p.brand?.name ?? "ไม่ระบุแบรนด์",
           price: p.price,
           stock,
           reserved,
           maxCapacity,
+          reorderPoint,
           status,
           description: p.description ?? "ไม่มีคำอธิบายเพิ่มเติมสำหรับสินค้านี้",
           skillLevel: p.skillLevel ?? "ไม่ระบุระดับ",
@@ -1156,7 +1170,8 @@ export default function ProductsPage() {
             ) : (
               paginatedProducts.map((p) => {
                 const available = p.stock - p.reserved;
-                const lowStock = p.status === "active" && available <= 0.3 * p.maxCapacity && available > 0;
+                const threshold = p.reorderPoint > 0 ? p.reorderPoint : Math.round(0.3 * p.maxCapacity);
+                const lowStock = p.status === "active" && available <= threshold && available > 0;
                 const sc = statusConfig[p.status];
                 return (
                   <TableRow key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
@@ -1181,7 +1196,7 @@ export default function ProductsPage() {
                       ฿{Number(p.price).toLocaleString("th-TH")}
                     </TableCell>
                     <TableCell>
-                      <StockBar stock={p.stock} reserved={p.reserved} />
+                      <StockBar stock={p.stock} reserved={p.reserved} reorderPoint={threshold} />
                       {lowStock && (
                         <span className="text-sm text-amber-600 dark:text-amber-400 font-bold mt-0.5 block">⚠ สต็อกใกล้หมด</span>
                       )}

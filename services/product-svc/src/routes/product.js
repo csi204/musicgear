@@ -190,31 +190,51 @@ productRoutes.post("/bundles", async (c) => {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "discountValue must be a non-negative number" } }, 400);
     }
 
-    const bundle = await db.bundle.create({
-      data: {
-        name,
-        description: description || null,
-        discountType,
-        discountValue: parsedDiscount,
-      }
-    });
-
-    const createdItems = [];
+    // Validate that all product IDs exist in DB before proceeding
     if (Array.isArray(items) && items.length > 0) {
+      const productIds = items.map(i => i.productId).filter(Boolean);
+      const existingProducts = await db.product.findMany({
+        where: { productId: { in: productIds } },
+        select: { productId: true }
+      });
+      const existingIds = new Set(existingProducts.map(p => p.productId));
       for (const item of items) {
-        if (!item.productId || !item.quantity) continue;
-        const bundleItem = await db.bundleItem.create({
-          data: {
-            bundleId: bundle.bundleId,
-            productId: item.productId,
-            quantity: parseInt(item.quantity, 10) || 1,
-          }
-        });
-        createdItems.push(bundleItem);
+        if (!item.productId) continue;
+        if (!existingIds.has(item.productId)) {
+          return c.json({ error: { code: "PRODUCT_NOT_FOUND", message: `Product not found: ${item.productId}` } }, 400);
+        }
       }
     }
 
-    return c.json({ status: "ok", bundle: { ...bundle, items: createdItems } }, 201);
+    const result = await db.$transaction(async (tx) => {
+      const bundle = await tx.bundle.create({
+        data: {
+          name,
+          description: description || null,
+          discountType,
+          discountValue: parsedDiscount,
+        }
+      });
+
+      const createdItems = [];
+      if (Array.isArray(items) && items.length > 0) {
+        for (const item of items) {
+          if (!item.productId || !item.quantity) continue;
+          const bundleItem = await tx.bundleItem.create({
+            data: {
+              bundleId: bundle.bundleId,
+              productId: item.productId,
+              quantity: parseInt(item.quantity, 10) || 1,
+            }
+          });
+          createdItems.push(bundleItem);
+        }
+      }
+
+      return { ...bundle, items: createdItems };
+    });
+
+    return c.json({ status: "ok", bundle: result }, 201);
   } catch (err) {
     console.error("[POST /products/bundles]", err);
     return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to create bundle" } }, 500);
@@ -248,39 +268,67 @@ productRoutes.put("/bundles/:bundleId", async (c) => {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "discountValue must be a non-negative number" } }, 400);
     }
 
-    // Update main bundle info
-    const updatedBundle = await db.bundle.update({
-      where: { bundleId },
-      data: {
-        name,
-        description: description || null,
-        discountType,
-        discountValue: parsedDiscount,
-      }
-    });
-
-    // Delete existing items
-    await db.bundleItem.deleteMany({
+    // Check if the bundle exists first to return proper 404
+    const existingBundle = await db.bundle.findUnique({
       where: { bundleId }
     });
+    if (!existingBundle) {
+      return c.json({ error: { code: "BUNDLE_NOT_FOUND", message: "Bundle not found" } }, 404);
+    }
 
-    // Re-create items sequentially
-    const createdItems = [];
+    // Validate that all product IDs exist in DB before proceeding
     if (Array.isArray(items) && items.length > 0) {
+      const productIds = items.map(i => i.productId).filter(Boolean);
+      const existingProducts = await db.product.findMany({
+        where: { productId: { in: productIds } },
+        select: { productId: true }
+      });
+      const existingIds = new Set(existingProducts.map(p => p.productId));
       for (const item of items) {
-        if (!item.productId || !item.quantity) continue;
-        const bundleItem = await db.bundleItem.create({
-          data: {
-            bundleId,
-            productId: item.productId,
-            quantity: parseInt(item.quantity, 10) || 1,
-          }
-        });
-        createdItems.push(bundleItem);
+        if (!item.productId) continue;
+        if (!existingIds.has(item.productId)) {
+          return c.json({ error: { code: "PRODUCT_NOT_FOUND", message: `Product not found: ${item.productId}` } }, 400);
+        }
       }
     }
 
-    return c.json({ status: "ok", bundle: { ...updatedBundle, items: createdItems } }, 200);
+    const result = await db.$transaction(async (tx) => {
+      // Update main bundle info
+      const updatedBundle = await tx.bundle.update({
+        where: { bundleId },
+        data: {
+          name,
+          description: description || null,
+          discountType,
+          discountValue: parsedDiscount,
+        }
+      });
+
+      // Delete existing items
+      await tx.bundleItem.deleteMany({
+        where: { bundleId }
+      });
+
+      // Re-create items sequentially
+      const createdItems = [];
+      if (Array.isArray(items) && items.length > 0) {
+        for (const item of items) {
+          if (!item.productId || !item.quantity) continue;
+          const bundleItem = await tx.bundleItem.create({
+            data: {
+              bundleId,
+              productId: item.productId,
+              quantity: parseInt(item.quantity, 10) || 1,
+            }
+          });
+          createdItems.push(bundleItem);
+        }
+      }
+
+      return { ...updatedBundle, items: createdItems };
+    });
+
+    return c.json({ status: "ok", bundle: result }, 200);
   } catch (err) {
     console.error("[PUT /products/bundles/:bundleId]", err);
     return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to update bundle" } }, 500);

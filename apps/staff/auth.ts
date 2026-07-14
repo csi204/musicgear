@@ -1,7 +1,36 @@
-// @ts-nocheck
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { SignJWT, jwtVerify } from "jose";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import type { JWT } from "next-auth/jwt";
+
+declare module "next-auth" {
+  interface User {
+    userId: string;
+    role: string;
+    firstName?: string | null;
+    lastName?: string | null;
+  }
+  interface Session {
+    user: {
+      userId: string;
+      role: string;
+      email: string;
+      firstName?: string | null;
+      lastName?: string | null;
+    } & import("next-auth").DefaultSession["user"]
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    userId?: string;
+    role?: string;
+    email?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+  }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -56,7 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.userId = user.userId;
         token.role = user.role;
-        token.email = user.email;
+        token.email = user.email ?? undefined;
         token.firstName = user.firstName;
         token.lastName = user.lastName;
       }
@@ -76,7 +105,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   jwt: {
     encode: async ({ secret, token }) => {
       const encodedSecret = new TextEncoder().encode(secret as string);
-      return new SignJWT(token as any)
+      return new SignJWT(token as Record<string, unknown>)
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
         .setExpirationTime("30d")
@@ -93,4 +122,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
     }
   }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 }) as any;

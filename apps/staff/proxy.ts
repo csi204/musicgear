@@ -1,6 +1,11 @@
 import { auth } from "./auth";
+import { NextRequest } from "next/server";
 
-export default auth((req: any) => {
+interface NextRequestWithAuth extends NextRequest {
+  auth?: unknown;
+}
+
+export default auth((req: NextRequestWithAuth) => {
   const isLoggedIn = !!req.auth;
   const isAuthPage = req.nextUrl.pathname.startsWith("/login");
 
