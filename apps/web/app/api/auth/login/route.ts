@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SignJWT } from "jose";
 
-const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "a-very-secure-fallback-dev-secret-1234567890";
+const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "K9xL2pQ8mF4vC1nB7zH3jR5wT6yN0kM4";
 
 
 export async function POST(req: NextRequest) {

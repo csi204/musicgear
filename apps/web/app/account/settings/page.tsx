@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+
 import { useRouter } from "next/navigation";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -13,8 +13,8 @@ import { isAuthenticated } from "../../../lib/auth";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { data: session, status: sessionStatus } = useSession();
-  
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
   // Form states
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -26,10 +26,14 @@ export default function SettingsPage() {
 
   // Authenticate check
   useEffect(() => {
-    if (sessionStatus === "unauthenticated" || (!isAuthenticated() && sessionStatus !== "loading")) {
+    if (!isAuthenticated()) {
       router.push("/login?redirect_uri=" + encodeURIComponent(window.location.pathname));
+      return;
     }
-  }, [sessionStatus]);
+    setIsCheckingAuth(false);
+  }, [router]);
+
+  if (isCheckingAuth) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +78,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (sessionStatus === "loading") {
+  if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-[#F5F3EE]/30 text-neutral-900 flex flex-col">
         <Navbar />
