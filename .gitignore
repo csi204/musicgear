@@ -29,6 +29,7 @@ onlyMe
 out/
 build
 dist
+next-env.d.ts
 
 
 # Debug
