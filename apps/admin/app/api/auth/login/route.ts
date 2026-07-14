@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SignJWT } from "jose";
 
-const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "fallback-dev-secret-1234567890";
-const COOKIE_NAME = process.env.NODE_ENV === "production" ? "__Secure-mg_admin_session" : "mg_admin_session";
+const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "K9xL2pQ8mF4vC1nB7zH3jR5wT6yN0kM4";
+const COOKIE_NAME = "__Secure-mg_admin_session";
 
 export async function POST(req: NextRequest) {
   try {
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({ ok: true, user });
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 30, // 30 days

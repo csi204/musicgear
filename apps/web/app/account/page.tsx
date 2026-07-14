@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "../../components/navbar";
 import { Footer } from "../../components/footer";
@@ -44,20 +44,20 @@ interface UserProfile {
 
 export default function AccountProfilePage() {
   const router = useRouter();
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { data: session, status: sessionStatus } = useSession();
+  
+  // States
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
-  
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   // Auth Guard & Data Loading
   useEffect(() => {
-    if (!isAuthenticated()) {
+    if (sessionStatus === "unauthenticated" || (!isAuthenticated() && sessionStatus !== "loading")) {
       router.push("/login?redirect_uri=" + encodeURIComponent(window.location.pathname));
       return;
     }
-    
-    setIsCheckingAuth(false);
 
     async function loadAccountData() {
       const token = getAccessToken();
@@ -90,10 +90,12 @@ export default function AccountProfilePage() {
       }
     }
 
-    loadAccountData();
-  }, [router]);
+    if (sessionStatus === "authenticated") {
+      loadAccountData();
+    }
+  }, [sessionStatus]);
 
-  if (isCheckingAuth || loading) {
+  if (sessionStatus === "loading" || loading) {
     return (
       <div className="min-h-screen bg-[#F5F3EE]/30 text-neutral-900 flex flex-col">
         <Navbar />
