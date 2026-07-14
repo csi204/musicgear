@@ -4,6 +4,9 @@ import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { CartProvider } from "@/components/cart-provider"
 import { cn } from "@workspace/ui/lib/utils";
+import { cookies } from "next/headers";
+import { SyncToken } from "@/components/sync-token";
+import { ToastContainer } from "@/components/toast";
 
 const fontSans = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -29,19 +32,12 @@ const fontAnuphan = Anuphan({
   weight: ["300", "400", "500", "600", "700"],
 })
 
-import { SessionProvider } from "next-auth/react";
-import { cookies } from "next/headers";
-import { SyncToken } from "@/components/sync-token";
-import { auth } from "../auth";
-import { ToastContainer } from "@/components/toast";
-
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   const cookieStore = await cookies();
-  const session = await auth();
   const token =
     cookieStore.get("mg_web_session")?.value ||
     cookieStore.get("__Secure-mg_web_session")?.value;
@@ -63,13 +59,11 @@ export default async function RootLayout({
       <body>
         <SyncToken token={token} />
         <ToastContainer />
-        <SessionProvider session={session}>
-          <ThemeProvider defaultTheme="light" enableSystem={false}>
-            <CartProvider>
-              {children}
-            </CartProvider>
-          </ThemeProvider>
-        </SessionProvider>
+        <ThemeProvider defaultTheme="light" enableSystem={false}>
+          <CartProvider>
+            {children}
+          </CartProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

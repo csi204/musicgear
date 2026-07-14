@@ -45,3 +45,8 @@ apps/web/seed-inventory-stock.js
 
 # Prisma generated client
 **/generated/prisma
+
+# Wrangler and temporary files
+**/.wrangler
+*.bak
+tail.log

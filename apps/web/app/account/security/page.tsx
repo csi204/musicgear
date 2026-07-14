@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function SecurityPage() {
-  const { data: session } = useSession();
+  const [sessionUser, setSessionUser] = useState<any>(null);
+  useEffect(() => {
+    fetch("/api/auth/session").then(r => r.json()).then(d => setSessionUser(d?.user || null));
+  }, []);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

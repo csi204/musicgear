@@ -5,9 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, ClipboardList, Package, Boxes, Layers, FileBarChart, LogOut, Sun, Moon } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
-import { signOut } from "next-auth/react";
+
 import { useTheme } from "next-themes";
 import { useUser } from "@/hooks/useUser";
+import { clearSession } from "../../lib/auth";
 
 const navItems = [
   { href: "/dashboard", label: "ภาพรวม", icon: LayoutDashboard },
@@ -115,7 +116,8 @@ export function Sidebar({ collapsed = false, setMobileOpen }: SidebarProps) {
         <ThemeToggleItem collapsed={collapsed} />
         <button
           onClick={async () => {
-            await signOut({ redirect: false });
+            clearSession();
+            await fetch("/api/auth/logout", { method: "POST" });
             window.location.href = "/login";
           }}
           className={cn(

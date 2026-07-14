@@ -39,11 +39,14 @@ export function createAuthMiddleware(options = {}) {
     }
 
     try {
-      const secret = new TextEncoder().encode(c.env.NEXTAUTH_SECRET);
+      const secretStr = c.env.NEXTAUTH_SECRET || c.env.AUTH_SECRET || "K9xL2pQ8mF4vC1nB7zH3jR5wT6yN0kM4";
+      console.log("[verifyToken] Using secret of length:", secretStr.length, "StartsWith:", secretStr.substring(0, 3));
+      const secret = new TextEncoder().encode(secretStr);
       const { payload } = await jwtVerify(token, secret);
       c.set("user", payload);
       await next();
     } catch (err) {
+      console.error("[verifyToken] Error:", err.message, err.stack);
       return c.json({ error: { code: "UNAUTHORIZED", message: "Invalid or expired token" } }, 401);
     }
   };

@@ -1,11 +1,10 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
-import { User, LogOut, Settings, ShoppingBag, ChevronDown, UserCircle } from "lucide-react";
+import { User, LogOut, Settings, ShoppingBag, UserCircle } from "lucide-react";
 import Link from "next/link";
-import { useState, useRef, useEffect } from "react";
 import { cn } from "@workspace/ui/lib/utils";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -18,12 +17,32 @@ interface LoginButtonProps {
   compact?: boolean;
 }
 
+function useWebSession() {
+  const [user, setUser] = useState<any>(null);
+  const [status, setStatus] = useState<"loading" | "authenticated" | "unauthenticated">("loading");
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.user) {
+          setUser(data.user);
+          setStatus("authenticated");
+        } else {
+          setStatus("unauthenticated");
+        }
+      })
+      .catch(() => setStatus("unauthenticated"));
+  }, []);
+
+  return { user, status };
+}
+
 export function LoginButton({ compact = false }: LoginButtonProps) {
-  const { data: session, status } = useSession();
+  const { user, status } = useWebSession();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -34,14 +53,19 @@ export function LoginButton({ compact = false }: LoginButtonProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleLogout = async () => {
+    setDropdownOpen(false);
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/";
+  };
+
   if (status === "loading") {
     return (
       <div className="h-9 w-9 rounded-full bg-neutral-100 animate-pulse" />
     );
   }
 
-  if (session?.user) {
-    const user = session.user as any;
+  if (user) {
     const displayName =
       [user.firstName, user.lastName].filter(Boolean).join(" ") ||
       user.email ||
@@ -52,7 +76,6 @@ export function LoginButton({ compact = false }: LoginButtonProps) {
     const roleLabel = ROLE_LABELS[user.role] ?? user.role;
 
     if (compact) {
-      // Compact mode: avatar with dropdown
       return (
         <div className="relative" ref={dropdownRef}>
           <button
@@ -72,7 +95,6 @@ export function LoginButton({ compact = false }: LoginButtonProps) {
             </Avatar>
           </button>
 
-          {/* Dropdown Panel */}
           <div
             className={cn(
               "absolute right-0 top-[calc(100%+8px)] w-56 origin-top-right rounded-xl border border-stone-200 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-200 ease-out z-50 overflow-hidden",
@@ -81,7 +103,6 @@ export function LoginButton({ compact = false }: LoginButtonProps) {
                 : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
             )}
           >
-            {/* User Info Header */}
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-stone-100 bg-stone-50/60">
               <Avatar className="h-8 w-8 flex-shrink-0">
                 {userImage && (
@@ -101,36 +122,15 @@ export function LoginButton({ compact = false }: LoginButtonProps) {
               </div>
             </div>
 
-            {/* Menu Items */}
             <div className="py-1.5">
-              <DropdownItem
-                href="/account"
-                icon={<UserCircle className="h-3.5 w-3.5" />}
-                label="โปรไฟล์"
-                onClick={() => setDropdownOpen(false)}
-              />
-              <DropdownItem
-                href="/orders"
-                icon={<ShoppingBag className="h-3.5 w-3.5" />}
-                label="คำสั่งซื้อของฉัน"
-                onClick={() => setDropdownOpen(false)}
-              />
-              <DropdownItem
-                href="/account/settings"
-                icon={<Settings className="h-3.5 w-3.5" />}
-                label="ตั้งค่าบัญชี"
-                onClick={() => setDropdownOpen(false)}
-              />
+              <DropdownItem href="/account" icon={<UserCircle className="h-3.5 w-3.5" />} label="โปรไฟล์" onClick={() => setDropdownOpen(false)} />
+              <DropdownItem href="/orders" icon={<ShoppingBag className="h-3.5 w-3.5" />} label="คำสั่งซื้อของฉัน" onClick={() => setDropdownOpen(false)} />
+              <DropdownItem href="/account/settings" icon={<Settings className="h-3.5 w-3.5" />} label="ตั้งค่าบัญชี" onClick={() => setDropdownOpen(false)} />
             </div>
 
-            {/* Divider + Logout */}
             <div className="border-t border-stone-100 py-1.5">
               <button
-                onClick={async () => {
-                  setDropdownOpen(false);
-                  await signOut({ redirect: false });
-                  window.location.href = "/";
-                }}
+                onClick={handleLogout}
                 className="flex w-full items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors duration-150 rounded-md mx-auto"
                 style={{ width: "calc(100% - 8px)", margin: "0 4px" }}
               >
@@ -143,7 +143,6 @@ export function LoginButton({ compact = false }: LoginButtonProps) {
       );
     }
 
-    // Full mode: avatar + name + sign out button
     return (
       <div className="flex items-center gap-4">
         <Link href="/account" className="flex items-center gap-3 group hover:opacity-90 transition-opacity">
@@ -170,10 +169,7 @@ export function LoginButton({ compact = false }: LoginButtonProps) {
         <Button
           variant="outline"
           className="h-9 rounded-full border-neutral-300 hover:border-red-200 hover:bg-red-50 hover:text-red-500 text-xs font-bold transition-all px-4 cursor-pointer"
-          onClick={async () => {
-            await signOut({ redirect: false });
-            window.location.href = "/";
-          }}
+          onClick={handleLogout}
         >
           ออกจากระบบ
         </Button>
@@ -181,7 +177,6 @@ export function LoginButton({ compact = false }: LoginButtonProps) {
     );
   }
 
-  // Not logged in
   return (
     <Link
       href="/login"
@@ -194,7 +189,6 @@ export function LoginButton({ compact = false }: LoginButtonProps) {
   );
 }
 
-// Helper component for dropdown menu items
 function DropdownItem({
   href,
   icon,

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -12,6 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -20,27 +20,36 @@ export default function LoginPage() {
   const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
     
     try {
-      const res = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
       
-      if (res?.error) {
-        setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
       } else {
         router.push(callbackUrl);
         router.refresh();
       }
     } catch {
       setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGoogleLogin = () => {
-    signIn("kinde", { callbackUrl });
+    const kindeIssuer = process.env.NEXT_PUBLIC_KINDE_ISSUER_URL || "https://musicgear.kinde.com";
+    const clientId = process.env.NEXT_PUBLIC_KINDE_CLIENT_ID || "";
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const connectionId = "conn_019ee5d95bfd2150cca15e493509718b";
+    const authUrl = `${kindeIssuer}/oauth2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid+profile+email&connection_id=${connectionId}&prompt=login`;
+    window.location.href = authUrl;
   };
 
   return (
@@ -84,8 +93,8 @@ export default function LoginPage() {
           
           {error && <p className="text-sm text-red-500">{error}</p>}
           
-          <Button type="submit" className="w-full">
-            เข้าสู่ระบบด้วยอีเมล
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบด้วยอีเมล"}
           </Button>
           <div className="flex justify-center">
             <a href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary underline">ลืมรหัสผ่าน?</a>

@@ -1,0 +1,54 @@
+import { NextRequest, NextResponse } from "next/server";
+import { SignJWT } from "jose";
+
+const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "a-very-secure-fallback-dev-secret-1234567890";
+const COOKIE_NAME = "__Secure-mg_web_session";
+
+export async function POST(req: NextRequest) {
+  try {
+    const { email, password } = await req.json();
+    if (!email || !password) {
+      return NextResponse.json({ error: "Missing credentials" }, { status: 400 });
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8788";
+    const res = await fetch(`${apiUrl}/auth/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) {
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    }
+
+    const { user } = await res.json();
+
+    const encodedSecret = new TextEncoder().encode(SECRET);
+    const token = await new SignJWT({
+      userId: user.userId,
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("30d")
+      .sign(encodedSecret);
+
+    const response = NextResponse.json({ ok: true, user });
+    response.cookies.set(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+
+    return response;
+  } catch (err) {
+    console.error("Login error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

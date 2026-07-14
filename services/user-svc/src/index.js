@@ -132,13 +132,14 @@ function getAuthUser(c) {
     };
   }
 
-  if (!user?.sub) {
-    throw new Error("Authenticated token is missing sub");
+  const id = user?.sub || user?.userId;
+  if (!id) {
+    throw new Error("Authenticated token is missing sub or userId");
   }
 
   // Kinde access_token doesn't include email by default (it's in id_token)
   // Use sub-based placeholder if email is missing
-  const email = user.email || user.preferred_email || `${user.sub}@kinde.user`;
+  const email = user.email || user.preferred_email || `${id}@kinde.user`;
 
   // Kinde stores roles as [{id, key, name}] array in access_token
   const kindeRoles = Array.isArray(user.roles) ? user.roles : [];
@@ -151,7 +152,7 @@ function getAuthUser(c) {
     : "customer";
 
   return {
-    userId: user.sub,
+    userId: id,
     email,
     firstName: user.given_name || user.first_name || "MusicGear",
     lastName: user.family_name || user.last_name || "User",

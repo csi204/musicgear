@@ -33,10 +33,10 @@ export default function InventoryReportPage() {
       const json = await res.json();
 
       // Also fetch dashboard summary for KPIs (inventory health)
-      const res2 = await fetch(`${apiBase}/reports/dashboard-summary`, {
-        method: "QUERY",
+      const r = { start: "2020-01-01", end: new Date().toISOString().split('T')[0] };
+      const res2 = await fetch(`${apiBase}/reports/dashboard-summary?start=${new Date(r.start).toISOString()}&end=${new Date(r.end + "T23:59:59").toISOString()}`, {
+        method: "GET",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ start: new Date("2020-01-01").toISOString(), end: new Date().toISOString() }),
       });
       const summaryJson = res2.ok ? await res2.json() : null;
 

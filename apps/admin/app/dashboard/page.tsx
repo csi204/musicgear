@@ -37,13 +37,12 @@ export default function DashboardOverviewPage() {
         getUsers({}, tokenStr).catch(() => null),
         getProducts({}, tokenStr).catch(() => null),
         getBundles(tokenStr).catch(() => null),
-        fetch(`${apiBase}/reports/dashboard-summary`, {
-          method: 'QUERY',
+        fetch(`${apiBase}/reports/dashboard-summary?start=${new Date(r.start).toISOString()}&end=${new Date(r.end + "T23:59:59").toISOString()}`, {
+          method: 'GET',
           headers: { 
             'Content-Type': 'application/json',
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify({ start: new Date(r.start).toISOString(), end: new Date(r.end + "T23:59:59").toISOString() })
+          }
         }).then(res => res.ok ? res.json() : null).catch(() => null)
       ]);
 

@@ -1,9 +1,10 @@
 {
 	"name": "musicgear-admin",
 	"main": ".open-next/worker.js",
-	"compatibility_date": "2024-09-23",
+	"compatibility_date": "2025-05-05",
 	"compatibility_flags": [
-		"nodejs_compat"
+		"nodejs_compat",
+		"global_fetch_strictly_public"
 	],
 	"keep_names": false,
 	"assets": {
@@ -12,7 +13,10 @@
 	},
 	"vars": {
 		"NEXT_PUBLIC_AUTH_URL": "https://musicgear-api-gateway.thunderwolf2209.workers.dev",
-		"NEXT_PUBLIC_API_URL": "https://musicgear-api-gateway.thunderwolf2209.workers.dev"
+		"NEXT_PUBLIC_API_URL": "https://musicgear-api-gateway.thunderwolf2209.workers.dev",
+		"AUTH_URL": "https://musicgear-admin.thunderwolf2209.workers.dev",
+		"NEXTAUTH_URL": "https://musicgear-admin.thunderwolf2209.workers.dev",
+		"NEXT_PRIVATE_MINIMAL_MODE": "1"
 	},
 	"dev": {
 		"port": 8798

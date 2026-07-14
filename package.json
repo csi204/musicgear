@@ -24,6 +24,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@prisma/client": "^7.8.0"
+    "@prisma/client": "^7.8.0",
+    "jose": "5"
   }
 }
