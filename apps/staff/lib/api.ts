@@ -79,6 +79,7 @@ export interface BundleRecord {
   description?: string | null;
   discountType: "percentage" | "fixed_amount";
   discountValue: number;
+  imageUrl?: string | null;
   items: {
     bundleItemId: string;
     bundleId: string;

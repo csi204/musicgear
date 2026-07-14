@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { SlidersHorizontal, ChevronDown, Home, Scale, X, ShoppingCart, Loader2 } from "lucide-react";
+import { SlidersHorizontal, ChevronDown, Home, Scale, X, ShoppingCart, Loader2, ChevronLeft } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 import { getApiBaseUrl } from "../../lib/auth";
 import { useCartContext } from "../../components/cart-provider";
@@ -35,9 +35,16 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Filter States
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [selectedSkillLevels, setSelectedSkillLevels] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: "", max: "" });
+
   // Comparison States
   const [compareList, setCompareList] = useState<any[]>([]);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [isCompareSelectionActive, setIsCompareSelectionActive] = useState(false);
   const { addItem } = useCartContext();
   const [addingToCartId, setAddingToCartId] = useState<string | null>(null);
 
@@ -208,6 +215,35 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
       }
     }
 
+    // Apply client-side filters
+    if (selectedBrands.length > 0) {
+      displayProducts = displayProducts.filter((p) =>
+        selectedBrands.includes(p.brand)
+      );
+    }
+
+    if (selectedSkillLevels.length > 0) {
+      displayProducts = displayProducts.filter((p) => {
+        const specLevel = p.specifications?.find((s) => s.label === "Level")?.value;
+        const levelLower = specLevel ? specLevel.toLowerCase() : "";
+        return selectedSkillLevels.some((lvl) => levelLower.includes(lvl));
+      });
+    }
+
+    if (priceRange.min !== "") {
+      const minVal = parseFloat(priceRange.min);
+      if (!isNaN(minVal)) {
+        displayProducts = displayProducts.filter((p) => p.price >= minVal);
+      }
+    }
+
+    if (priceRange.max !== "") {
+      const maxVal = parseFloat(priceRange.max);
+      if (!isNaN(maxVal)) {
+        displayProducts = displayProducts.filter((p) => p.price <= maxVal);
+      }
+    }
+
     return {
       title,
       bannerUrl,
@@ -217,6 +253,17 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
   };
 
   const details = getFilteredDetails();
+
+  const availableBrands = Array.from(
+    new Set(products.map((p: any) => p.brand?.name).filter(Boolean))
+  ) as string[];
+
+  const handleCardClick = (e: React.MouseEvent, product: any) => {
+    if (isCompareSelectionActive) {
+      e.preventDefault();
+      toggleCompare(product);
+    }
+  };
 
   return (
     <div className="flex flex-col bg-white">
@@ -230,6 +277,17 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
         {/* Subtle radial dark overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/70 via-neutral-900/40 to-transparent" />
         
+        {/* Back Button (Top Left Corner) */}
+        <div className="absolute top-6 left-6 z-20">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest text-white/80 hover:text-white uppercase transition-all bg-white/10 hover:bg-white/15 backdrop-blur-sm px-3.5 py-2 rounded-full border border-white/10 active:scale-95 shadow-sm"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            ย้อนกลับหน้าแรก
+          </Link>
+        </div>
+
         {/* Banner Content Container */}
         <div className="relative z-10 mx-auto max-w-7xl h-full px-6 flex flex-col justify-end pb-10">
           {/* Breadcrumbs */}
@@ -253,11 +311,43 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
       {/* Filter and Sort Row */}
       <div className="bg-white py-6">
         <div className="mx-auto max-w-7xl px-6 flex items-center justify-between">
-          {/* Show filters pill */}
-          <button className="flex items-center gap-2 rounded-full border border-neutral-300 bg-white px-5 py-2.5 text-xs md:text-sm font-semibold text-neutral-800 hover:bg-neutral-50 hover:border-neutral-400 transition-all cursor-pointer">
-            <SlidersHorizontal className="h-4 w-4 text-neutral-600" />
-            Show filters
-          </button>
+          {/* Controls Group: Show filters & Compare */}
+          <div className="flex items-center gap-3">
+            {/* Show filters pill */}
+            <button 
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className={cn(
+                "flex items-center gap-2 rounded-full border px-5 py-2.5 text-xs md:text-sm font-semibold transition-all cursor-pointer",
+                isFilterOpen
+                  ? "bg-neutral-900 text-white border-neutral-900"
+                  : "bg-white border-neutral-300 text-neutral-800 hover:bg-neutral-50 hover:border-neutral-400"
+              )}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {isFilterOpen ? "Hide filters" : "Show filters"}
+            </button>
+
+            {/* Compare Products button */}
+            <button 
+              onClick={() => {
+                setIsCompareSelectionActive(!isCompareSelectionActive);
+                if (!isCompareSelectionActive) {
+                  showToast("กรุณาติ๊กเลือกสินค้าที่ต้องการเปรียบเทียบ");
+                } else {
+                  setCompareList([]);
+                }
+              }}
+              className={cn(
+                "flex items-center gap-2 rounded-full border px-5 py-2.5 text-xs md:text-sm font-semibold transition-all cursor-pointer",
+                isCompareSelectionActive
+                  ? "bg-[#FF6B00] text-white border-[#FF6B00] hover:bg-[#e55f00]"
+                  : "bg-white border-neutral-300 text-neutral-800 hover:bg-neutral-50 hover:border-neutral-400"
+              )}
+            >
+              <Scale className="h-4 w-4" />
+              {isCompareSelectionActive ? "ยกเลิกเปรียบเทียบ" : "เปรียบเทียบสินค้า"}
+            </button>
+          </div>
 
           {/* Sort dropdown pill */}
           <div className="flex items-center gap-3">
@@ -270,9 +360,141 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
         </div>
       </div>
 
+      {/* Filter panel dropdown */}
+      {isFilterOpen && (
+        <div className="bg-neutral-50 border-y border-neutral-200/50 py-8 animate-in slide-in-from-top-4 duration-200">
+          <div className="mx-auto max-w-7xl px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Brands Column */}
+            <div className="flex flex-col gap-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 font-heading">
+                แบรนด์ (Brands)
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {availableBrands.map((brand) => {
+                  const isSelected = selectedBrands.includes(brand);
+                  return (
+                    <button
+                      key={brand}
+                      onClick={() => {
+                        setSelectedBrands((prev) =>
+                          isSelected
+                            ? prev.filter((b) => b !== brand)
+                            : [...prev, brand]
+                        );
+                      }}
+                      className={cn(
+                        "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+                        isSelected
+                          ? "bg-[#FF6B00] border-[#FF6B00] text-white shadow-sm"
+                          : "bg-white border-neutral-300 text-neutral-700 hover:border-neutral-400"
+                      )}
+                    >
+                      {brand}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Skill Levels Column */}
+            <div className="flex flex-col gap-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 font-heading">
+                ระดับทักษะ (Skill Levels)
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: "beginner", label: "มือใหม่ (Beginner)" },
+                  { value: "intermediate", label: "ทั่วไป (Intermediate)" },
+                  { value: "advanced", label: "มืออาชีพ (Advanced)" }
+                ].map((lvl) => {
+                  const isSelected = selectedSkillLevels.includes(lvl.value);
+                  return (
+                    <button
+                      key={lvl.value}
+                      onClick={() => {
+                        setSelectedSkillLevels((prev) =>
+                          isSelected
+                            ? prev.filter((l) => l !== lvl.value)
+                            : [...prev, lvl.value]
+                        );
+                      }}
+                      className={cn(
+                        "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+                        isSelected
+                          ? "bg-[#FF6B00] border-[#FF6B00] text-white shadow-sm"
+                          : "bg-white border-neutral-300 text-neutral-700 hover:border-neutral-400"
+                      )}
+                    >
+                      {lvl.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Price Range Column */}
+            <div className="flex flex-col gap-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 font-heading">
+                ช่วงราคา (Price Range)
+              </h4>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  placeholder="ต่ำสุด ฿"
+                  value={priceRange.min}
+                  onChange={(e) =>
+                    setPriceRange((prev) => ({ ...prev, min: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold focus:border-[#FF6B00] focus:ring-1 focus:ring-[#FF6B00] outline-none"
+                />
+                <span className="text-neutral-400 text-xs font-bold">ถึง</span>
+                <input
+                  type="number"
+                  placeholder="สูงสุด ฿"
+                  value={priceRange.max}
+                  onChange={(e) =>
+                    setPriceRange((prev) => ({ ...prev, max: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold focus:border-[#FF6B00] focus:ring-1 focus:ring-[#FF6B00] outline-none"
+                />
+              </div>
+
+              {/* Reset Filter Button */}
+              <button
+                onClick={() => {
+                  setSelectedBrands([]);
+                  setSelectedSkillLevels([]);
+                  setPriceRange({ min: "", max: "" });
+                }}
+                className="mt-2 text-left text-xs font-bold text-[#FF6B00] hover:text-[#e55f00] transition-colors underline cursor-pointer"
+              >
+                ล้างฟิลเตอร์ทั้งหมด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Product Grid Section */}
       <div className="bg-white pb-28">
         <div className="mx-auto max-w-7xl px-6">
+          {isCompareSelectionActive && (
+            <div className="mb-8 rounded-2xl bg-[#FF6B00]/5 border border-[#FF6B00]/40 p-4 text-xs md:text-sm text-[#FF6B00] font-bold flex items-center justify-between animate-in fade-in duration-200">
+              <span className="flex items-center gap-2">
+              กรุณาติ๊กเลือกสินค้าที่ต้องการเปรียบเทียบสเปก (เลือกได้ 2 - 4 รายการ)
+              </span>
+              <button
+                onClick={() => {
+                  setIsCompareSelectionActive(false);
+                  setCompareList([]);
+                }}
+                className="text-orange-600 underline hover:text-orange-900 font-black cursor-pointer"
+              >
+                ยกเลิกการเปรียบเทียบ
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-12">
             {loading ? (
               Array.from({ length: 8 }).map((_, idx) => (
@@ -294,7 +516,11 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
               return (
                 <div key={product.id} className="flex flex-col gap-3">
                   {/* TODO: [product-svc] product.id is used as slug (mock only). Replace with product.slug when connecting product-svc */}
-                <Link href={`/products/${product.id}`} className="group flex flex-col gap-3 relative">
+                <Link
+                  href={`/products/${product.id}`}
+                  onClick={(e) => handleCardClick(e, product)}
+                  className="group flex flex-col gap-3 relative"
+                >
                     {/* Product Image Container */}
                     <div className="relative aspect-[4/3] w-full rounded-2xl border border-[#E5E2DA] bg-[#F5F3EE]/20 overflow-hidden flex items-center justify-center p-4 transition-all duration-300 group-hover:border-electric-blue/20">
                       {/* Discount Badge */}
@@ -304,24 +530,32 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
                         </span>
                       )}
 
-                      {/* Compare Overlay Button */}
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          toggleCompare(product);
-                        }}
-                        className={cn(
-                          "absolute top-4 right-4 z-20 flex h-7.5 w-7.5 items-center justify-center rounded-full border shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer",
-                          isProductSelectedForCompare(product.productId)
-                            ? "bg-stone-900 border-stone-900 text-white"
-                            : "bg-white/90 backdrop-blur-sm border-stone-200 text-stone-500 hover:text-stone-950 hover:bg-white"
-                        )}
-                        aria-label="เปรียบเทียบสินค้า"
-                        title="เปรียบเทียบสินค้า"
-                      >
-                        <Scale className={cn("h-3.5 w-3.5 transition-all duration-300", isProductSelectedForCompare(product.productId) ? "scale-110 rotate-12" : "")} />
-                      </button>
+                      {/* Compare Overlay Checkbox */}
+                      {isCompareSelectionActive && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleCompare(product);
+                          }}
+                          className={cn(
+                            "absolute top-4 right-4 z-20 flex h-7.5 w-7.5 items-center justify-center rounded-full border shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer",
+                            isProductSelectedForCompare(product.productId)
+                              ? "bg-[#FF6B00] border-[#FF6B00] text-white"
+                              : "bg-white/90 backdrop-blur-sm border-stone-200 text-stone-400"
+                          )}
+                          aria-label="เลือกเปรียบเทียบ"
+                          title="เลือกเปรียบเทียบ"
+                        >
+                          {isProductSelectedForCompare(product.productId) ? (
+                            <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          ) : (
+                            <div className="h-3.5 w-3.5 rounded-full border border-stone-300" />
+                          )}
+                        </button>
+                      )}
                       
                       {/* Image */}
                       <img

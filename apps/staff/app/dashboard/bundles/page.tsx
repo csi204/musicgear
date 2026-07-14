@@ -30,6 +30,7 @@ interface Bundle {
   description: string;
   discountType: string;
   discountValue: number;
+  imageUrl?: string;
 }
 
 const statusConfig: Record<BundleStatus, { label: string; badge: string; dot: string; icon: React.ReactNode }> = {
@@ -106,13 +107,14 @@ interface CreateBundleModalProps {
 }
 
 function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
-  const [form, setForm] = useState({ name: "", description: "", discountType: "percentage", discountValue: "" });
+  const [form, setForm] = useState({ name: "", description: "", discountType: "percentage", discountValue: "", imageUrl: "" });
   const [productList, setProductList] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<{ productId: string; name: string; sku: string; quantity: number }[]>([]);
   const [currentProductId, setCurrentProductId] = useState("");
   const [currentQty, setCurrentQty] = useState(1);
   
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -123,6 +125,36 @@ function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
       console.error("Failed to load products for bundle", err);
     });
   }, []);
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setError(null);
+    try {
+      const apiBase = typeof window !== "undefined" ? getApiBaseUrl() : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8788");
+      const token = getAccessToken();
+      const fd = new FormData();
+      fd.append("image", file);
+
+      const res = await fetch(`${apiBase}/products/upload-image`, {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: fd
+      });
+
+      if (!res.ok) throw new Error("อัปโหลดรูปภาพล้มเหลว");
+      const data = await res.json();
+      setForm(prev => ({ ...prev, imageUrl: data.imageUrl }));
+    } catch (err: any) {
+      setError(err.message || "ไม่สามารถอัปโหลดรูปภาพได้");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleAddItem = () => {
     if (!currentProductId) return;
@@ -177,6 +209,7 @@ function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
           description: form.description || undefined,
           discountType: form.discountType,
           discountValue: Number(form.discountValue),
+          imageUrl: form.imageUrl || undefined,
           items: selectedItems.map(item => ({ productId: item.productId, quantity: item.quantity }))
         }),
       });
@@ -218,6 +251,45 @@ function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">คำอธิบาย</label>
               <input type="text" placeholder="คำบรรยายเซ็ตสินค้า (ไม่บังคับ)" value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
                 className="w-full px-3 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">รูปภาพบันเดิล (แนวนอน)</label>
+              <div className="flex gap-4 items-center">
+                <div className="h-16 w-32 border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl overflow-hidden flex items-center justify-center relative flex-shrink-0">
+                  {form.imageUrl ? (
+                    <img 
+                      src={`${getApiBaseUrl()}/products/images/${form.imageUrl}`} 
+                      alt="Bundle Preview" 
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-[10px] text-zinc-400 text-center px-2">ไม่มีรูปภาพ (แนวนอน)</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    id="create-bundle-image-upload" 
+                    className="hidden" 
+                    onChange={handleImageChange}
+                  />
+                  <label 
+                    htmlFor="create-bundle-image-upload" 
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg cursor-pointer transition-colors"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        กำลังอัปโหลด...
+                      </>
+                    ) : (
+                      "เลือกรูปภาพแนวนอน"
+                    )}
+                  </label>
+                  <p className="text-[10px] text-zinc-400 mt-1">แนะนำขนาดแนวนอน (เช่น 600x300px)</p>
+                </div>
+              </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">ประเภทส่วนลด</label>
@@ -367,7 +439,8 @@ function EditBundleModal({ bundle, onClose, onSuccess }: EditBundleModalProps) {
     name: bundle.name,
     description: bundle.description,
     discountType: bundle.discountType,
-    discountValue: String(bundle.discountValue)
+    discountValue: String(bundle.discountValue),
+    imageUrl: bundle.imageUrl || ""
   });
   const [productList, setProductList] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<{ productId: string; name: string; sku: string; quantity: number }[]>([]);
@@ -375,6 +448,7 @@ function EditBundleModal({ bundle, onClose, onSuccess }: EditBundleModalProps) {
   const [currentQty, setCurrentQty] = useState(1);
   
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -394,6 +468,36 @@ function EditBundleModal({ bundle, onClose, onSuccess }: EditBundleModalProps) {
       })));
     }
   }, [bundle]);
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setError(null);
+    try {
+      const apiBase = typeof window !== "undefined" ? getApiBaseUrl() : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8788");
+      const token = getAccessToken();
+      const fd = new FormData();
+      fd.append("image", file);
+
+      const res = await fetch(`${apiBase}/products/upload-image`, {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: fd
+      });
+
+      if (!res.ok) throw new Error("อัปโหลดรูปภาพล้มเหลว");
+      const data = await res.json();
+      setForm(prev => ({ ...prev, imageUrl: data.imageUrl }));
+    } catch (err: any) {
+      setError(err.message || "ไม่สามารถอัปโหลดรูปภาพได้");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleAddItem = () => {
     if (!currentProductId) return;
@@ -447,6 +551,7 @@ function EditBundleModal({ bundle, onClose, onSuccess }: EditBundleModalProps) {
           description: form.description || undefined,
           discountType: form.discountType,
           discountValue: Number(form.discountValue),
+          imageUrl: form.imageUrl || undefined,
           items: selectedItems.map(item => ({ productId: item.productId, quantity: item.quantity }))
         }),
       });
@@ -488,6 +593,45 @@ function EditBundleModal({ bundle, onClose, onSuccess }: EditBundleModalProps) {
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">คำอธิบาย</label>
               <input type="text" placeholder="คำบรรยายเซ็ตสินค้า (ไม่บังคับ)" value={form.description} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
                 className="w-full px-3 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">รูปภาพบันเดิล (แนวนอน)</label>
+              <div className="flex gap-4 items-center">
+                <div className="h-16 w-32 border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl overflow-hidden flex items-center justify-center relative flex-shrink-0">
+                  {form.imageUrl ? (
+                    <img 
+                      src={`${getApiBaseUrl()}/products/images/${form.imageUrl}`} 
+                      alt="Bundle Preview" 
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-[10px] text-zinc-400 text-center px-2">ไม่มีรูปภาพ (แนวนอน)</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    id="edit-bundle-image-upload" 
+                    className="hidden" 
+                    onChange={handleImageChange}
+                  />
+                  <label 
+                    htmlFor="edit-bundle-image-upload" 
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg cursor-pointer transition-colors"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        กำลังอัปโหลด...
+                      </>
+                    ) : (
+                      "เลือกรูปภาพแนวนอน"
+                    )}
+                  </label>
+                  <p className="text-[10px] text-zinc-400 mt-1">แนะนำขนาดแนวนอน (เช่น 600x300px)</p>
+                </div>
+              </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">ประเภทส่วนลด</label>
@@ -689,6 +833,7 @@ export default function BundlesPage() {
           description: b.description ?? "ไม่มีคำอธิบายเพิ่มเติมสำหรับเซ็ตนี้",
           discountType: b.discountType ?? "percentage",
           discountValue: b.discountValue ?? 0,
+          imageUrl: b.imageUrl || undefined
         };
       });
       setBundles(mapped);

@@ -15,7 +15,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
-import { getApiBaseUrl } from "../../../lib/auth";
+import { getApiBaseUrl, getAccessToken } from "../../../lib/auth";
 import { useCartContext } from "../../../components/cart-provider";
 import { showToast } from "../../../components/toast";
 
@@ -46,7 +46,7 @@ interface ProductDetailClientProps {
 
 export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
   const router = useRouter();
-  const { addItem, addMultipleItems, loading: cartLoading } = useCartContext();
+  const { addItem, addMultipleItems, clearCart, loading: cartLoading } = useCartContext();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -101,7 +101,16 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
             imagesGallery: p.images && p.images.length > 0
               ? p.images.map((img: any) => `${getApiBaseUrl()}/products/images/${img.imageUrl}`)
               : [],
-            accessories: [],
+            accessories: p.recommendations
+              ? p.recommendations.map((rec: any) => ({
+                  id: rec.recommended.productId,
+                  title: rec.recommended.name,
+                  price: Number(rec.recommended.price),
+                  imageUrl: rec.recommended.images?.[0]
+                    ? `${getApiBaseUrl()}/products/images/${rec.recommended.images[0].imageUrl}`
+                    : "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=300",
+                }))
+              : [],
             comparisons: []
           };
         };
@@ -269,26 +278,50 @@ export function ProductDetailClient({ productSlug }: ProductDetailClientProps) {
     }
   };
 
-  // Buy Now: add to cart then redirect to checkout
+  // Buy Now: create a temporary guest cart, add item, and redirect to checkout
   const handleBuyNow = async () => {
     if (!product || isBuyingNow) return;
 
     setIsBuyingNow(true);
     try {
-      await addItem({
-        productId: product.productId,
-        title: product.title,
-        price: product.price,
-        quantity: quantity,
-        color: selectedColor,
-        imageUrl: product.imageUrl,
-        brand: product.brand,
+      const apiBase = getApiBaseUrl();
+      const token = getAccessToken();
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+
+      // 1. สร้างตะกร้าชั่วคราวขึ้นมาใหม่โดยไม่ให้กระทบกับตะกร้าหลักของผู้ใช้
+      const cartRes = await fetch(`${apiBase}/carts`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({}),
       });
-      // Redirect to checkout — checkout handles auth guard (guest → login → back)
-      router.push("/checkout");
+      if (!cartRes.ok) throw new Error("Failed to create temporary checkout cart");
+      const cartData = await cartRes.json();
+      const tempCartId = cartData.cartId;
+
+      // 2. ใส่เฉพาะสินค้าตัวนี้เข้าไปในตะกร้าชั่วคราว
+      const addItemRes = await fetch(`${apiBase}/carts/${tempCartId}/items`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          productId: product.productId,
+          title: product.title,
+          price: product.price,
+          quantity: quantity,
+          color: selectedColor,
+          imageUrl: product.imageUrl,
+          brand: product.brand,
+        }),
+      });
+      if (!addItemRes.ok) throw new Error("Failed to add product to temporary checkout cart");
+
+      // 3. นำทางไปหน้า checkout โดยส่งพารามิเตอร์ buyNowCartId ของตะกร้าชั่วคราวไปด้วย
+      router.push(`/checkout?buyNowCartId=${tempCartId}`);
     } catch (err) {
       console.error("Buy now failed:", err);
-      showToast("ไม่สามารถดำเนินการได้ กรุณาลองใหม่อีกครั้ง");
+      showToast("ไม่สามารถดำเนินการซื้อทันทีได้ กรุณาลองใหม่อีกครั้ง");
       setIsBuyingNow(false);
     }
   };

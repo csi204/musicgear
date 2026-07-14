@@ -24,6 +24,26 @@ async function uploadToR2(bucket, file) {
   return key;
 }
 
+// POST /products/upload-image — อัปโหลดรูปภาพทั่วไปเข้า R2 (สำหรับรูปภาพของ bundles ฯลฯ)
+// ──────────────────────────────────────────────────────────────────────────────
+productRoutes.post("/upload-image", async (c) => {
+  if (!c.env.PRODUCT_IMAGES) {
+    return c.json({ error: { code: "R2_NOT_BOUND", message: "PRODUCT_IMAGES bucket not bound" } }, 500);
+  }
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get("image");
+    if (!file) {
+      return c.json({ error: { code: "VALIDATION_ERROR", message: "image file is required" } }, 400);
+    }
+    const key = await uploadToR2(c.env.PRODUCT_IMAGES, file);
+    return c.json({ status: "ok", imageUrl: key }, 200);
+  } catch (err) {
+    console.error("[POST /products/upload-image]", err);
+    return c.json({ error: { code: "INTERNAL_ERROR", message: "Failed to upload image" } }, 500);
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // GET /products — ดึงรายการสินค้าทั้งหมดพร้อม filter และ pagination
 // ──────────────────────────────────────────────────────────────────────────────
@@ -106,6 +126,9 @@ productRoutes.get("/bundles", async (c) => {
   const db = createClient(c.env.DATABASE_URL);
   try {
     const bundles = await db.bundle.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
       include: {
         items: {
           include: {
@@ -115,6 +138,14 @@ productRoutes.get("/bundles", async (c) => {
                 name: true,
                 sku: true,
                 price: true,
+                images: {
+                  select: { imageUrl: true },
+                  where: { isPrimary: true },
+                  take: 1,
+                },
+                brand: {
+                  select: { name: true },
+                },
               }
             }
           }
@@ -175,7 +206,7 @@ productRoutes.post("/bundles", async (c) => {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "Request body is required" } }, 400);
     }
 
-    const { name, description, discountType, discountValue, items } = body;
+    const { name, description, discountType, discountValue, items, imageUrl } = body;
 
     if (!name || !discountType || discountValue === undefined || discountValue === null) {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "name, discountType, and discountValue are required" } }, 400);
@@ -213,6 +244,7 @@ productRoutes.post("/bundles", async (c) => {
           description: description || null,
           discountType,
           discountValue: parsedDiscount,
+          imageUrl: imageUrl || null,
         }
       });
 
@@ -253,7 +285,7 @@ productRoutes.put("/bundles/:bundleId", async (c) => {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "Request body is required" } }, 400);
     }
 
-    const { name, description, discountType, discountValue, items } = body;
+    const { name, description, discountType, discountValue, items, imageUrl } = body;
 
     if (!name || !discountType || discountValue === undefined || discountValue === null) {
       return c.json({ error: { code: "VALIDATION_ERROR", message: "name, discountType, and discountValue are required" } }, 400);
@@ -301,6 +333,7 @@ productRoutes.put("/bundles/:bundleId", async (c) => {
           description: description || null,
           discountType,
           discountValue: parsedDiscount,
+          imageUrl: imageUrl !== undefined ? imageUrl : undefined,
         }
       });
 

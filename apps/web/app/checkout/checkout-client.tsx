@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCartContext } from "../../components/cart-provider";
 import { getApiBaseUrl, getAccessToken, isAuthenticated } from "../../lib/auth";
 import { Navbar } from "../../components/navbar";
@@ -37,7 +37,70 @@ interface Address {
 
 export function CheckoutClient() {
   const router = useRouter();
-  const { items, totalPrice, cartId, clearCart } = useCartContext();
+  const searchParams = useSearchParams();
+  const buyNowCartId = searchParams.get("buyNowCartId");
+
+  const { items: contextItems, totalPrice: contextTotalPrice, cartId: contextCartId, clearCart: contextClearCart } = useCartContext();
+
+  // Local state for checking out
+  const [checkoutItems, setCheckoutItems] = useState<any[]>([]);
+  const [checkoutTotalPrice, setCheckoutTotalPrice] = useState<number>(0);
+  const [checkoutCartId, setCheckoutCartId] = useState<string>("");
+  
+  // ป้องกันการกะพริบแจ้ง "ไม่มีสินค้าในตะกร้า" โดยการเช็คจาก window parameter ก่อนเบื้องต้น
+  const [loadingCart, setLoadingCart] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      return search.has("buyNowCartId");
+    }
+    return false;
+  });
+
+  // Effect to load either Buy Now cart or Standard cart
+  useEffect(() => {
+    if (buyNowCartId) {
+      const fetchBuyNowCart = async () => {
+        try {
+          setLoadingCart(true);
+          const res = await fetch(`${getApiBaseUrl()}/carts/${buyNowCartId}`, {
+            headers: {
+              Authorization: `Bearer ${getAccessToken()}`,
+            },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const rawItems = data.items || [];
+            const items = rawItems.map((i: any) => ({
+              id: i.cartItemId,
+              productId: i.productId,
+              title: i.title || "สินค้า",
+              price: Number(i.price),
+              quantity: i.quantity,
+              color: i.color || "",
+              imageUrl: i.imageUrl || "",
+              brand: i.brand || "",
+            }));
+            setCheckoutItems(items);
+            const total = items.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
+            setCheckoutTotalPrice(total);
+            setCheckoutCartId(buyNowCartId);
+          } else {
+            setErrorMsg("ไม่พบข้อมูลสินค้าที่สั่งซื้อด่วน");
+          }
+        } catch (err) {
+          setErrorMsg("เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า");
+        } finally {
+          setLoadingCart(false);
+        }
+      };
+      fetchBuyNowCart();
+    } else {
+      setCheckoutItems(contextItems);
+      setCheckoutTotalPrice(contextTotalPrice);
+      setCheckoutCartId(contextCartId || "");
+      setLoadingCart(false);
+    }
+  }, [buyNowCartId, contextItems, contextTotalPrice, contextCartId]);
   
   // States
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -167,8 +230,8 @@ export function CheckoutClient() {
       setErrorMsg("กรุณาเลือกที่อยู่สำหรับจัดส่ง");
       return;
     }
-    if (!cartId || items.length === 0) {
-      setErrorMsg("ไม่มีสินค้าในตะกร้าสินค้า");
+    if (!checkoutCartId || checkoutItems.length === 0) {
+      setErrorMsg("ไม่มีสินค้าในรายการสั่งซื้อ");
       return;
     }
 
@@ -193,7 +256,7 @@ export function CheckoutClient() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          cartId,
+          cartId: checkoutCartId,
           addressId: selectedAddressId,
           remark: remark || null,
           paymentMethod,
@@ -212,8 +275,19 @@ export function CheckoutClient() {
       const data = await res.json();
 
       if (res.ok) {
-        // Order successfully created — clear cart
-        await clearCart();
+        // Order successfully created — clear corresponding cart
+        if (buyNowCartId) {
+          try {
+            await fetch(`${getApiBaseUrl()}/carts/${buyNowCartId}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` }
+            });
+          } catch (e) {
+            console.error("Failed to delete temp cart:", e);
+          }
+        } else {
+          await contextClearCart();
+        }
 
         if (paymentMethod === "online") {
           // ชำระออนไลน์: ไปหน้า payment
@@ -238,7 +312,20 @@ export function CheckoutClient() {
     }
   };
 
-  if (items.length === 0) {
+  if (loadingCart) {
+    return (
+      <div className="min-h-screen bg-[#F5F3EE]/30 text-neutral-900 flex flex-col">
+        <Navbar />
+        <main className="flex-grow flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto">
+          <Loader2 className="h-10 w-10 animate-spin text-electric-blue mb-4" />
+          <p className="text-sm font-semibold text-slate-gray">กำลังโหลดข้อมูลการสั่งซื้อ...</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (checkoutItems.length === 0) {
     return (
       <div className="min-h-screen bg-[#F5F3EE]/30 text-neutral-900 flex flex-col">
         <Navbar />
@@ -576,7 +663,7 @@ export function CheckoutClient() {
 
               {/* Items List */}
               <div className="flex flex-col gap-4 divide-y divide-neutral-100 max-h-[280px] overflow-y-auto pr-2 mb-6">
-                {items.map((item) => (
+                {checkoutItems.map((item) => (
                   <div key={item.id} className="flex gap-4 pt-4 first:pt-0">
                     <div className="h-16 w-16 rounded-xl border border-neutral-200 bg-neutral-50/50 p-2 overflow-hidden flex-shrink-0 flex items-center justify-center">
                       <img src={item.imageUrl} alt={item.title} className="h-full w-full object-contain" />
@@ -610,7 +697,7 @@ export function CheckoutClient() {
               <div className="flex flex-col gap-3 py-6 border-t border-b border-neutral-100 mb-6 text-sm">
                 <div className="flex items-center justify-between text-slate-gray">
                   <span>ยอดรวมสินค้า</span>
-                  <span className="font-semibold text-neutral-800">{totalPrice.toLocaleString()} ฿</span>
+                  <span className="font-semibold text-neutral-800">{checkoutTotalPrice.toLocaleString()} ฿</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-gray">
                   <span>ค่าบริการจัดส่ง</span>
@@ -625,7 +712,7 @@ export function CheckoutClient() {
               <div className="flex items-center justify-between mb-8">
                 <span className="text-sm font-semibold text-neutral-800">ยอดชำระสุทธิ</span>
                 <span className="font-heading text-xl font-extrabold text-neutral-950">
-                  {totalPrice.toLocaleString()} ฿
+                  {checkoutTotalPrice.toLocaleString()} ฿
                 </span>
               </div>
 
