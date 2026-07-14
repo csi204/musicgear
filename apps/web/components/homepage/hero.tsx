@@ -78,7 +78,7 @@ export function HeroSection() {
   const activeSlide = (slides[activeIndex] || slides[0]) as Slide;
 
   return (
-    <section className="relative h-[calc(100vh-80px)] flex items-center overflow-hidden bg-neutral-950 py-8">
+    <section className="relative h-[calc(105vh-80px)] flex items-center overflow-hidden bg-neutral-950 py-8">
       {/* Background Hero Images with Cross-Fade */}
       <div className="absolute inset-0 z-0 h-full w-full">
         {slides.map((slide, index) => (
@@ -93,7 +93,6 @@ export function HeroSection() {
           />
         ))}
         {/* Soft dark overlay for text contrast */}
-        <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/75 via-neutral-950/30 to-transparent" />
       </div>
 
       {/* Background glow effects */}
@@ -103,7 +102,7 @@ export function HeroSection() {
         {/* Heading and Text */}
         <div className="flex flex-col gap-6 text-left max-w-3xl">
           {/* Title */}
-          <h1 className="font-heading text-5xl font-light tracking-wide text-white sm:text-6xl lg:text-8xl leading-none">
+          <h1 className="font-heading text-5xl font-light tracking-wide text-black sm:text-6xl lg:text-8xl leading-none">
             <span className={cn(
               "inline-block transition-all duration-500 ease-out transform",
               animating ? "opacity-0 -translate-y-4" : "opacity-100 translate-y-0"
@@ -114,11 +113,11 @@ export function HeroSection() {
               </span>
             </span>
             <span className={cn(
-              "block text-lg sm:text-xl lg:text-2xl font-light tracking-[0.12em] text-white/70 mt-6 max-w-xl leading-relaxed uppercase transition-all duration-500 ease-out transform delay-75",
+              "block text-lg sm:text-xl lg:text-2xl font-light tracking-[0.12em] text-black/70 mt-6 max-w-xl leading-relaxed uppercase transition-all duration-500 ease-out transform delay-75",
               animating ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0"
             )}>
               {activeSlide.taglinePrefix}
-              <span className="text-white font-semibold relative inline-block whitespace-nowrap">
+              <span className="text-black font-semibold relative inline-block whitespace-nowrap">
                 {activeSlide.taglineHighlight}
                 <span className="absolute bottom-0 left-0 h-[1.5px] w-full bg-gradient-to-r from-electric-blue to-amber-spotlight" />
               </span>
@@ -127,7 +126,7 @@ export function HeroSection() {
 
           {/* Description */}
           <p className={cn(
-            "text-base text-white/80 sm:text-lg leading-relaxed max-w-lg font-normal mt-2 transition-all duration-500 ease-out transform delay-100",
+            "text-base text-black/80 sm:text-lg leading-relaxed max-w-lg font-normal mt-2 transition-all duration-500 ease-out transform delay-100",
             animating ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0"
           )}>
             {activeSlide.description}
@@ -140,7 +139,7 @@ export function HeroSection() {
           )}>
             <Button
               asChild
-              className="h-12 rounded-full bg-orange-500 px-8 text-sm font-semibold text-white hover:bg-orange-500/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-lg shadow-orange-500/20 hover:shadow-orange-500/35"
+              className="h-12 rounded-full bg-orange-500 px-8 text-sm font-semibold text-black hover:bg-orange-500/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-lg shadow-orange-500/20 hover:shadow-orange-500/35"
             >
               <Link href={activeSlide.link} className="flex items-center gap-2">
                 สำรวจรุ่นสินค้า
@@ -148,15 +147,6 @@ export function HeroSection() {
               </Link>
             </Button>
             
-            <Button
-              variant="outline"
-              className="h-12 rounded-full border-white/20 bg-white/10 px-8 text-sm font-semibold text-white hover:bg-white/20 hover:border-white/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 backdrop-blur-sm"
-            >
-              <span className="flex items-center gap-2">
-                <Play className="h-4 w-4 fill-white text-white" />
-                รับชมวิดีโอแนะนำ
-              </span>
-            </Button>
           </div>
         </div>
       </div>
