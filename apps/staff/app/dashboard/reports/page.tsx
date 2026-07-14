@@ -34,7 +34,7 @@ const statusOrderConfig: Record<string, { label: string; badge: string; dot: str
   confirmed: { label: "ยืนยันแล้ว", badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", dot: "bg-blue-500" },
   packed: { label: "แพ็คสินค้าแล้ว", badge: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400", dot: "bg-purple-500" },
   shipped: { label: "กำลังจัดส่ง", badge: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400", dot: "bg-sky-500" },
-  delivered: { label: "ส่งสำเร็จแล้ว", badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-450", dot: "bg-emerald-500" },
+  delivered: { label: "ส่งสำเร็จแล้ว", badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400", dot: "bg-emerald-500" },
   cancelled: { label: "ยกเลิกแล้ว", badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400", dot: "bg-zinc-500" },
   refunded: { label: "คืนเงินแล้ว", badge: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400", dot: "bg-zinc-500" },
 };
@@ -221,14 +221,19 @@ export default function ReportsPage() {
         count,
         pct: Math.round((count / maxCount) * 100),
       })));
-    } catch (e: any) {
-      setError(e.message ?? "ไม่สามารถโหลดข้อมูลรายงานได้");
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "ไม่สามารถโหลดข้อมูลรายงานได้");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadData();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadData]);
 
   const today = new Date().toLocaleDateString("th-TH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
@@ -240,7 +245,7 @@ export default function ReportsPage() {
   };
 
   const handleExportCSV = () => {
-    const data: any[][] = [];
+    const data: (string | number)[][] = [];
     
     // Title & Metadata
     data.push(["รายงานสรุปการดำเนินงาน Music Gear"]);

@@ -223,7 +223,15 @@ function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">ประเภทส่วนลด</label>
               <CustomSelect
                 value={form.discountType}
-                onChange={(val) => setForm(prev => ({ ...prev, discountType: val }))}
+                onChange={(val) => {
+                  setForm(prev => {
+                    let nextVal = prev.discountValue;
+                    if (val === "percentage" && Number(nextVal) > 100) {
+                      nextVal = "100";
+                    }
+                    return { ...prev, discountType: val, discountValue: nextVal };
+                  });
+                }}
                 options={[
                   { value: "percentage", label: "เปอร์เซ็นต์ (%)" },
                   { value: "fixed_amount", label: "จำนวนเงิน (บาท)" }
@@ -238,6 +246,7 @@ function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
                 onChange={(e) => {
                   const val = e.target.value;
                   if (val === "" || Number(val) > 0) {
+                    if (form.discountType === "percentage" && Number(val) > 100) return;
                     setForm(prev => ({ ...prev, discountValue: val }));
                   }
                 }}
@@ -484,7 +493,15 @@ function EditBundleModal({ bundle, onClose, onSuccess }: EditBundleModalProps) {
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">ประเภทส่วนลด</label>
               <CustomSelect
                 value={form.discountType}
-                onChange={(val) => setForm(prev => ({ ...prev, discountType: val }))}
+                onChange={(val) => {
+                  setForm(prev => {
+                    let nextVal = prev.discountValue;
+                    if (val === "percentage" && Number(nextVal) > 100) {
+                      nextVal = "100";
+                    }
+                    return { ...prev, discountType: val, discountValue: nextVal };
+                  });
+                }}
                 options={[
                   { value: "percentage", label: "เปอร์เซ็นต์ (%)" },
                   { value: "fixed_amount", label: "จำนวนเงิน (บาท)" }
@@ -499,6 +516,7 @@ function EditBundleModal({ bundle, onClose, onSuccess }: EditBundleModalProps) {
                 onChange={(e) => {
                   const val = e.target.value;
                   if (val === "" || Number(val) > 0) {
+                    if (form.discountType === "percentage" && Number(val) > 100) return;
                     setForm(prev => ({ ...prev, discountValue: val }));
                   }
                 }}
@@ -646,7 +664,7 @@ export default function BundlesPage() {
             sku: item.product?.sku ?? "UNKNOWN",
             name: item.product?.name ?? "Unknown Product",
             required: item.quantity,
-            available: inv?.quantity ?? 0,
+            available: Math.max(0, (inv?.quantity ?? 0) - (inv?.reservedQuantity ?? 0)),
           };
         });
 
@@ -837,7 +855,7 @@ export default function BundlesPage() {
                 <TableRow>
                   <TableHead className="font-extrabold pl-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">เซ็ตสินค้า</TableHead>
                   <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะวัตถุดิบ</TableHead>
-                  <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ประกอบแล้ว</TableHead>
+                  <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ส่วนลด</TableHead>
                   <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ผลิตได้สูงสุด</TableHead>
                   <TableHead className="font-extrabold text-right pr-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
                 </TableRow>
@@ -859,9 +877,9 @@ export default function BundlesPage() {
                           <div className="mt-2 space-y-1">
                             {bundle.components.map((comp) => (
                               <div key={comp.sku} className="flex items-center gap-2 text-xs">
-                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${comp.available === 0 ? "bg-red-500" : comp.available < comp.required * 5 ? "bg-amber-500" : "bg-emerald-500"}`} />
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${comp.available < comp.required ? "bg-red-500" : comp.available < comp.required * 5 ? "bg-amber-500" : "bg-emerald-500"}`} />
                                 <span className="text-zinc-700 dark:text-zinc-400 font-semibold">×{comp.required} {comp.name}</span>
-                                <span className={`ml-auto font-bold ${comp.available === 0 ? "text-red-500" : "text-zinc-800 dark:text-zinc-300"}`}>
+                                <span className={`ml-auto font-bold ${comp.available < comp.required ? "text-red-500" : "text-zinc-800 dark:text-zinc-300"}`}>
                                   (เหลือ {comp.available} ชิ้น)
                                 </span>
                               </div>
@@ -874,7 +892,9 @@ export default function BundlesPage() {
                             {sc.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-center py-4 font-bold text-zinc-900 dark:text-white text-lg">{bundle.assembled}</TableCell>
+                        <TableCell className="text-center py-4 font-bold text-amber-500 text-sm">
+                          {bundle.discountType === "percentage" ? `${bundle.discountValue}%` : `฿${bundle.discountValue.toLocaleString("th-TH")}`}
+                        </TableCell>
                         <TableCell className="text-center py-4">
                           <span className={`text-lg font-extrabold ${potential === 0 ? "text-red-500" : potential <= 3 ? "text-amber-500" : "text-emerald-500"}`}>
                             {potential}
@@ -1069,17 +1089,11 @@ function BundleDetailModal({ bundle, onClose, onSuccess }: BundleDetailModalProp
           </div>
 
           {/* Assembly Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
-              <span className="text-[12px] text-zinc-400 font-bold uppercase tracking-wider block">จำนวนที่ประกอบแล้ว</span>
-              <p className="text-2xl font-black text-zinc-800 dark:text-zinc-200 mt-1">{bundle.assembled}</p>
-            </div>
-            <div className="bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
-              <span className="text-[12px] text-zinc-400 font-bold uppercase tracking-wider block">ผลิตเพิ่มได้สูงสุด</span>
-              <p className={`text-2xl font-black mt-1 ${bundle.assembled === 0 ? "text-red-500" : "text-emerald-500"}`}>
-                {bundle.assembled} ชุด
-              </p>
-            </div>
+          <div className="bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
+            <span className="text-[12px] text-zinc-400 font-bold uppercase tracking-wider block">ผลิตเพิ่มได้สูงสุด (พร้อมขาย)</span>
+            <p className={`text-3xl font-black mt-1 ${bundle.assembled === 0 ? "text-red-500" : "text-emerald-500"}`}>
+              {bundle.assembled} ชุด
+            </p>
           </div>
         </div>
 

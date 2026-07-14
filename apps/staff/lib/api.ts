@@ -112,12 +112,27 @@ export interface ShipmentRecord {
   deliveredDate?: string | null;
 }
 
+export interface ShippingAddressSnapshot {
+  receiverName?: string | null;
+  name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  streetAddress?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  district?: string | null;
+  province?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+}
+
 export interface OrderRecord {
   orderId: string;
   customerId: string;
   addressId: string;
   orderDate: string;
-  shippingAddressSnapshot: any;
+  shippingAddressSnapshot: ShippingAddressSnapshot | null;
   totalAmount: number;
   shippingFee: number;
   discountAmount: number;
@@ -203,12 +218,12 @@ export async function getDashboardSummary(start: string, end: string, token?: st
 }
 
 /** GET /reports/inventory-alerts — Fetch low/critical inventory alerts */
-export async function getInventoryAlerts(query: { limit?: number; page?: number } = {}, token?: string): Promise<{ alerts: any[] }> {
+export async function getInventoryAlerts(query: { limit?: number; page?: number } = {}, token?: string): Promise<{ alerts: InventorySummaryAlert[] }> {
   const params = new URLSearchParams();
   if (query.limit) params.set("limit", String(query.limit));
   if (query.page) params.set("page", String(query.page));
 
-  return apiFetch<{ alerts: any[] }>(`/reports/inventory-alerts?${params.toString()}`, { method: "GET", token });
+  return apiFetch<{ alerts: InventorySummaryAlert[] }>(`/reports/inventory-alerts?${params.toString()}`, { method: "GET", token });
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -282,7 +297,7 @@ export async function getProductById(productId: string, token?: string): Promise
 /** PATCH /products/:productId — Update an existing product */
 export async function updateProduct(
   productId: string,
-  data: any,
+  data: unknown,
   token?: string
 ): Promise<{ product: ProductRecord }> {
   const isFormData = data instanceof FormData;
