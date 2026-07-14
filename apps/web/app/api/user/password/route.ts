@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SignJWT, jwtVerify } from "jose";
 
-const COOKIE_NAME = "__Secure-mg_web_session";
-const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "a-very-secure-fallback-dev-secret-1234567890";
+const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "K9xL2pQ8mF4vC1nB7zH3jR5wT6yN0kM4";
 
 export async function PATCH(req: NextRequest) {
+  const isSecure = req.nextUrl.protocol === "https:";
+  const COOKIE_NAME = isSecure ? "__Secure-mg_web_session" : "mg_web_session";
   try {
     const token = req.cookies.get(COOKIE_NAME)?.value;
     if (!token) {

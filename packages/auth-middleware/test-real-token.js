@@ -1,7 +1,7 @@
 import { SignJWT } from "jose";
 
 async function main() {
-  const secret = new TextEncoder().encode("a-very-secure-fallback-dev-secret-1234567890");
+  const secret = new TextEncoder().encode("K9xL2pQ8mF4vC1nB7zH3jR5wT6yN0kM4");
   const token = await new SignJWT({
     userId: "kp_seed_b226e6328ddf014e",
     email: "admin@test.com",
