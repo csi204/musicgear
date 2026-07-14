@@ -15,6 +15,7 @@ interface BundleComponent {
   productId: string;
   sku: string;
   name: string;
+  price: number;
   required: number;
   available: number;
 }
@@ -23,12 +24,15 @@ interface Bundle {
   id: string;
   name: string;
   sku: string;
+  imageUrl: string | null;
   components: BundleComponent[];
   assembled: number;
   status: BundleStatus;
   description: string;
   discountType: string;
   discountValue: number;
+  originalPrice: number;
+  finalPrice: number;
 }
 
 const statusConfig: Record<BundleStatus, { label: string; badge: string; dot: string; icon: React.ReactNode }> = {
@@ -105,7 +109,7 @@ interface CreateBundleModalProps {
 }
 
 function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
-  const [form, setForm] = useState({ name: "", description: "", discountType: "percentage", discountValue: "" });
+  const [form, setForm] = useState({ name: "", description: "", discountType: "percentage", discountValue: "", imageUrl: "" });
   const [productList, setProductList] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<{ productId: string; name: string; sku: string; quantity: number }[]>([]);
   const [currentProductId, setCurrentProductId] = useState("");
@@ -176,6 +180,7 @@ function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
           description: form.description || undefined,
           discountType: form.discountType,
           discountValue: Number(form.discountValue),
+          imageUrl: form.imageUrl || undefined,
           items: selectedItems.map(item => ({ productId: item.productId, quantity: item.quantity }))
         }),
       });
@@ -241,6 +246,25 @@ function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
                   }
                 }}
                 className="w-full px-3 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">รูปภาพ (ขนาดไม่เกิน 10MB)</label>
+              <input type="file" accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 10 * 1024 * 1024) {
+                    setError("ขนาดไฟล์ต้องไม่เกิน 10MB");
+                    e.target.value = "";
+                    return;
+                  }
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    setForm(prev => ({ ...prev, imageUrl: ev.target?.result as string }));
+                  };
+                  reader.readAsDataURL(file);
+                }}
+                className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
             </div>
           </div>
 
@@ -645,8 +669,9 @@ export default function BundlesPage() {
             productId: item.productId,
             sku: item.product?.sku ?? "UNKNOWN",
             name: item.product?.name ?? "Unknown Product",
+            price: Number(item.product?.price ?? 0),
             required: item.quantity,
-            available: inv?.quantity ?? 0,
+            available: Math.max(0, (inv?.quantity ?? 0) - (inv?.reservedQuantity ?? 0)),
           };
         });
 
@@ -661,16 +686,31 @@ export default function BundlesPage() {
           status = "low_component";
         }
 
+        let originalPrice = 0;
+        for (const c of components) originalPrice += c.price * c.required;
+        let finalPrice = originalPrice;
+        const dType = b.discountType ?? "percentage";
+        const dVal = Number(b.discountValue ?? 0);
+        if (dType === "percentage") {
+          finalPrice = originalPrice * (1 - dVal / 100);
+        } else {
+          finalPrice = originalPrice - dVal;
+        }
+        finalPrice = Math.max(0, finalPrice);
+
         return {
           id: b.bundleId,
           name: b.name,
           sku: `BND-${b.name.replace(/\s+/g, "-").toUpperCase()}`,
+          imageUrl: b.imageUrl ?? null,
           components,
           assembled: potential,
           status,
           description: b.description ?? "ไม่มีคำอธิบายเพิ่มเติมสำหรับเซ็ตนี้",
           discountType: b.discountType ?? "percentage",
           discountValue: b.discountValue ?? 0,
+          originalPrice,
+          finalPrice,
         };
       });
       setBundles(mapped);
@@ -836,7 +876,8 @@ export default function BundlesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider">เซ็ตสินค้า</TableHead>
-                  <TableHead className="font-bold text-xs uppercase tracking-wider">สถานะวัตถุดิบ</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-wider text-right">ราคา (บาท)</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-wider text-center">สถานะวัตถุดิบ</TableHead>
                   <TableHead className="font-bold text-center text-xs uppercase tracking-wider">ประกอบแล้ว</TableHead>
                   <TableHead className="font-bold text-center text-xs uppercase tracking-wider">ผลิตได้สูงสุด</TableHead>
                   <TableHead className="font-bold text-right pr-6 text-xs uppercase tracking-wider">จัดการ</TableHead>
@@ -845,7 +886,7 @@ export default function BundlesPage() {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-16 text-zinc-400">ไม่พบเซ็ตสินค้าที่ตรงกัน</TableCell>
+                    <TableCell colSpan={6} className="text-center py-16 text-zinc-400">ไม่พบเซ็ตสินค้าที่ตรงกัน</TableCell>
                   </TableRow>
                 ) : (
                   paginatedBundles.map((bundle) => {
@@ -854,25 +895,44 @@ export default function BundlesPage() {
                     return (
                       <TableRow key={bundle.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                         <TableCell className="pl-6 py-4">
-                          <div className="font-bold text-zinc-900 dark:text-white text-sm">{bundle.name}</div>
-                          <div className="text-xs text-zinc-400 font-mono mt-0.5">{bundle.sku}</div>
-                          <div className="mt-2 space-y-1">
-                            {bundle.components.map((comp) => (
-                              <div key={comp.sku} className="flex items-center gap-2 text-xs">
-                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${comp.available === 0 ? "bg-red-500" : comp.available < comp.required * 5 ? "bg-blue-600" : "bg-blue-500"}`} />
-                                <span className="text-zinc-500 dark:text-zinc-400">×{comp.required} {comp.name}</span>
-                                <span className={`ml-auto font-semibold ${comp.available === 0 ? "text-red-500" : "text-zinc-650 dark:text-zinc-300"}`}>
-                                  (เหลือ {comp.available} ชิ้น)
-                                </span>
+                          <div className="flex items-start gap-4">
+                            {bundle.imageUrl ? (
+                              <img src={bundle.imageUrl} alt={bundle.name} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 bg-white" />
+                            ) : (
+                              <div className="w-16 h-16 rounded-xl bg-zinc-100 dark:bg-zinc-800 shrink-0 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-400">
+                                <Package className="w-6 h-6" />
                               </div>
-                            ))}
+                            )}
+                            <div>
+                              <div className="font-bold text-zinc-900 dark:text-white text-sm">{bundle.name}</div>
+                              <div className="text-xs text-zinc-400 font-mono mt-0.5">{bundle.sku}</div>
+                              <div className="mt-2 space-y-1">
+                                {bundle.components.map((comp) => (
+                                  <div key={comp.sku} className="flex items-center gap-2 text-xs">
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${comp.available === 0 ? "bg-red-500" : comp.available < comp.required * 5 ? "bg-blue-600" : "bg-blue-500"}`} />
+                                    <span className="text-zinc-500 dark:text-zinc-400">×{comp.required} {comp.name}</span>
+                                    <span className={`ml-auto font-semibold ${comp.available === 0 ? "text-red-500" : "text-zinc-650 dark:text-zinc-300"}`}>
+                                      (เหลือ {comp.available} ชิ้น)
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </TableCell>
+                        <TableCell className="py-4 text-right">
+                          <div className="font-bold text-zinc-900 dark:text-white">฿{bundle.finalPrice.toLocaleString()}</div>
+                          {bundle.originalPrice > bundle.finalPrice && (
+                            <div className="text-[10px] text-zinc-400 line-through">฿{bundle.originalPrice.toLocaleString()}</div>
+                          )}
+                        </TableCell>
                         <TableCell className="py-4">
-                          <Badge variant="outline" className={`text-[12px] px-2.5 py-1 font-bold border-none flex items-center gap-1.5 w-fit ${sc.badge}`}>
-                            {sc.icon}
-                            {sc.label}
-                          </Badge>
+                          <div className="flex justify-center">
+                            <Badge variant="outline" className={`text-[12px] px-2.5 py-1 font-bold border-none flex items-center gap-1.5 w-fit ${sc.badge}`}>
+                              {sc.icon}
+                              {sc.label}
+                            </Badge>
+                          </div>
                         </TableCell>
                         <TableCell className="text-center py-4 font-bold text-zinc-900 dark:text-white text-lg">{bundle.assembled}</TableCell>
                         <TableCell className="text-center py-4">

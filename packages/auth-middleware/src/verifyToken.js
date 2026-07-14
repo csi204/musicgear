@@ -39,7 +39,7 @@ export function createAuthMiddleware(options = {}) {
     }
 
     try {
-      const secretStr = c.env.NEXTAUTH_SECRET || c.env.AUTH_SECRET || "K9xL2pQ8mF4vC1nB7zH3jR5wT6yN0kM4";
+      const secretStr = c.env.NEXTAUTH_SECRET || c.env.AUTH_SECRET || "fallback-dev-secret-1234567890";
       console.log("[verifyToken] Using secret of length:", secretStr.length, "StartsWith:", secretStr.substring(0, 3));
       const secret = new TextEncoder().encode(secretStr);
       const { payload } = await jwtVerify(token, secret);

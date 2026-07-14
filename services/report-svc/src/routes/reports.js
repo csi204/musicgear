@@ -107,7 +107,7 @@ export class ReportController {
         return c.json(data, 200);
       } catch (err) {
         console.error("[GET /reports/dashboard-summary]", err);
-        return c.json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
+        return c.json({ error: { code: "INTERNAL_ERROR", message: err.message, stack: err.stack } }, 500);
       }
     };
     

@@ -16,6 +16,7 @@ interface BundleComponent {
   productId: string;
   sku: string;
   name: string;
+  price: number;
   required: number;
   available: number;
 }
@@ -24,13 +25,15 @@ interface Bundle {
   id: string;
   name: string;
   sku: string;
+  imageUrl: string | null;
   components: BundleComponent[];
   assembled: number;
   status: BundleStatus;
   description: string;
   discountType: string;
   discountValue: number;
-  imageUrl?: string;
+  originalPrice: number;
+  finalPrice: number;
 }
 
 const statusConfig: Record<BundleStatus, { label: string; badge: string; dot: string; icon: React.ReactNode }> = {
@@ -258,9 +261,9 @@ function CreateBundleModal({ onClose, onSuccess }: CreateBundleModalProps) {
                 <div className="h-16 w-32 border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-xl overflow-hidden flex items-center justify-center relative flex-shrink-0">
                   {form.imageUrl ? (
                     <img 
-                      src={`${getApiBaseUrl()}/products/images/${form.imageUrl}`} 
+                      src={form.imageUrl} 
                       alt="Bundle Preview" 
-                      className="h-full w-full object-contain"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
                     <span className="text-[10px] text-zinc-400 text-center px-2">ไม่มีรูปภาพ (แนวนอน)</span>
@@ -807,6 +810,7 @@ export default function BundlesPage() {
             productId: item.productId,
             sku: item.product?.sku ?? "UNKNOWN",
             name: item.product?.name ?? "Unknown Product",
+            price: Number(item.product?.price ?? 0),
             required: item.quantity,
             available: Math.max(0, (inv?.quantity ?? 0) - (inv?.reservedQuantity ?? 0)),
           };
@@ -823,6 +827,18 @@ export default function BundlesPage() {
           status = "low_component";
         }
 
+        let originalPrice = 0;
+        for (const c of components) originalPrice += (c.price || 0) * c.required;
+        let finalPrice = originalPrice;
+        const dType = b.discountType ?? "percentage";
+        const dVal = Number(b.discountValue ?? 0);
+        if (dType === "percentage") {
+          finalPrice = originalPrice * (1 - dVal / 100);
+        } else {
+          finalPrice = originalPrice - dVal;
+        }
+        finalPrice = Math.max(0, finalPrice);
+
         return {
           id: b.bundleId,
           name: b.name,
@@ -833,7 +849,9 @@ export default function BundlesPage() {
           description: b.description ?? "ไม่มีคำอธิบายเพิ่มเติมสำหรับเซ็ตนี้",
           discountType: b.discountType ?? "percentage",
           discountValue: b.discountValue ?? 0,
-          imageUrl: b.imageUrl || undefined
+          imageUrl: b.imageUrl || null,
+          originalPrice,
+          finalPrice
         };
       });
       setBundles(mapped);
@@ -998,11 +1016,12 @@ export default function BundlesPage() {
               <Table className="min-w-[800px] md:min-w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="font-extrabold pl-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">เซ็ตสินค้า</TableHead>
-                  <TableHead className="font-extrabold text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">สถานะวัตถุดิบ</TableHead>
-                  <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ส่วนลด</TableHead>
-                  <TableHead className="font-extrabold text-center text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">ผลิตได้สูงสุด</TableHead>
-                  <TableHead className="font-extrabold text-right pr-6 text-sm uppercase tracking-wider text-zinc-700 dark:text-zinc-300">จัดการ</TableHead>
+                  <TableHead className="font-bold pl-6 text-xs uppercase tracking-wider">เซ็ตสินค้า</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-wider text-right">ราคา (บาท)</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-wider text-center">สถานะวัตถุดิบ</TableHead>
+                  <TableHead className="font-bold text-center text-xs uppercase tracking-wider">ประกอบแล้ว</TableHead>
+                  <TableHead className="font-bold text-center text-xs uppercase tracking-wider">ผลิตได้สูงสุด</TableHead>
+                  <TableHead className="font-bold text-right pr-6 text-xs uppercase tracking-wider">จัดการ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1017,31 +1036,48 @@ export default function BundlesPage() {
                     return (
                       <TableRow key={bundle.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                         <TableCell className="pl-6 py-4">
-                          <div className="font-bold text-zinc-900 dark:text-white text-sm">{bundle.name}</div>
-                          <div className="text-xs text-zinc-400 font-mono mt-0.5">{bundle.sku}</div>
+                          <div className="flex items-start gap-4">
+                            {bundle.imageUrl ? (
+                              <img src={bundle.imageUrl} alt={bundle.name} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 bg-white" />
+                            ) : (
+                              <div className="w-16 h-16 rounded-xl bg-zinc-100 dark:bg-zinc-800 shrink-0 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-400">
+                                <Package className="w-6 h-6" />
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-bold text-zinc-900 dark:text-white text-sm">{bundle.name}</div>
+                              <div className="text-xs text-zinc-400 font-mono mt-0.5">{bundle.sku}</div>
                           <div className="mt-2 space-y-1">
                             {bundle.components.map((comp) => (
-                              <div key={comp.sku} className="flex items-center gap-2 text-xs">
-                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${comp.available < comp.required ? "bg-red-500" : comp.available < comp.required * 5 ? "bg-amber-500" : "bg-emerald-500"}`} />
-                                <span className="text-zinc-700 dark:text-zinc-400 font-semibold">×{comp.required} {comp.name}</span>
-                                <span className={`ml-auto font-bold ${comp.available < comp.required ? "text-red-500" : "text-zinc-800 dark:text-zinc-300"}`}>
-                                  (เหลือ {comp.available} ชิ้น)
-                                </span>
-                              </div>
+                                  <div key={comp.sku} className="flex items-center gap-2 text-xs">
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${comp.available === 0 ? "bg-red-500" : comp.available < comp.required * 5 ? "bg-blue-600" : "bg-blue-500"}`} />
+                                    <span className="text-zinc-500 dark:text-zinc-400">×{comp.required} {comp.name}</span>
+                                    <span className={`ml-auto font-semibold ${comp.available === 0 ? "text-red-500" : "text-zinc-600 dark:text-zinc-300"}`}>
+                                      (เหลือ {comp.available} ชิ้น)
+                                    </span>
+                                  </div>
                             ))}
+                              </div>
+                            </div>
                           </div>
                         </TableCell>
+                        <TableCell className="py-4 text-right">
+                          <div className="font-bold text-zinc-900 dark:text-white">฿{bundle.finalPrice.toLocaleString()}</div>
+                          {bundle.originalPrice > bundle.finalPrice && (
+                            <div className="text-[10px] text-zinc-400 line-through">฿{bundle.originalPrice.toLocaleString()}</div>
+                          )}
+                        </TableCell>
                         <TableCell className="py-4">
-                          <Badge variant="outline" className={`text-[12px] px-2.5 py-1 font-bold border-none flex items-center gap-1.5 w-fit ${sc.badge}`}>
-                            {sc.icon}
-                            {sc.label}
-                          </Badge>
+                          <div className="flex justify-center">
+                            <Badge variant="outline" className={`text-[12px] px-2.5 py-1 font-bold border-none flex items-center gap-1.5 w-fit ${sc.badge}`}>
+                              {sc.icon}
+                              {sc.label}
+                            </Badge>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-center py-4 font-bold text-amber-500 text-sm">
-                          {bundle.discountType === "percentage" ? `${bundle.discountValue}%` : `฿${bundle.discountValue.toLocaleString("th-TH")}`}
-                        </TableCell>
+                        <TableCell className="text-center py-4 font-bold text-zinc-900 dark:text-white text-lg">{bundle.assembled}</TableCell>
                         <TableCell className="text-center py-4">
-                          <span className={`text-lg font-extrabold ${potential === 0 ? "text-red-500" : potential <= 3 ? "text-amber-500" : "text-emerald-500"}`}>
+                          <span className={`text-lg font-extrabold ${potential === 0 ? "text-red-500" : "text-zinc-900 dark:text-white"}`}>
                             {potential}
                           </span>
                         </TableCell>

@@ -217,6 +217,7 @@ export interface BundleRecord {
   description: string | null;
   discountType: "percentage" | "fixed_amount";
   discountValue: number | string;
+  imageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   items: BundleItem[];

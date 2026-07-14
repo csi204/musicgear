@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SignJWT, jwtVerify } from "jose";
 
 const COOKIE_NAME = "__Secure-mg_web_session";
-const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "a-very-secure-fallback-dev-secret-1234567890";
+const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "fallback-dev-secret-1234567890";
 
 export async function PATCH(req: NextRequest) {
   try {
