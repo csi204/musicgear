@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const COOKIE_NAME = "__Secure-mg_staff_session";
-
 async function handleProxy(req: NextRequest, props: { params: Promise<{ path: string[] }> }) {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
+  const token = req.cookies.get("__Secure-mg_staff_session")?.value || req.cookies.get("mg_staff_session")?.value;
   const params = await props.params;
   const path = params.path.join("/");
   const search = req.nextUrl.search;

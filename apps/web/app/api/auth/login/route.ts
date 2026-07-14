@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { SignJWT } from "jose";
 
 const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "a-very-secure-fallback-dev-secret-1234567890";
-const COOKIE_NAME = "__Secure-mg_web_session";
+
 
 export async function POST(req: NextRequest) {
+  const isSecure = req.nextUrl.protocol === "https:";
+  const COOKIE_NAME = isSecure ? "__Secure-mg_web_session" : "mg_web_session";
   try {
     const { email, password } = await req.json();
     if (!email || !password) {
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({ ok: true, user });
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
-      secure: true,
+      secure: isSecure,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 30,

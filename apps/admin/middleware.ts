@@ -5,7 +5,8 @@ export async function middleware(req: NextRequest) {
   const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "K9xL2pQ8mF4vC1nB7zH3jR5wT6yN0kM4";
   const isAuthPage = req.nextUrl.pathname.startsWith("/login");
 
-  const cookieName = process.env.NODE_ENV === "production"
+  const isSecure = req.nextUrl.protocol === "https:";
+  const cookieName = isSecure
     ? "__Secure-mg_admin_session"
     : "mg_admin_session";
 

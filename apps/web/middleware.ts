@@ -7,7 +7,8 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.pathname.startsWith("/login") ||
     req.nextUrl.pathname.startsWith("/register");
 
-  const cookieName = process.env.NODE_ENV === "production"
+  const isSecure = req.nextUrl.protocol === "https:";
+  const cookieName = isSecure
     ? "__Secure-mg_web_session"
     : "mg_web_session";
 
