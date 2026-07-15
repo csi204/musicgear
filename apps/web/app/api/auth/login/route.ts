@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!res.ok) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+      return NextResponse.json({ error: "อีเมลหรือรหัสผ่านผิด หรือให้ลองเข้าสู่ระบบด้วย Google" }, { status: 401 });
     }
 
     const { user } = await res.json();

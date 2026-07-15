@@ -28,9 +28,10 @@ export interface Product {
 interface ProductListClientProps {
   initialCategory?: string;
   initialBrand?: string;
+  initialSearch?: string;
 }
 
-export function ProductListClient({ initialCategory, initialBrand }: ProductListClientProps) {
+export function ProductListClient({ initialCategory, initialBrand, initialSearch }: ProductListClientProps) {
   const [selectedColors, setSelectedColors] = useState<{ [productId: string]: string }>({});
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +69,7 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
   useEffect(() => {
     async function loadProducts() {
       try {
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && !initialSearch) {
           const cached = sessionStorage.getItem("mg_cached_products");
           if (cached) {
             setProducts(JSON.parse(cached));
@@ -80,12 +81,15 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
           setLoading(true);
         }
 
-        const res = await fetch(`${getApiBaseUrl()}/products?limit=100&status=active`);
+        const url = `${getApiBaseUrl()}/products?limit=100&status=active${
+          initialSearch ? `&search=${encodeURIComponent(initialSearch)}` : ""
+        }`;
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
           if (data.status === "ok" && data.products) {
             setProducts(data.products);
-            if (typeof window !== "undefined") {
+            if (typeof window !== "undefined" && !initialSearch) {
               sessionStorage.setItem("mg_cached_products", JSON.stringify(data.products));
             }
           }
@@ -97,7 +101,7 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
       }
     }
     loadProducts();
-  }, []);
+  }, [initialSearch]);
 
   const handleColorClick = (productId: string, colorName: string) => {
     setSelectedColors((prev) => ({
@@ -213,6 +217,12 @@ export function ProductListClient({ initialCategory, initialBrand }: ProductList
       if (!initialCategory) {
         bannerUrl = "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=1200&q=80";
       }
+    }
+
+    if (initialSearch) {
+      title = `ผลการค้นหาสำหรับ "${initialSearch}"`;
+      breadcrumb = `ค้นหา / ${initialSearch}`;
+      bannerUrl = "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=1200&q=80";
     }
 
     // Apply client-side filters

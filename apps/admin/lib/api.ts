@@ -67,6 +67,8 @@ export interface UserListQuery {
 /** GET /users — list all users (admin only) */
 export async function getUsers(query: UserListQuery = {}, token?: string): Promise<UserListResponse> {
   const params = new URLSearchParams();
+  if (query.page) params.set("page", query.page.toString());
+  if (query.limit) params.set("limit", query.limit.toString());
   if (query.role) params.set("role", query.role);
   if (query.status) params.set("status", query.status);
   if (query.search) params.set("search", query.search);

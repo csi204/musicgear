@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!res.ok) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+      return NextResponse.json({ error: "อีเมลหรือรหัสผ่านผิด" }, { status: 401 });
     }
 
     const { user } = await res.json();

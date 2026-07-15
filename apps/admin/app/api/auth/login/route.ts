@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     console.log("API Gateway Response Body:", responseText);
 
     if (!res.ok) {
-      return NextResponse.json({ error: "Invalid credentials", details: responseText }, { status: 401 });
+      return NextResponse.json({ error: "อีเมลหรือรหัสผ่านผิด", details: responseText }, { status: 401 });
     }
 
     const { user } = JSON.parse(responseText);
