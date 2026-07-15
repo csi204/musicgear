@@ -483,6 +483,10 @@ classDiagram
         +String cartId
         +String customerId
         +String sessionId
+        +String color
+        +String title
+        +String imageUrl
+        +String brand
         +DateTime createdAt
         +DateTime updatedAt
         +addItem(productId: String, qty: Int) CartItem
@@ -508,6 +512,7 @@ classDiagram
         +String orderId
         +String customerId
         +String addressId
+        +String paymentMethod
         +DateTime orderDate
         +Json shippingAddressSnapshot
         +Decimal totalAmount
@@ -602,6 +607,7 @@ classDiagram
         +String categoryId
         +DateTime createdAt
         +DateTime updatedAt
+        +Decimal originalPrice
         +generateSlug(name: String) String
         +getImages() ProductImage[]
         +getInventory() Inventory
@@ -633,6 +639,8 @@ classDiagram
         +String productId
         +Int quantity
         +Int reservedQuantity
+        +Int reorderPoint
+        +Int maxCapacity
         +DateTime updatedAt
         +checkAvailable(qty: Int) boolean
         +getAvailableQty() Int
@@ -672,6 +680,7 @@ classDiagram
         +String bundleId
         +String name
         +String description
+        +String imageUrl
         +DiscountType discountType
         +Decimal discountValue
         +DateTime createdAt
@@ -712,6 +721,49 @@ classDiagram
         +logEvent(type: String, refId: String, data: Json) SystemAuditLog
         +getLogsByType(type: String, limit: Int) SystemAuditLog[]
     }
+    class SpecificationGroup {
+        +String groupId
+        +String name
+        +Int sortOrder
+        +DateTime createdAt
+        +DateTime updatedAt
+        +getDefinitions() SpecificationDefinition[]
+    }
+
+    class SpecificationDefinition {
+        +String definitionId
+        +String groupId
+        +String name
+        +Int sortOrder
+        +DateTime createdAt
+        +DateTime updatedAt
+        +getValues(productId: String) ProductSpecification[]
+    }
+
+    class ProductSpecification {
+        +String productId
+        +String definitionId
+        +String value
+        +upsert(productId: String, definitionId: String, value: String) ProductSpecification
+    }
+
+    class CategorySpecification {
+        +String categoryId
+        +String definitionId
+        +assign(categoryId: String, definitionId: String) CategorySpecification
+        +remove(categoryId: String, definitionId: String) boolean
+    }
+
+    class ProductRecommendation {
+        +String recommendationId
+        +String productId
+        +String recommendedId
+        +Float score
+        +DateTime createdAt
+        +getRecommendations(productId: String) Product[]
+        +upsert(productId: String, recommendedId: String, score: Float) ProductRecommendation
+    }
+
 
     %% ── Inheritance ──
     User <|-- Customer
@@ -755,6 +807,16 @@ classDiagram
     %% ── Bundle relations ──
     Bundle     "1"    --> "1..*" BundleItem
     BundleItem "0..*" --> "1"    Product
+
+    %% ── Specification relations ──
+    SpecificationGroup "1" --> "0..*" SpecificationDefinition
+    SpecificationDefinition "0..*" --> "0..*" Product
+    CategorySpecification "0..*" --> "1" Category
+    CategorySpecification "0..*" --> "1" SpecificationDefinition
+    ProductSpecification "0..*" --> "1" Product
+    ProductSpecification "0..*" --> "1" SpecificationDefinition
+    ProductRecommendation "0..*" --> "1" Product
+
 ```
 
 ---
@@ -1004,10 +1066,11 @@ flowchart TB
 
     subgraph DataLayer["Data Layer (Neon Postgres — แยก DB ต่อ Service)"]
         UserDB[("user_db\nUser · Customer\nStaff · Admin · Address")]
-        ProductDB[("product_db\nProduct · Brand · Category\nProductImage · Bundle\nBundleItem · Review")]
+        ProductDB[("product_db\nProduct · Brand · Category\nProductImage · Bundle · BundleItem\nReview ·
+        ProductRecommendation\nSpecificationGroup · SpecificationDefinition\nProductSpecification · CategorySpecification")]
         InventoryDB[("inventory_db\nInventory · InventoryLog")]
         OrderDB[("order_db\nOrder · OrderItem · Shipment")]
-        CartDB[("cart_db\nCart · CartItem")]
+        CartDB[("cart_db\nCart · CartItem\n(Logged-in User)")]
         PaymentDB[("payment_db\nPayment")]
         NotifDB[("notification_db\nNotification")]
         ReportDB[("report_db\nDailySalesReport\nInventorySnapshot\nProductSalesSnapshot\nSystemAuditLog")]
@@ -1018,6 +1081,7 @@ flowchart TB
         Omise["💳 Omise\n(Payment Sandbox)"]
         Resend["✉️ Resend\n(Email — Reset Password)"]
         R2["🗂️ Cloudflare R2\n(Image Storage)"]
+        Redis["⚡ Redis (Upstash)\n(Guest Cart — TTL 7d)"]
     end
 
     %% Client → Gateway
@@ -1048,6 +1112,7 @@ flowchart TB
     Omise -- "webhook (payment result)" --> PaymentSvc
     UserSvc -. "send reset-password email" .-> Resend
     ProductSvc -. "upload product image" .-> R2
+    CartSvc -. "guest cart (TTL 7d)" .-> Redis
 
     %% Service → DB
     UserSvc --> UserDB
