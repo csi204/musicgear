@@ -19,7 +19,7 @@ async function handleProxy(req: NextRequest, props: { params: Promise<{ path: st
 
   let body = undefined;
   if (req.method !== "GET" && req.method !== "HEAD") {
-    body = await req.text();
+    body = req.body;
   }
 
   try {
