@@ -6,7 +6,8 @@ import { LoginButton } from "./login-button";
 import { useState, useEffect, useRef } from "react";
 import { useCartContext } from "./cart-provider";
 import { CartDrawer } from "./cart-drawer";
-import { usePathname } from "next/navigation";
+import { SearchDrawer } from "./search-drawer";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@workspace/ui/lib/utils";
 
 const NAV_LINKS = [
@@ -21,10 +22,10 @@ export function Navbar() {
   const { totalItems } = useCartContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const handleOpenCart = () => setIsCartOpen(true);
@@ -39,12 +40,6 @@ export function Navbar() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  useEffect(() => {
-    if (searchOpen) {
-      searchRef.current?.focus();
-    }
-  }, [searchOpen]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -101,35 +96,15 @@ export function Navbar() {
           {/* ── RIGHT: Actions (Search, Login, Cart) ── */}
           <div className="flex items-center gap-2.5 ml-auto z-10">
             
-            {/* Search Bar - Spring Animation */}
+            {/* Search Bar - Instant Live Search Drawer */}
             <div className="relative hidden lg:flex items-center">
-              <div
-                className={cn(
-                  "flex items-center transition-all duration-300 ease-out",
-                  searchOpen ? "w-64 opacity-100" : "w-0 opacity-0 pointer-events-none"
-                )}
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="flex h-8.5 w-8.5 items-center justify-center rounded-full text-stone-500 hover:text-stone-950 hover:bg-stone-50 transition-all duration-300 active:scale-95 cursor-pointer"
+                aria-label="ค้นหา"
               >
-                <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400 pointer-events-none" />
-                  <input
-                    ref={searchRef}
-                    type="text"
-                    placeholder="ค้นหาเครื่องดนตรี..."
-                    onBlur={() => setSearchOpen(false)}
-                    className="h-8.5 w-full rounded-full border border-stone-200 bg-stone-50 pl-9 pr-4 text-xs text-stone-900 placeholder-stone-400 outline-none focus:border-stone-400 focus:bg-white focus:ring-2 focus:ring-stone-100 transition-all duration-300 shadow-sm"
-                  />
-                </div>
-              </div>
-
-              {!searchOpen && (
-                <button
-                  onClick={() => setSearchOpen(true)}
-                  className="flex h-8.5 w-8.5 items-center justify-center rounded-full text-stone-500 hover:text-stone-950 hover:bg-stone-50 transition-all duration-300 active:scale-95"
-                  aria-label="ค้นหา"
-                >
-                  <Search className="h-[16px] w-[16px]" />
-                </button>
-              )}
+                <Search className="h-[16px] w-[16px]" />
+              </button>
             </div>
 
             {/* Subtle vertical separator */}
@@ -198,20 +173,25 @@ export function Navbar() {
               ประวัติการสั่งซื้อ
             </Link>
             
-            {/* Mobile Search */}
+            {/* Mobile Search Button */}
             <div className="relative mt-2.5 pt-3 border-t border-stone-100">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
-              <input
-                type="text"
-                placeholder="ค้นหาเครื่องดนตรี..."
-                className="h-9 w-full rounded-full border border-stone-200 bg-stone-50 pl-10 pr-4 text-xs placeholder-stone-400 outline-none focus:border-stone-400 focus:bg-white transition-all"
-              />
+              <button
+                onClick={() => {
+                  setIsSearchOpen(true);
+                  setMobileMenuOpen(false);
+                }}
+                className="flex h-9 w-full items-center gap-3 rounded-full border border-stone-200 bg-stone-50 px-4 text-xs text-stone-400 outline-none transition-all text-left"
+              >
+                <Search className="h-3.5 w-3.5 text-stone-400 mr-2 inline" />
+                <span>ค้นหาเครื่องดนตรี...</span>
+              </button>
             </div>
           </div>
         </div>
       </header>
 
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <SearchDrawer isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );
 }
