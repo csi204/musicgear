@@ -28,8 +28,9 @@ function getAuthUser(c) {
     };
   }
 
-  if (!user?.sub) {
-    throw new Error("Authenticated token is missing sub");
+  const id = user?.sub || user?.userId;
+  if (!id) {
+    throw new Error("Authenticated token is missing sub or userId");
   }
 
   const kindeRoles = Array.isArray(user.roles) ? user.roles : [];
@@ -40,8 +41,8 @@ function getAuthUser(c) {
     : "customer";
 
   return {
-    userId: user.sub,
-    email: user.email || `${user.sub}@kinde.user`,
+    userId: id,
+    email: user.email || `${id}@kinde.user`,
     role: normalizedRole,
   };
 }

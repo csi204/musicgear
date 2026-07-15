@@ -342,7 +342,7 @@ stockRoutes.get(
       // If user is staff, only show their own logs or system logs (reserve, release, sale_deduct)
       if (role === "staff") {
         whereClause.OR = [
-          { staffId: user?.sub || null },
+          { staffId: user?.userId || user?.sub || null },
           { staffId: null }
         ];
       }

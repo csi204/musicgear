@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Eye, EyeOff } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/auth";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -20,7 +21,8 @@ export default function RegisterPage() {
     setError("");
     
     try {
-      const res = await fetch("http://127.0.0.1:8788/auth/register", {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, firstName, lastName }),

@@ -24,10 +24,9 @@ export default function SalesReportPage() {
     try {
       const token = getAccessToken();
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/reports/dashboard-summary`, {
-        method: "QUERY",
+      const res = await fetch(`${apiBase}/reports/dashboard-summary?start=${new Date(r.start).toISOString()}&end=${new Date(r.end + "T23:59:59").toISOString()}`, {
+        method: "GET",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ start: new Date(r.start).toISOString(), end: new Date(r.end + "T23:59:59").toISOString() }),
       });
       if (res.status === 401) { clearSession(); router.push("/"); return; }
       if (!res.ok) throw new Error(`ข้อผิดพลาด ${res.status}`);

@@ -1,31 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "../../../../auth";
-import { SignJWT } from "jose";
+import { SignJWT, jwtVerify } from "jose";
+
+const SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "K9xL2pQ8mF4vC1nB7zH3jR5wT6yN0kM4";
 
 export async function PATCH(req: NextRequest) {
+  const isSecure = req.nextUrl.protocol === "https:";
+  const COOKIE_NAME = isSecure ? "__Secure-mg_web_session" : "mg_web_session";
   try {
-    const session = await auth();
+    const token = req.cookies.get(COOKIE_NAME)?.value;
+    if (!token) {
+      return NextResponse.json({ error: { message: "Unauthorized" } }, { status: 401 });
+    }
+
+    const encodedSecret = new TextEncoder().encode(SECRET);
+    let sessionUser: any = null;
+    try {
+      const { payload } = await jwtVerify(token, encodedSecret);
+      sessionUser = payload;
+    } catch {
+      return NextResponse.json({ error: { message: "Unauthorized" } }, { status: 401 });
+    }
     
-    if (!session?.user?.userId) {
+    if (!sessionUser?.userId) {
       return NextResponse.json({ error: { message: "Unauthorized" } }, { status: 401 });
     }
     
     const body = await req.json();
     
     // Generate internal token
-    const secret = new TextEncoder().encode(
-      process.env.NEXTAUTH_SECRET || "fallback-dev-secret-1234567890"
-    );
-    
     const internalToken = await new SignJWT({
-      sub: session.user.userId,
-      email: session.user.email,
-      role: session.user.role || "customer",
+      sub: sessionUser.userId,
+      email: sessionUser.email,
+      role: sessionUser.role || "customer",
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime("5m")
-      .sign(secret);
+      .sign(encodedSecret);
 
     // Proxy request to backend
     const res = await fetch("http://127.0.0.1:8788/users/me/password", {

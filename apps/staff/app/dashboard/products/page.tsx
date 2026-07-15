@@ -100,11 +100,20 @@ function StockBar({ stock, reserved, reorderPoint }: { stock: number; reserved: 
   const availPct = Math.min((stock - reserved) / max, 1) * 100;
   const reservedPct = Math.min(reserved / max, 1) * 100;
   const isLow = stock - reserved <= reorderPoint && stock > 0;
+  const isOut = stock - reserved <= 0;
+  
+  let textColor = "text-zinc-800 dark:text-zinc-200";
+  if (isOut) {
+    textColor = "text-red-600 dark:text-red-400";
+  } else if (isLow) {
+    textColor = "text-amber-650 dark:text-amber-400";
+  }
+
   return (
     <div className="flex items-center gap-2">
       <div className="w-20 h-2 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden flex">
         <div
-          className={`h-full ${isLow ? "bg-amber-500" : "bg-emerald-500"}`}
+          className={`h-full ${isOut ? "bg-red-500" : isLow ? "bg-amber-500" : "bg-emerald-500"}`}
           style={{ width: `${availPct}%` }}
         />
         <div
@@ -112,7 +121,7 @@ function StockBar({ stock, reserved, reorderPoint }: { stock: number; reserved: 
           style={{ width: `${reservedPct}%` }}
         />
       </div>
-      <span className={`text-sm font-bold tabular-nums ${isLow ? "text-amber-650 dark:text-amber-400" : "text-zinc-800 dark:text-zinc-200"}`}>
+      <span className={`text-sm font-bold tabular-nums ${textColor}`}>
         {stock - reserved}
       </span>
     </div>

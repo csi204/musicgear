@@ -75,11 +75,10 @@ export function Sidebar() {
       <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 space-y-1">
         <ThemeToggleItem />
         <button
-          onClick={() => {
-            if (typeof window !== "undefined") {
-              clearSession();
-              window.location.href = buildLogoutUrl("/");
-            }
+          onClick={async () => {
+            clearSession();
+            await fetch("/api/auth/logout", { method: "POST" });
+            window.location.href = "/login";
           }}
           className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-all duration-200 group"
         >

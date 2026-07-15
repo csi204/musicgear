@@ -1,24 +1,26 @@
+import { getApiBaseUrl, getAccessToken } from "./auth";
+
 /**
  * API Client for Admin Dashboard
- * Uses NEXT_PUBLIC_API_URL env var:
- *   - Local:      http://localhost:8787  (wrangler dev)
- *   - Production: https://musicgear-api-gateway.thunderwolf2209.workers.dev
  */
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://musicgear-api-gateway.thunderwolf2209.workers.dev";
-
 type FetchOptions = RequestInit & { token?: string };
 
 async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const { token, ...fetchOptions } = options;
+  
+  const apiBase = typeof window !== "undefined" ? getApiBaseUrl() : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8788");
+  const activeToken = token ?? (typeof window !== "undefined" ? getAccessToken() : undefined);
+
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(fetchOptions.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
     ...(fetchOptions.headers as Record<string, string>),
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+
+  if (activeToken) {
+    headers["Authorization"] = `Bearer ${activeToken}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers });
+  const res = await fetch(`${apiBase}${path}`, { ...fetchOptions, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
     throw new Error(err?.error?.message ?? `API error ${res.status}`);
@@ -62,12 +64,15 @@ export interface UserListQuery {
   search?: string;
 }
 
-/** GET /users — list all users (admin only, uses QUERY method for body filtering) */
+/** GET /users — list all users (admin only) */
 export async function getUsers(query: UserListQuery = {}, token?: string): Promise<UserListResponse> {
-  // Use QUERY method to send filter as body (per QUERY HTTP spec)
-  return apiFetch<UserListResponse>("/users", {
-    method: "QUERY",
-    body: JSON.stringify(query),
+  const params = new URLSearchParams();
+  if (query.role) params.set("role", query.role);
+  if (query.status) params.set("status", query.status);
+  if (query.search) params.set("search", query.search);
+
+  return apiFetch<UserListResponse>(`/users?${params.toString()}`, {
+    method: "GET",
     token,
   });
 }
@@ -114,11 +119,14 @@ export async function getDashboardData(token?: string): Promise<{ status: string
   return apiFetch("/reports/dashboard", { method: "GET", token });
 }
 
-/** QUERY /reports/inventory-alerts — list low stock items */
+/** GET /reports/inventory-alerts — list low stock items */
 export async function getInventoryAlerts(query: { limit?: number; status?: string } = {}, token?: string) {
-  return apiFetch("/reports/inventory-alerts", {
-    method: "QUERY",
-    body: JSON.stringify(query),
+  const params = new URLSearchParams();
+  if (query.limit) params.set("limit", query.limit.toString());
+  if (query.status) params.set("status", query.status);
+
+  return apiFetch(`/reports/inventory-alerts?${params.toString()}`, {
+    method: "GET",
     token,
   });
 }
@@ -171,36 +179,12 @@ export async function deleteProduct(productId: string, token?: string): Promise<
 
 /** POST /products */
 export async function createProduct(formData: FormData, token?: string): Promise<{ status: string; product: ProductRecord }> {
-  const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  
-  const res = await fetch(`${API_BASE}/products`, {
-    method: "POST",
-    headers,
-    body: formData,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
-    throw new Error(err?.error?.message ?? `API error ${res.status}`);
-  }
-  return res.json();
+  return apiFetch("/products", { method: "POST", body: formData, token });
 }
 
 /** PATCH /products/:productId */
 export async function updateProduct(productId: string, formData: FormData, token?: string): Promise<{ status: string; product: ProductRecord }> {
-  const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  
-  const res = await fetch(`${API_BASE}/products/${productId}`, {
-    method: "PATCH",
-    headers,
-    body: formData,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
-    throw new Error(err?.error?.message ?? `API error ${res.status}`);
-  }
-  return res.json();
+  return apiFetch(`/products/${productId}`, { method: "PATCH", body: formData, token });
 }
 
 /** GET /products/brands */
@@ -233,6 +217,7 @@ export interface BundleRecord {
   description: string | null;
   discountType: "percentage" | "fixed_amount";
   discountValue: number | string;
+  imageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   items: BundleItem[];
@@ -265,6 +250,7 @@ export interface InventoryRecord {
   reservedQuantity: number;
   available: number;
   reorderPoint: number;
+  maxCapacity: number;
   status: string;
 }
 
