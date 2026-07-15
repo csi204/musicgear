@@ -206,11 +206,24 @@ stockRoutes.get("/summary", async (c) => {
     // Fetch products to map status (e.g. discontinued)
     const productMap = new Map();
     try {
-      const productSvcUrl = c.env.PRODUCT_SVC_URL ?? "http://localhost:8794";
-      const res = await fetch(`${productSvcUrl.replace(/\/$/, "")}/products?status=all&limit=1000`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      });
+      let res;
+      if (c.env.PRODUCT_SVC) {
+        // Use Service Binding if available
+        res = await c.env.PRODUCT_SVC.fetch(
+          new Request("http://product-svc/products?status=all&limit=1000", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" }
+          })
+        );
+      } else {
+        // Fallback to HTTP fetch for local testing without bindings
+        const productSvcUrl = c.env.PRODUCT_SVC_URL ?? "http://localhost:8794";
+        res = await fetch(`${productSvcUrl.replace(/\/$/, "")}/products?status=all&limit=1000`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
       if (res.ok) {
         const data = await res.json();
         const products = data.products || [];

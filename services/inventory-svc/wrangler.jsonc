@@ -13,6 +13,12 @@
     "REPORT_SVC_URL": "https://report-svc.thunderwolf2209.workers.dev",
     "PRODUCT_SVC_URL": "https://product-svc.thunderwolf2209.workers.dev"
   },
+  "services": [
+    {
+      "binding": "PRODUCT_SVC",
+      "service": "product-svc"
+    }
+  ],
   // "kv_namespaces": [
   //   {
   //     "binding": "MY_KV_NAMESPACE",
