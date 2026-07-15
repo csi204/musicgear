@@ -483,10 +483,6 @@ classDiagram
         +String cartId
         +String customerId
         +String sessionId
-        +String color
-        +String title
-        +String imageUrl
-        +String brand
         +DateTime createdAt
         +DateTime updatedAt
         +addItem(productId: String, qty: Int) CartItem
@@ -502,6 +498,10 @@ classDiagram
         +String cartItemId
         +String cartId
         +String productId
+        +String color
+        +String title
+        +String imageUrl
+        +String brand
         +Int quantity
         +Decimal price
         +updateQuantity(qty: Int) CartItem
@@ -1066,8 +1066,7 @@ flowchart TB
 
     subgraph DataLayer["Data Layer (Neon Postgres — แยก DB ต่อ Service)"]
         UserDB[("user_db\nUser · Customer\nStaff · Admin · Address")]
-        ProductDB[("product_db\nProduct · Brand · Category\nProductImage · Bundle · BundleItem\nReview ·
-        ProductRecommendation\nSpecificationGroup · SpecificationDefinition\nProductSpecification · CategorySpecification")]
+        ProductDB[("product_db\nProduct · Brand · Category\nProductImage · Bundle · BundleItem\nReview     ·ProductRecommendation\nSpecificationGroup · SpecificationDefinition\nProductSpecification · CategorySpecification")]
         InventoryDB[("inventory_db\nInventory · InventoryLog")]
         OrderDB[("order_db\nOrder · OrderItem · Shipment")]
         CartDB[("cart_db\nCart · CartItem\n(Logged-in User)")]
