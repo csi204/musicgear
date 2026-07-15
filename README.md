@@ -1150,20 +1150,30 @@ flowchart TB
     }
   },
 
+  "[product_db] category_specifications": {
+    "description": "ตารางจับคู่ระหว่าง Category กับ SpecificationDefinition เพื่อกำหนดว่าแต่ละหมวดหมู่ต้องการสเปกอะไรบ้าง",
+    "fields": {
+      "categoryId":   { "type": "UUID", "references": "categories.categoryId", "onDelete": "Cascade", "required": true },
+      "definitionId": { "type": "UUID", "references": "specification_definitions.definitionId", "onDelete": "Cascade", "required": true }
+    },
+    "__primaryKey": ["categoryId", "definitionId"]
+  },
+
   "[product_db] products": {
     "fields": {
-      "productId":    { "type": "UUID", "primaryKey": true },
-      "name":         { "type": "string", "required": true },
-      "slug":         { "type": "string", "unique": true, "required": true, "note": "generate จาก name เช่น 'Yamaha F310' → 'yamaha-f310' ใช้เป็น URL /products/:slug" },
-      "description":  { "type": "text", "required": false },
-      "price":        { "type": "decimal(10,2)", "required": true, "min": 0 },
-      "sku":          { "type": "string", "unique": true, "required": true },
-      "status":       { "type": "enum", "values": ["active", "inactive", "discontinued", "out_of_stock"], "default": "active" },
-      "skillLevel":   { "type": "enum", "values": ["beginner", "intermediate", "advanced"], "required": false, "note": "ใช้สำหรับ Beginner Recommendation (Req 10)" },
-      "brandId":      { "type": "UUID", "references": "brands.brandId", "required": true },
-      "categoryId":   { "type": "UUID", "references": "categories.categoryId", "required": true },
-      "createdAt":    { "type": "datetime", "default": "now()" },
-      "updatedAt":    { "type": "datetime", "default": "now()" }
+      "productId":     { "type": "UUID", "primaryKey": true },
+      "name":          { "type": "string", "required": true },
+      "slug":          { "type": "string", "unique": true, "required": true, "note": "generate จาก name เช่น 'Yamaha F310' → 'yamaha-f310' ใช้เป็น URL /products/:slug" },
+      "description":   { "type": "text", "required": false },
+      "price":         { "type": "decimal(10,2)", "required": true, "min": 0 },
+      "originalPrice": { "type": "decimal(10,2)", "required": false, "note": "ราคาเต็มก่อนลดราคา" },
+      "sku":           { "type": "string", "unique": true, "required": true },
+      "status":        { "type": "enum", "values": ["active", "inactive", "discontinued", "out_of_stock"], "default": "active" },
+      "skillLevel":    { "type": "enum", "values": ["beginner", "intermediate", "advanced"], "required": false, "note": "ใช้สำหรับ Beginner Recommendation (Req 10)" },
+      "brandId":       { "type": "UUID", "references": "brands.brandId", "required": true },
+      "categoryId":    { "type": "UUID", "references": "categories.categoryId", "required": true },
+      "createdAt":     { "type": "datetime", "default": "now()" },
+      "updatedAt":     { "type": "datetime", "default": "now()" }
     }
   },
 
@@ -1186,6 +1196,7 @@ flowchart TB
       "description":   { "type": "text", "required": false },
       "discountType":  { "type": "enum", "values": ["percentage", "fixed_amount"], "required": true },
       "discountValue": { "type": "decimal(10,2)", "required": true, "min": 0 },
+      "imageUrl":      { "type": "string", "required": false, "note": "รูปภาพชุด Bundle" },
       "createdAt":     { "type": "datetime", "default": "now()" },
       "updatedAt":     { "type": "datetime", "default": "now()" }
     }
@@ -1211,6 +1222,53 @@ flowchart TB
     }
   },
 
+  "[product_db] product_recommendations": {
+    "description": "ตารางแนะนำสินค้าที่คล้ายกันหรือใช้ร่วมกัน",
+    "fields": {
+      "recommendationId": { "type": "UUID", "primaryKey": true },
+      "productId":        { "type": "UUID", "references": "products.productId", "onDelete": "Cascade", "required": true },
+      "recommendedId":    { "type": "UUID", "references": "products.productId", "onDelete": "Cascade", "required": true },
+      "score":            { "type": "float", "default": 1.0 },
+      "createdAt":        { "type": "datetime", "default": "now()" }
+    },
+    "__unique": ["productId", "recommendedId"]
+  },
+
+  "[product_db] specification_groups": {
+    "description": "กลุ่มของสเปกสินค้า เช่น 'Body', 'Neck', 'Electronics'",
+    "fields": {
+      "groupId":   { "type": "UUID", "primaryKey": true },
+      "name":      { "type": "string", "unique": true, "required": true },
+      "sortOrder": { "type": "integer", "default": 0 },
+      "createdAt": { "type": "datetime", "default": "now()" },
+      "updatedAt": { "type": "datetime", "default": "now()" }
+    }
+  },
+
+  "[product_db] specification_definitions": {
+    "description": "คำจำกัดความสเปกรายข้อในแต่ละกลุ่ม เช่น 'Top Wood', 'Fretboard Material'",
+    "fields": {
+      "definitionId": { "type": "UUID", "primaryKey": true },
+      "groupId":      { "type": "UUID", "references": "specification_groups.groupId", "onDelete": "Cascade", "required": true },
+      "name":         { "type": "string", "required": true },
+      "sortOrder":    { "type": "integer", "default": 0 },
+      "createdAt":    { "type": "datetime", "default": "now()" },
+      "updatedAt":    { "type": "datetime", "default": "now()" }
+    },
+    "__unique": ["groupId", "name"]
+  },
+
+  "[product_db] product_specifications": {
+    "description": "ค่าสเปกจริงของสินค้าแต่ละชิ้น",
+    "fields": {
+      "productId":    { "type": "UUID", "references": "products.productId", "onDelete": "Cascade", "required": true },
+      "definitionId": { "type": "UUID", "references": "specification_definitions.definitionId", "onDelete": "Cascade", "required": true },
+      "value":        { "type": "string", "required": true, "example": "Mahogany" }
+    },
+    "__primaryKey": ["productId", "definitionId"],
+    "__indexes": ["definitionId", "value"]
+  },
+
   "[inventory_db] inventory": {
     "fields": {
       "inventoryId":      { "type": "UUID", "primaryKey": true },
@@ -1218,6 +1276,7 @@ flowchart TB
       "quantity":         { "type": "integer", "default": 0, "min": 0 },
       "reservedQuantity": { "type": "integer", "default": 0, "min": 0, "note": "จองตอน checkout ก่อน payment confirm" },
       "reorderPoint":     { "type": "integer", "default": 0, "note": "จุด threshold สำหรับ Low/Critical Stock Alert ใน Staff Dashboard" },
+      "maxCapacity":      { "type": "integer", "default": 100, "note": "ความจุสูงสุดของคลังสินค้าสำหรับสินค้านี้" },
       "updatedAt":        { "type": "datetime (timestamptz)", "default": "now()" }
     }
   },
@@ -1256,7 +1315,11 @@ flowchart TB
       "cartId":     { "type": "UUID", "references": "carts.cartId", "required": true },
       "productId":  { "type": "UUID", "required": true, "note": "Soft ref → product-svc" },
       "quantity":   { "type": "integer", "required": true, "min": 1 },
-      "price":      { "type": "decimal(10,2)", "required": true, "note": "snapshot ราคา ณ ตอนเพิ่มลงตะกร้า" }
+      "price":      { "type": "decimal(10,2)", "required": true, "note": "snapshot ราคา ณ ตอนเพิ่มลงตะกร้า" },
+      "color":      { "type": "string", "required": false },
+      "title":      { "type": "string", "required": false },
+      "imageUrl":   { "type": "string", "required": false },
+      "brand":      { "type": "string", "required": false }
     }
   },
 
@@ -1272,6 +1335,7 @@ flowchart TB
       "discountAmount":          { "type": "decimal(10,2)", "default": 0 },
       "grandTotal":              { "type": "decimal(10,2)", "required": true },
       "status":                  { "type": "enum", "values": ["pending", "confirmed", "packed", "shipped", "delivered", "cancelled", "refunded"], "default": "pending" },
+      "paymentMethod":           { "type": "string", "default": "online", "required": true },
       "remark":                  { "type": "text", "required": false }
     }
   },
@@ -1382,6 +1446,7 @@ flowchart TB
   }
 }
 ```
+
 
 # User Acceptance Testing: UAT (Manual Testing)
 แบ่งผู้ทดสอบตาม role ที่รับผิดชอบ:
