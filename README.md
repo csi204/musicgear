@@ -1513,73 +1513,109 @@ flowchart TB
 ```
 
 
-# User Acceptance Testing: UAT (Manual Testing)
-แบ่งผู้ทดสอบตาม role ที่รับผิดชอบ:
+# User Acceptance Testing (UAT) — MusicGear Hub
 
-| ผู้ทดสอบ | Role ที่ทดสอบ |
+**โครงงาน:** MusicGear Hub (CSI204 Group Project)  
+**วันที่จัดทำเอกสาร:** 16 กรกฎาคม 2569  
+**รูปแบบการทดสอบ:** Manual Testing — ผู้พัฒนาระบบสาธิตการทำงานพร้อมอธิบายผลการทดสอบและหลักฐานประกอบต่อผู้สอน
+
+### ขั้นตอนที่ 1: วิเคราะห์ Persona
+ระบบ MusicGear Hub มีผู้ใช้งานหลัก 3 กลุ่ม (Persona) ซึ่งแต่ละกลุ่มมีสิทธิ์การเข้าถึงและวัตถุประสงค์การใช้งานต่างกัน:
+
+| Persona | ขอบเขตการทดสอบหลัก |
 |---|---|
-| เดียร์ (67095474) | Staff |
-| บุญ (67096366) | Customer |
-| เขต (67118456) | Admin |
+| Admin | จัดการหมวดหมู่/สินค้า, จัดการผู้ใช้, ดูรายงานภาพรวม (Sales/Inventory/Financial) |
+| Staff | จัดการคำสั่งซื้อ (confirm/pack/ship), จัดการสต็อกและการรับสินค้า, จัดการ Bundle |
+| Customer | สมัคร/login, ค้นหา-เปรียบเทียบสินค้า, ตะกร้า, checkout, ชำระเงิน, ติดตามออเดอร์, รีวิว |
 
-> หมายเหตุ: คอลัมน์ **Actual Result** และ **Status** เว้นว่างไว้ให้กรอกตอนทดสอบจริงกับระบบที่ deploy เสร็จแล้ว
+### ขั้นตอนที่ 2: หลักการออกแบบ UAT Test Case
+Test Case แต่ละรายการประกอบด้วยองค์ประกอบดังนี้:
+*   **TC ID** — รหัสอ้างอิงเฉพาะของ Test Case (แยก prefix ตาม Persona: UAT-A = Admin, UAT-S = Staff, UAT-C = Customer)
+*   **Feature** — ฟีเจอร์ที่ทดสอบ
+*   **ขั้นตอนการทดสอบ** — วิธีการทดสอบทีละขั้นตอน
+*   **Test Data** — ข้อมูลนำเข้าที่ใช้ทดสอบ
+*   **ผลลัพธ์ที่คาดหวัง (Expected Result)** — ผลลัพธ์ที่ระบบควรแสดงหากทำงานถูกต้อง
+*   **ผลลัพธ์จริง (Actual Result)** — กรอกระหว่างการทดสอบจริง
+*   **Status** — Pass / Fail
 
-## 🧑‍🎤 UAT — Customer (ผู้ทดสอบ: บุญ)
+### ขั้นตอนที่ 3: ดำเนินการทดสอบ (Test Cases ตามบทบาทผู้ใช้งาน)
 
-| TC ID | Feature | ขั้นตอนการทดสอบ | Test Data | ผลลัพธ์ที่คาดหวัง | ผลลัพธ์จริง | Status |
-|---|---|---|---|---|---|---|
-| CUS-01 | Register | กรอกอีเมล/รหัสผ่าน/ชื่อ-นามสกุล แล้วกด Register | email: boon@test.com, password: Test1234! | สมัครสำเร็จ, redirect ไปหน้า login หรือ login อัตโนมัติ | | |
-| CUS-02 | Login | กรอก email/password ที่ถูกต้อง แล้วกด Login | account ที่สมัครไว้ | login สำเร็จ, ได้รับ JWT, เข้าหน้า homepage | | |
-| CUS-03 | Login (negative) | กรอก password ผิด | wrong password | ระบบแจ้ง error ไม่ login ผ่าน | | |
-| CUS-04 | Forgot Password | กรอก email ที่ลงทะเบียนไว้ กด Reset Password | email ที่ใช้สมัคร | ได้รับอีเมล reset-password จาก Resend | | |
-| CUS-05 | Browse & Search Product | พิมพ์คำค้นหาในช่อง search เช่น "guitar" | keyword: guitar | แสดงรายการสินค้าที่ตรงกับคำค้นหา | | |
-| CUS-06 | Filter Product | เลือก filter brand / category | brand: Yamaha | แสดงเฉพาะสินค้าที่ตรง filter | | |
-| CUS-07 | View Product Detail | คลิกเข้าไปดูสินค้า 1 ชิ้น | product: กีตาร์ | แสดงรายละเอียดสินค้าครบ (ราคา, สเปก, skillLevel, รูป, รีวิว, อุปกรณ์แนะนำ) | | |
-| CUS-08 | Compare Product | เลือกสินค้า 2 ชิ้นขึ้นไปเพื่อเปรียบเทียบ | สินค้า 2 รายการ | แสดงตารางเปรียบเทียบ spec/ราคา ข้างกัน | | |
-| CUS-09 | Bundle / Accessories Recommendation | เปิดหน้าสินค้า ดูส่วน Accessories แนะนำ | สินค้าที่มี bundle | แสดงรายการอุปกรณ์ที่แนะนำให้ใช้ร่วมกัน สามารถติ๊กเพิ่มลงตะกร้าพร้อมกันได้ | | |
-| CUS-10 | Add to Cart | กด "Add to cart" จากหน้ารายละเอียดสินค้า | qty: 1 | สินค้าถูกเพิ่มในตะกร้า, จำนวนในไอคอนตะกร้าอัปเดต | | |
-| CUS-11 | Manage Cart | เพิ่ม/ลด/ลบสินค้าในตะกร้า | - | ยอดรวมในตะกร้าคำนวณใหม่ถูกต้องทุกครั้งที่แก้ไข | | |
-| CUS-12 | Manage Address | เพิ่มที่อยู่จัดส่งใหม่ และตั้งเป็น default | ที่อยู่ใหม่ 1 รายการ | บันทึกที่อยู่สำเร็จ และแสดงเป็นค่า default ตอน checkout | | |
-| CUS-13 | Checkout | กด checkout จากตะกร้า เลือกที่อยู่จัดส่ง | cart ที่มีของ ≥1 ชิ้น | สร้าง order สถานะ pending พร้อมสรุปยอด (subtotal/shipping/total) ถูกต้อง | | |
-| CUS-14 | Payment — สำเร็จ (Omise sandbox) | เลือกวิธีชำระเงิน กรอกข้อมูลบัตร sandbox | Omise test card | ชำระเงินสำเร็จ, order status เปลี่ยนเป็น confirmed | | |
-| CUS-15 | Payment — ล้มเหลว (negative) | ใช้บัตรที่ถูก decline โดย sandbox | Omise decline test card | แสดง error, order ไม่เปลี่ยนสถานะ, สต็อกที่ reserve ไว้ถูกคืน (releaseStock) | | |
-| CUS-16 | Order Tracking | เข้าหน้า "My Orders" ดูสถานะ order ที่สั่งไว้ | order ที่ confirm แล้ว | แสดงสถานะปัจจุบันถูกต้อง (pending/packed/shipped/delivered) | | |
-| CUS-17 | Order History | เข้าดูประวัติคำสั่งซื้อทั้งหมด | account ที่มี order เก่า | แสดงรายการ order ย้อนหลังครบถ้วน เรียงตามวันที่ | | |
+#### 📊 Admin
 
-## 🔧 UAT — Staff (ผู้ทดสอบ: เดียร์)
+| รหัสทดสอบ | รายการทดสอบ | สถานะ | ขั้นตอนการทดสอบ | ผลลัพธ์ที่คาดหวัง | ผลลัพธ์จริง | ปัญหา / ข้อผิดพลาด | รายละเอียดของปัญหา |
+|---|---|---|---|---|---|---|---|
+| UAT-A01 | Login | Pass | login ด้วย account role=admin | loginสำเร็จ | Login สำเร็จ | - | - |
+| UAT-A02 | Access Control | Fail | ลอง login ด้วย customer/staff account แล้วเข้า URL ของ Admin ตรงๆ | ผู้ใช้ที่ไม่มีสิทธิ์ (customer/staff) หรือหลัง logout แล้ว ต้องเข้าถึง Admin Portal ไม่ได้ | เมื่อ Login ด้วย account ที่ไม่ใช่ admin ยังสามารถไปหน้า admin protal ได้หากรู้ Url แต่จะเข้าใช้งานไม่ได้เนื่องจากติดเรื่องสิทธิ์การเข้าถึง | ปัญหาด้านความปลอดภัย | role อื่นที่ไม่ใช่ admin ยังสามารถไปหน้า admin portal ได้หากรู้ url แต่แค่ login ไม่ได้หากไม่ใช่ role admin |
+| UAT-A03 | View Dashboard | pass | เข้าหน้า dashboard หลัก | เข้าใช้งานหน้า Dashboard แล้วแสดงข้อมูลสรุปทุกส่วนครบถ้วน | เข้าใช้งานหน้า Dashboard ได้ | - | - |
+| UAT-A04 | Manage Product — Create | Pass | เพิ่มสินค้าใหม่ พร้อมอัปโหลดรูปภาพ | เพิ่มสินค้าใหม่พร้อมรูปภาพสำเร็จ และแสดงในรายการสินค้าทันที | เพิ่มสินค้าใหม่พร้อมรูปได้ และมีรายการสินค้าเพิ่มมาในรายการ | - | - |
+| UAT-A05 | Manage Product — Edit | Pass | แก้ไขราคา/รายละเอียด /skillLevel สินค้าเดิม | แก้ไขราคา/รายละเอียด/skillLevel แล้วบันทึกสำเร็จ ข้อมูลอัปเดตถูกต้อง | สามารถแก้ไขราคา, รายละเอียด, skill Lvl ได้ | - | - |
+| UAT-A06 | Manage Product — Set SkillLevel | Pass | ตั้งค่า skillLevel = beginner ให้สินค้า | ตั้งค่า skillLevel = beginner สำเร็จ และแสดงผลถูกต้องหน้า product | สินค้าที่ตั้งค่า skill Lvl beginner ไปแสดงอยู่ที่ส่วนอุปกรณ์มือใหม่ | - | - |
+| UAT-A07 | Manage User — View List | Pass | เข้าหน้ารายชื่อผู้ใช้ทั้งหมด | แสดงรายชื่อผู้ใช้ทั้งหมดครบถ้วน | สามารถเห็นรายชื่อผู้ใช้ทั้งหมดที่มีได้ | - | - |
+| UAT-A08 | Export Report | Pass | เข้าหน้ารายงานแล้วกดออกรายงานจากนั้นเลือก ดูตัวอย่าง หรือ dowload csv,pdf | ได้เอกสารรายงานและสามารถดูตัวอย่างได้ | ได้เอกสารรายงานและสามารถดูตัวอย่างได้ | - | - |
+| UAT-A09 | Sales Report | pass | เข้าหน้ารายงานยอดขาย เลือกช่วงวันที่ | เลือกช่วงวันที่แล้วแสดงรายงานยอดขายถูกต้องตามช่วงที่เลือก | เข้าหน้ารายงานยอดขายได้ เลือกช่วงวันที่แล้วแสดงข้อมูลถูกต้อง | - | - |
+| UAT-A10 | Inventory Report | pass | เข้าหน้ารายงานสต็อก | เข้าหน้ารายงานสต็อกแล้วแสดงข้อมูลคงเหลือถูกต้องครบถ้วน | เข้าหน้ารายงานสต็อกได้ แสดงข้อมูลถูกต้อง | - | - |
+| UAT-A11 | Financial Report | pass | เข้าหน้ารายงานการเงิน | เข้าหน้ารายงานการเงินแล้วแสดงข้อมูลรายรับ/รายจ่ายถูกต้อง | เข้าหน้ารายงานการเงินได้ แสดงข้อมูลถูกต้อง | - | - |
 
-| TC ID | Feature | ขั้นตอนการทดสอบ | Test Data | ผลลัพธ์ที่คาดหวัง | ผลลัพธ์จริง | Status |
-|---|---|---|---|---|---|---|
-| STF-01 | Login | login ด้วย account role=staff | staff account | login สำเร็จ, เข้าสู่ Staff Portal (โทนมืด) | | |
-| STF-02 | Access Control | ลอง login ด้วย staff account แล้วเข้า URL ของ Admin Portal ตรงๆ | staff JWT | ระบบ block / redirect กลับ, ไม่สามารถเข้าถึงหน้า Admin ได้ | | |
-| STF-03 | View All Orders | เข้าหน้า order list | - | แสดงรายการคำสั่งซื้อทั้งหมด พร้อมสถานะปัจจุบัน | | |
-| STF-04 | Confirm Order | เลือก order สถานะ pending แล้วกด Confirm | order ที่ status=pending | order status เปลี่ยนเป็น confirmed | | |
-| STF-05 | Prepare / Pack (reserve stock) | เปิด order ที่ confirmed แล้ว กด "Prepare" | order ที่ confirmed | reservedQuantity เพิ่ม, status เปลี่ยนเป็น packed | | |
-| STF-06 | Packing Slip / Bundle Awareness | เปิด order ที่มีสินค้าเป็นชุด bundle | order ที่มี bundle items | หน้าจัดเตรียมแสดงรายการสินค้าย่อยใน bundle ครบถ้วน | | |
-| STF-07 | Update Status → Shipped | กรอก tracking number แล้วเปลี่ยนสถานะเป็น shipped | tracking no. ตัวอย่าง | status order/shipment เปลี่ยนเป็น shipped, notification ส่งถึงลูกค้า | | |
-| STF-08 | Check Stock / Low Stock Alert | เข้าหน้า Inventory ดูสต็อกสินค้า | - | แสดง quantity, reservedQuantity, และแจ้ง Low/Critical ตาม reorderPoint | | |
-| STF-09 | Receiving Product (รับของเข้าสต็อก) | กรอกจำนวนสินค้าที่รับเข้า กด Confirm | productId, expectedQty: 20, receivedQty: 18 | quantity เพิ่มตาม receivedQty, บันทึก InventoryLog (action=receive) | | |
-| STF-10 | Receiving — Discrepancy Warning | รับของเข้าโดยที่ receivedQty ≠ expectedQty | receivedQty < expectedQty | ระบบแสดง confirm dialog แจ้งความไม่ตรง ก่อนยืนยัน | | |
-| STF-11 | Manage Bundle — Create | สร้าง bundle set ใหม่ เลือกสินค้า + ตั้ง discount | 3 สินค้า + discount 10% | บันทึก bundle สำเร็จ, ปรากฏในรายการ | | |
-| STF-12 | Manage Bundle — Edit | แก้ไข discount หรือรายการสินค้าใน bundle ที่มีอยู่ | bundle ที่สร้างไว้ | ข้อมูล bundle อัปเดตสำเร็จ | | |
-| STF-13 | Manage Bundle — Delete | ลบ bundle ออกจากรายการ | bundle ที่สร้างไว้ | bundle ถูกลบ ไม่ปรากฏในรายการอีก | | |
-| STF-14 | Staff Dashboard | เข้าหน้า Dashboard | - | แสดงสรุป: order รอจัดเตรียม, สต็อก Low/Critical, ยอด order วันนี้ | | |
-| STF-15 | Manage Category — Create | สร้างหมวดหมู่ใหม่ | name: "Guitar Accessories" | บันทึกสำเร็จ, เลือกใช้ตอนสร้างสินค้าได้ | | |
-| STF-16 | Manage Category — Edit/Delete | แก้ไขชื่อ / ลบ category ที่ไม่มีสินค้าผูก | category ทดสอบ | แก้ไข/ลบสำเร็จ | | |
-| STF-17 | Manage Category — Delete (negative) | ลบ category ที่ยังมีสินค้าผูกอยู่ | category ที่มี product | ระบบ block การลบ พร้อมแจ้งเตือน | | |
-| STF-18 | Manage Product — Create | เพิ่มสินค้าใหม่ พร้อมอัปโหลดรูปภาพ | productData + รูป 1 ไฟล์ | สินค้าถูกสร้าง, รูปอัปโหลดขึ้น Cloudflare R2 สำเร็จ | | |
-| STF-19 | Manage Product — Edit | แก้ไขราคา/รายละเอียด/skillLevel สินค้าเดิม | product เดิม | ข้อมูลอัปเดต ราคาที่แสดงฝั่ง customer เปลี่ยนตาม แต่ order เก่าไม่เปลี่ยน (snapshot) | | |
-| STF-20 | Manage Product — Set SkillLevel | ตั้งค่า skillLevel = beginner ให้สินค้า | product 1 ชิ้น | สินค้าถูก tag beginner, ฝั่ง customer filter ด้วย skillLevel=beginner เจอสินค้านี้ | | |
+#### 🔧 Staff
 
-## 📊 UAT — Admin (ผู้ทดสอบ: เขต)
+| รหัสทดสอบ | รายการทดสอบ | สถานะการทดสอบ | ผลลัพธ์ที่คาดหวัง | ขั้นตอนการทดสอบ | ผลลัพธ์จริง | ปัญหา / ข้อผิดพลาด | รายละเอียดของปัญหา |
+|---|---|---|---|---|---|---|---|
+| UAT-S01 | Login | Pass | Login ด้วย account role=staff สำเร็จ เข้าสู่ระบบได้ปกติ | login ด้วย account role=staff | Login ด้วย account role=staff สำเร็จ | - | - |
+| UAT-S02 | Access Control | Fail | ผู้ใช้ที่ไม่มีสิทธิ์ customer เข้า URL ของ Staff ตรงๆ ไม่ได้ | ลอง login ด้วย customer account แล้วเข้า URL ของ Staff ตรงๆ | สามารถเข้ามาถึงหน้า staff portal ได้แต่ไม่สามารถล็อกอินได้เนื่องจากไม่สิทธิ์ในการเข้าถึง | ปัญหาด้านความปลอดภัย | ผู้ใช้ role customer สามารถเข้ามาถึงหน้า staff portal ได้ด้วย url แต่ไม่สามารถ login ได้ |
+| UAT-S03 | View All Orders | Pass | แสดงรายการ order ทั้งหมดครบถ้วน | เข้าหน้า order | เข้าหน้า order แล้วมีรายการ order แสดงครบถ้วน | - | - |
+| UAT-S04 | Confirm Order | Pass | เปลี่ยนสถานะ order จาก pending → confirmed สำเร็จ | เลือก order สถานะ pending แล้วกด Confirm | สามารถกดรับหรือยืนยันออเดอร์ลูกค้าได้ | - | - |
+| UAT-S05 | Prepare / Pack (reserve stock) | Pass | เปลี่ยนสถานะเป็น preparing และตัดสต็อกสินค้าตามจำนวนที่สั่ง | เปิด order ที่ confirmed แล้ว กด "Prepare" | สามารถเปลี่ยนสถานะออเดอร์ได้ตามที่คาดหวัง | - | - |
+| UAT-S06 | Packing Slip / Bundle Awareness | Pass | แสดงรายการสินค้าที่อยู่ใน bundle ครบทุกชิ้นสำหรับแพ็ค | เปิด order ที่มีสินค้าเป็นชุด bundle | สามารถดูรายการออเดอร์ที่เป็นสินค้า bundle ได้ | - | - |
+| UAT-S07 | Update Status → Shipping | Pass | สถานะเปลี่ยนเป็น shipping สำเร็จ | เปลี่ยนสถานะเป็น shipping | สามารถเปลี่ยนสถานะเป็นกำลังจัดส่งได้สำหรับสินค้าที่อยู่แพ็คแล้ว | - | - |
+| UAT-S08 | Check Stock / Low Stock Alert | pass | เข้าหน้า Inventory แล้วระบบเตือนสินค้าใกล้หมดถูกต้อง | เข้าหน้า Inventory ดูสต็อกสินค้า | หน้า Inventory มีเตือนว่าสินค้าใกล้หมดหรือหมดแล้ว | - | - |
+| UAT-S09 | Receiving Product (รับของเข้าสต็อก) | pass | กรอกจำนวนสินค้าที่รับเข้าแล้วกด Confirm สต็อกอัปเดตถูกต้อง | กรอกจำนวนสินค้าที่รับเข้า กด Confirm | กรอกจำนวนสินค้าที่รับเข้าแล้วกด Confirm สต็อกอัปเดตถูกต้อง | - | - |
+| UAT-S10 | Receiving — Discrepancy Warning | pass | หาก receivedQty ≠ expectedQty ระบบต้องแจ้งเตือนความคลาดเคลื่อน | รับของเข้าโดยที่ receivedQty ≠ expectedQty | รับของเข้าโดย receivedQty ≠ expectedQty ระบบแจ้งเตือนความคลาดเคลื่อนถูกต้อง | - | - |
+| UAT-S11 | Check  Bundle Detail | pass | ดูรายละเอียด bundle แสดงข้อมูลสินค้าที่ประกอบอยู่ในชุดครบถ้วน | ดูรายละเอียดbundle | ดูรายละเอียด bundle แสดงข้อมูลครบถ้วน | - | - |
+| UAT-S12 | Staff Dashboard | pass | เข้าหน้า Dashboard แล้วแสดงข้อมูลสรุปสำหรับ Staff ครบถ้วน | เข้าหน้า Dashboard | เข้าหน้า Dashboard แสดงข้อมูลครบถ้วน | - | - |
 
-| TC ID | Feature | ขั้นตอนการทดสอบ | Test Data | ผลลัพธ์ที่คาดหวัง | ผลลัพธ์จริง | Status |
-|---|---|---|---|---|---|---|
-| ADM-01 | Login | login ด้วย account role=admin | admin account | login สำเร็จ, เข้าสู่ Admin Portal | | |
-| ADM-02 | Access Control | ลอง login ด้วย customer/staff account แล้วเข้า URL ของ Admin ตรงๆ | non-admin JWT | ระบบ block ไม่ให้เข้าถึง route admin ใดๆ | | |
-| ADM-03 | View Dashboard | เข้าหน้า dashboard หลัก | - | แสดงสรุป totalOrders, totalRevenue, topProducts ภาพรวม | | |
-| ADM-04 | Manage User — View List | เข้าหน้ารายชื่อผู้ใช้ทั้งหมด | - | แสดงรายชื่อ user ทุก role พร้อมสถานะ | | |
-| ADM-05 | Manage User — Suspend/Ban | เปลี่ยนสถานะ user เป็น banned | customer account ทดสอบ | user ไม่สามารถ login ได้อีก จนกว่าจะถูกปลด ban | | |
-| ADM-06 | Sales Report | เข้าหน้ารายงานยอดขาย เลือกช่วงวันที่ | date range 1 เดือน | แสดงยอดขายรวม, สินค้าขายดี ตรงกับข้อมูล order จริงในระบบ | | |
-| ADM-07 | Inventory Report | เข้าหน้ารายงานสต็อก | - | แสดง InventorySnapshot รายสินค้า (stockLevel, status In Stock/Low/Critical) | | |
-| ADM-08 | Financial Report | เข้าหน้ารายงานการเงิน | - | แสดงรายรับรวม (จาก DailySalesReport) ตรงกับยอดขายใน Sales Report | | |
+#### 🧑‍🎤 Customer
+
+| รหัสทดสอบ | รายการทดสอบ | สถานะการทดสอบ | ผลลัพธ์ที่คาดหวัง | ขั้นตอนการทดสอบ | ผลลัพธ์จริง | ปัญหา / ข้อผิดพลาด | รายละเอียดของปัญหา |
+|---|---|---|---|---|---|---|---|
+| UAT-C01 | Register | pass | กรอกอีเมล/รหัสผ่าน/ชื่อ-นามสกุล แล้วสมัครสมาชิกสำเร็จ | กรอกอีเมล/รหัสผ่าน/ชื่อ-นามสกุล แล้วกด Register | กรอกอีเมล/รหัสผ่าน/ชื่อ-นามสกุล แล้ว Register สำเร็จ | - | - |
+| UAT-C02 | Login | pass | กรอก email/password ที่ถูกต้องแล้ว login สำเร็จ | กรอก email/password ที่ถูกต้อง แล้วกด Login | กรอก email/password ที่ถูกต้องแล้ว Login สำเร็จ | - | - |
+| UAT-C03 | Login (negative) | pass | กรอก password ผิด ระบบต้องแจ้งเตือนและไม่อนุญาตให้เข้าสู่ระบบ | กรอก password ผิด | กรอก password ผิด ระบบแจ้งเตือนและไม่ให้เข้าสู่ระบบตามที่ควร | - | - |
+| UAT-C04 | Forgot Password | fail | ระบบส่งอีเมลรีเซ็ตรหัสผ่านไปยังอีเมลที่ลงทะเบียนไว้ | กรอก email ที่ลงทะเบียนไว้ กด Reset Password | สามารถรีเซ็ตรหัสผ่านได้ | ระบบทำงานไม่ตรงตามความต้องการ | Resend ยังอยู่ใน Sandbox mode ทำให้ส่งอีเมลได้เฉพาะ email ของเจ้าของ account Resend เท่านั้น |
+| UAT-C05 | Browse & Search Product | pass | พิมพ์คำค้นหาแล้วแสดงสินค้าที่เกี่ยวข้อง เช่น "guitar" ต้องเจอสินค้าประเภทกีตาร์ | พิมพ์คำค้นหาในช่อง search เช่น "guitar" | พิมพ์คำค้นหาแล้วแสดงสินค้าที่เกี่ยวข้อง เช่น "guitar" ต้องเจอสินค้าประเภทกีตาร์ | - | - |
+| UAT-C06 | Filter Product | pass | เลือก filter brand/category แล้วแสดงสินค้าตรงตามเงื่อนไขที่เลือก | เลือก filter brand / category | เลือก filter brand/category แล้วแสดงสินค้าตรงตามเงื่อนไข | - | - |
+| UAT-C07 | View Product Detail | pass | คลิกเข้าไปดูสินค้า 1 ชิ้น แสดงรายละเอียดครบถ้วนถูกต้อง | คลิกเข้าไปดูสินค้า 1 ชิ้น | คลิกดูสินค้า 1 ชิ้น แสดงรายละเอียดถูกต้องครบถ้วน | - | - |
+| UAT-C08 | Compare Product | pass | เลือกสินค้า 2 ชิ้นขึ้นไปแล้วแสดงตารางเปรียบเทียบถูกต้อง | เลือกสินค้า 2 ชิ้นขึ้นไปเพื่อเปรียบเทียบ | เลือกสินค้า 2 ชิ้นขึ้นไปเปรียบเทียบได้ถูกต้อง | - | - |
+| UAT-C09 | Bundle / Accessories Recommendation | fail | แสดงรายการ accessories/bundle ครบตามที่กำหนด | เปิดหน้าสินค้า ดูส่วน Accessories แนะนำ | มีรายการ bundle จริงและ acessories สามารถเพิ่มได้ และสั่งซื้อได้ | ปัญหาเกี่ยวกับการใช้งาน / ปัญหาเกี่ยวกับข้อมูล | ในหน้ารายการ bundle ดึงรายการ product มาไม่ครบ |
+| UAT-C10 | Add to Cart | pass | กด "Add to cart" จากหน้ารายละเอียดสินค้าแล้วเพิ่มลงตะกร้าสำเร็จ | กด "Add to cart" จากหน้ารายละเอียดสินค้า | กด Add to cart จากหน้ารายละเอียดสินค้า เพิ่มลงตะกร้าสำเร็จ | - | - |
+| UAT-C11 | Manage Cart | pass | เพิ่ม/ลด/ลบสินค้าในตะกร้าแล้วยอดรวมอัปเดตถูกต้อง | เพิ่ม/ลด/ลบสินค้าในตะกร้า | เพิ่ม/ลด/ลบสินค้าในตะกร้าได้ถูกต้อง | - | - |
+| UAT-C12 | Manage Address | pass | เพิ่มที่อยู่จัดส่งใหม่และตั้งเป็น default สำเร็จ | เพิ่มที่อยู่จัดส่งใหม่ และตั้งเป็น default | เพิ่มที่อยู่จัดส่งใหม่และตั้งเป็น default สำเร็จ | - | - |
+| UAT-C13 | Checkout | pass | เลือกที่อยู่จัดส่งแล้วดำเนินการ checkout สำเร็จ ไม่มี error | กด checkout จากตะกร้า เลือกที่อยู่จัดส่ง | กด checkout ตะกร้าได้สำเร็จ | - | - |
+| UAT-C14 | Payment — สำเร็จ (Omise sandbox) | pass | เลือกบัตร sandbox แล้วชำระเงินสำเร็จ และสร้าง order | เลือกวิธีชำระเงิน กรอกข้อมูลบัตร sandbox | ระบบ paymentสามารถใช้งานได้ตามความต้องการ | - | - |
+| UAT-C15 | Order Tracking | pass | เข้าหน้า My Orders แล้วเห็นสถานะ order ของตนเองเท่านั้น | เข้าหน้า "My Orders" ดูสถานะ order ที่สั่งไว้ | ระบบ tracking order สามารถติดตามได้ | - | - |
+| UAT-C16 | Order History | pass | แสดงประวัติคำสั่งซื้อทั้งหมดของบัญชีตนเองครบถ้วน | เข้าดูประวัติคำสั่งซื้อทั้งหมด | สามารถดูประวัติสินค้าได้ทั้งหมดของผู้ใช้ | - | - |
+
+### ขั้นตอนที่ 4: สรุปผลการทดสอบ
+จากเอกสาร UAT ที่ทำการทดสอบและรายงานปัญหาที่เกิดขึ้นได้ดังนี้
+
+| Persona | จำนวน Test Case ทั้งหมด | Pass | Fail |
+|---|---|---|---|
+| Admin | 11 | 10 | 1 |
+| Staff | 12 | 11 | 1 |
+| Customer | 16 | 14 | 2 |
+| **รวม** | **39** | **35** | **4** |
+
+### ตารางสรุปปัญหาที่พบ (Issue Summary)
+
+| Issue ID | รายละเอียดปัญหา | ประเภทปัญหา | ระดับความสำคัญ |
+|---|---|---|---|
+| ISS-001 | role อื่นที่ไม่ใช่ admin ยังสามารถไปหน้า admin portal ได้หากรู้ url แต่แค่ login ไม่ได้หากไม่ใช่ role admin | ปัญหาด้านความปลอดภัย | Critical |
+| ISS-002 | ผู้ใช้ role customer สามารถเข้ามาถึงหน้า staff portal ได้ด้วย url แต่ไม่สามารถ login ได้ | ปัญหาด้านความปลอดภัย | Critical |
+| ISS-003 | issue Resend ยังอยู่ใน Sandbox mode ทำให้ส่งอีเมลได้เฉพาะ email ของเจ้าของ account Resend เท่านั้น | ระบบทำงานไม่ตรงตามความต้องการ | High |
+| ISS-004 | ในหน้ารายการ bundle ดึงรายการ product มาไม่ครบ | ปัญหาเกี่ยวกับการใช้งาน / ปัญหาเกี่ยวกับข้อมูล | High |
+
+*อ้างอิงจากผลการทดสอบ: UAT-A02, UAT-S02, UAT-C04, UAT-C09*
+
+### สรุปผลการประเมิน UAT
+จากผลการทดสอบการยอมรับของผู้ใช้งาน (User Acceptance Testing: UAT) อ้างอิงรหัสการทดสอบ UAT-A02, UAT-S02, UAT-C04 และ UAT-C09 พบว่าระบบมีเคสที่ผ่านการทดสอบจำนวน 35 รายการ จากทั้งหมด 39 รายการ คิดเป็นร้อยละ 89.74%
+
+อย่างไรก็ตาม ระบบยังคงตรวจพบข้อผิดพลาดสำคัญที่ต้องได้รับการแก้ไขก่อนการส่งมอบหรือเปิดใช้งานจริง โดยแบ่งเป็นปัญหาระดับ Critical 2 รายการ ในส่วนของระบบความปลอดภัยและการควบคุมสิทธิ์การเข้าถึงหน้าจัดการข้อมูลผ่าน URL (Routing Guard) ของผู้ดูแลระบบและพนักงาน และปัญหาระดับ High 2 รายการ ในส่วนของข้อจำกัดบริการส่งอีเมลแจ้งเตือน (Resend API) และความถูกต้องในการดึงข้อมูลสินค้าจัดเซ็ต (Bundle Set) คณะผู้พัฒนาจึงเห็นควรให้ดำเนินการปรับปรุงและแก้ไขประเด็นปัญหาทั้งหมดข้างต้นให้เสร็จสิ้น เพื่อให้ระบบมีความเสถียรและปลอดภัยสูงสุดก่อนการเผยแพร่สู่สภาพแวดล้อมจริง
